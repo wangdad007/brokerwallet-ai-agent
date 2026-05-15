@@ -189,7 +189,8 @@
             android:exported="false" />
         <activity
             android:name=".xc.AIAssistantActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:configChanges="orientation|screenSize" />
 
         <!-- FileProvider for camera photos -->
         <provider

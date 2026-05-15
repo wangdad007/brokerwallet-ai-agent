@@ -42,10 +42,11 @@ public class DeepSeekClient {
                 .getString(KEY_API_KEY, null);
     }
 
-    public static void setApiKey(String key) {
-        if (appContext == null) return;
+    public static boolean setApiKey(String key) {
+        if (appContext == null) return false;
         appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 .edit().putString(KEY_API_KEY, key).apply();
+        return true;
     }
 
     public interface ChatCallback {
@@ -92,10 +93,16 @@ public class DeepSeekClient {
                     String content = response.choices.get(0).message.content;
                     callback.onSuccess(content);
                 } else {
-                    Scanner scanner = new Scanner(conn.getErrorStream(), "UTF-8")
-                            .useDelimiter("\\A");
-                    String err = scanner.hasNext() ? scanner.next() : "HTTP " + code;
-                    scanner.close();
+                    java.io.InputStream errStream = conn.getErrorStream();
+                    String err;
+                    if (errStream != null) {
+                        Scanner scanner = new Scanner(errStream, "UTF-8")
+                                .useDelimiter("\\A");
+                        err = scanner.hasNext() ? scanner.next() : "HTTP " + code;
+                        scanner.close();
+                    } else {
+                        err = "HTTP " + code + " (no body)";
+                    }
                     callback.onError(err);
                 }
                 conn.disconnect();

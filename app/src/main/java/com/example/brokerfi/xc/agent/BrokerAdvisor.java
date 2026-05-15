@@ -1,6 +1,6 @@
 package com.example.brokerfi.xc.agent;
 
-import android.app.Activity;
+import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.brokerfi.xc.MyUtil;
 import com.example.brokerfi.xc.StorageUtil;
@@ -20,7 +20,7 @@ public class BrokerAdvisor {
      * 快速收益巡检：不调 AI，直接返回数据摘要。
      * 适合下拉刷新场景。
      */
-    public static void quickScan(Activity activity, AdviceCallback callback) {
+    public static void quickScan(AppCompatActivity activity, AdviceCallback callback) {
         String pk = StorageUtil.getCurrentPrivatekey(activity);
         if (pk == null || pk.isEmpty()) {
             callback.onDataError("No account selected");
@@ -73,7 +73,7 @@ public class BrokerAdvisor {
     /**
      * 深度 AI 分析：调 DeepSeek 做多维度研判。
      */
-    public static void deepAnalysis(Activity activity, AdviceCallback callback) {
+    public static void deepAnalysis(AppCompatActivity activity, AdviceCallback callback) {
         String pk = StorageUtil.getCurrentPrivatekey(activity);
         if (pk == null || pk.isEmpty()) {
             callback.onDataError("No account selected");

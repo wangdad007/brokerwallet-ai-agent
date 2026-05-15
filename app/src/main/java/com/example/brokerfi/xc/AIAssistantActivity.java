@@ -29,6 +29,7 @@ public class AIAssistantActivity extends AppCompatActivity {
     private ImageView backBtn;
     private ImageView settingsBtn;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private volatile boolean destroyed = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -157,8 +158,16 @@ public class AIAssistantActivity extends AppCompatActivity {
 
     // ============= UI 辅助 =============
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        destroyed = true;
+    }
+
     private void addMessage(String sender, String text) {
+        if (destroyed) return;
         mainHandler.post(() -> {
+            if (destroyed) return;
             LinearLayout bubble = new LinearLayout(this);
             bubble.setOrientation(LinearLayout.VERTICAL);
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
@@ -193,7 +202,9 @@ public class AIAssistantActivity extends AppCompatActivity {
     }
 
     private void updateLastMessage(int index, String text) {
+        if (destroyed) return;
         mainHandler.post(() -> {
+            if (destroyed) return;
             if (index >= 0 && index < messageContainer.getChildCount()) {
                 View child = messageContainer.getChildAt(index);
                 if (child instanceof LinearLayout) {
@@ -222,8 +233,12 @@ public class AIAssistantActivity extends AppCompatActivity {
         builder.setPositiveButton("Save", (dialog, which) -> {
             String key = input.getText().toString().trim();
             if (key.startsWith("sk-") && key.length() > 10) {
-                DeepSeekClient.setApiKey(key);
-                addMessage("AI", "API Key saved. DeepSeek AI is now ready.");
+                boolean saved = DeepSeekClient.setApiKey(key);
+                if (saved) {
+                    addMessage("AI", "API Key saved. DeepSeek AI is now ready.");
+                } else {
+                    addMessage("AI", "Failed to save key. Please restart the app and try again.");
+                }
             } else {
                 addMessage("AI", "Invalid key format. DeepSeek keys start with 'sk-'.");
             }

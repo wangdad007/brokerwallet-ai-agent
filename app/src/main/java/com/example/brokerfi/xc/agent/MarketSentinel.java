@@ -1,8 +1,5 @@
 package com.example.brokerfi.xc.agent;
 
-import com.example.brokerfi.xc.FormatUtil;
-import com.example.brokerfi.xc.SecurityUtil;
-
 /**
  * 交易安全守护 — 在用户发起交易前做 AI 辅助安全检查。
  * 纯叠加：拦截参数 → 分析 → 告警，不修改 SendTX 逻辑。
