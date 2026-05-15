@@ -187,6 +187,9 @@
         <activity
             android:name=".xc.MyCenterActivity"
             android:exported="false" />
+        <activity
+            android:name=".xc.AIAssistantActivity"
+            android:exported="false" />
 
         <!-- FileProvider for camera photos -->
         <provider

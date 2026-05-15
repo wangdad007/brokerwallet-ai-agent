@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/white">
+
+    <RelativeLayout
+        android:id="@+id/action_bar"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:padding="12dp"
+        android:background="@color/white">
+
+        <ImageView
+            android:id="@+id/back_btn"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_centerVertical="true"
+            android:src="@drawable/up_circle"
+            android:contentDescription="Back"
+            android:padding="8dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:layout_toRightOf="@id/back_btn"
+            android:text="AI Assistant"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="#000000" />
+
+        <ImageView
+            android:id="@+id/settings_btn"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_alignParentRight="true"
+            android:layout_centerVertical="true"
+            android:src="@drawable/setting_icon"
+            android:contentDescription="Settings"
+            android:padding="8dp" />
+    </RelativeLayout>
+
+    <LinearLayout
+        android:id="@+id/quick_actions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="8dp"
+        android:gravity="center">
+
+        <Button
+            android:id="@+id/btn_broker_scan"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="4dp"
+            android:text="Broker Scan"
+            android:textSize="13sp"
+            android:background="@drawable/custom_button_background" />
+
+        <Button
+            android:id="@+id/btn_nft_market"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="4dp"
+            android:text="NFT Market"
+            android:textSize="13sp"
+            android:background="@drawable/custom_button_background" />
+
+        <Button
+            android:id="@+id/btn_deep_analysis"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="4dp"
+            android:text="Deep Analysis"
+            android:textSize="13sp"
+            android:background="@drawable/custom_button_background" />
+    </LinearLayout>
+
+    <ScrollView
+        android:id="@+id/message_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:padding="12dp">
+
+        <LinearLayout
+            android:id="@+id/message_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+    </ScrollView>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="8dp"
+        android:gravity="center_vertical"
+        android:background="@color/white">
+
+        <EditText
+            android:id="@+id/input_field"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:hint="Ask AI about your wallet..."
+            android:paddingHorizontal="16dp"
+            android:background="@drawable/custom_edittext_border"
+            android:maxLines="3"
+            android:inputType="textMultiLine" />
+
+        <ImageView
+            android:id="@+id/send_btn"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginLeft="8dp"
+            android:src="@drawable/send_icon"
+            android:contentDescription="Send"
+            android:padding="10dp" />
+    </LinearLayout>
+
+</LinearLayout>

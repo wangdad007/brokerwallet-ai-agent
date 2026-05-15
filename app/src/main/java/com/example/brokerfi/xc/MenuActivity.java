@@ -23,6 +23,7 @@ public class MenuActivity extends AppCompatActivity {
     private RelativeLayout supportlist;
     private RelativeLayout about;
     private RelativeLayout locklist;
+    private RelativeLayout ailist;
     private ImageView up_icon;
 
 
@@ -44,6 +45,7 @@ public class MenuActivity extends AppCompatActivity {
         locklist = findViewById(R.id.locklist);
         up_icon = findViewById(R.id.up_icon);
         about = findViewById(R.id.about);
+        ailist = findViewById(R.id.ailist);
     }
 
     private void intEvent(){
@@ -78,6 +80,10 @@ public class MenuActivity extends AppCompatActivity {
             intent.setClass(MenuActivity.this,SelectAccountActivity.class);
             //跳转
             startActivity(intent);
+        });
+
+        ailist.setOnClickListener(view -> {
+            startActivity(new Intent(MenuActivity.this, AIAssistantActivity.class));
         });
 
         up_icon.setOnClickListener(view -> {
