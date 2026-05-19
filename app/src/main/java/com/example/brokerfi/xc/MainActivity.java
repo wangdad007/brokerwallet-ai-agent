@@ -54,7 +54,6 @@ public class MainActivity extends AppCompatActivity {
     private ImageView send;
     private ImageView swap;
     private ImageView broker;
-    private ImageView nft;
     private ImageView news;
     private ImageView medalSystem;
     private ImageView goldMarket;
@@ -527,12 +526,6 @@ public class MainActivity extends AppCompatActivity {
             
             Intent intent = new Intent();
             intent.setClass(MainActivity.this,BrokerActivity.class);
-            //跳转
-            startActivity(intent);
-        });
-        nft.setOnClickListener(view -> {
-            Intent intent = new Intent();
-            intent.setClass(MainActivity.this,NFTMainActivity.class);
             //跳转
             startActivity(intent);
         });
