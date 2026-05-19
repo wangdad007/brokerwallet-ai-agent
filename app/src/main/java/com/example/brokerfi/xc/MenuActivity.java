@@ -24,6 +24,7 @@ public class MenuActivity extends AppCompatActivity {
     private RelativeLayout about;
     private RelativeLayout locklist;
     private RelativeLayout ailist;
+    private RelativeLayout goldlist;
     private ImageView up_icon;
 
 
@@ -46,11 +47,15 @@ public class MenuActivity extends AppCompatActivity {
         up_icon = findViewById(R.id.up_icon);
         about = findViewById(R.id.about);
         ailist = findViewById(R.id.ailist);
+        goldlist = findViewById(R.id.goldlist);
     }
 
     private void intEvent(){
         about.setOnClickListener(v -> {
             startActivity(new Intent(this, AboutActivity.class));
+        });
+        goldlist.setOnClickListener(v -> {
+            startActivity(new Intent(this, com.example.brokerfi.xc.agent.gold.GoldNoteMarketActivity.class));
         });
         sendlist.setOnClickListener(view -> {
             IntentIntegrator intentIntegrator = new IntentIntegrator(MenuActivity.this);

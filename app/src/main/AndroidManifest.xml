@@ -152,6 +152,9 @@
             android:name=".xc.ImportActivity"
             android:exported="false" />
         <activity
+            android:name=".xc.agent.gold.GoldNoteMarketActivity"
+            android:exported="false" />
+        <activity
             android:name=".xc.WelcomeActivity"
             android:exported="true">
             <intent-filter>
