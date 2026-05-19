@@ -55,6 +55,7 @@ dependencies {
     implementation("com.github.bumptech.glide:glide:4.16.0")
 //    implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.web3j:core:4.9.8")
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
     implementation("androidx.exifinterface:exifinterface:1.3.6")
     
     // OpenCV for document scanning - using a manual approach
