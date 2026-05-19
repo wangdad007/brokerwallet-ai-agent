@@ -289,29 +289,26 @@
             android:layout_column="0"
             android:layout_columnSpan="4" />
 
-            <!--
         <ImageView
-            android:id="@+id/medalSystem"
+            android:id="@+id/gold_market"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_row="6"
             android:layout_column="0"
             android:layout_columnWeight="1"
             android:layout_gravity="center"
-            android:src="@drawable/dao_team_icon" />
-            -->
+            android:src="@drawable/database_icon" />
 
-            <ImageView
-                android:id="@+id/nft"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_row="6"
-                android:layout_column="0"
-                android:visibility="gone"
-                android:layout_columnWeight="1"
-                android:layout_gravity="center"
-                android:src="@drawable/codepen_icon" />
-            -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_row="7"
+            android:layout_column="0"
+            android:layout_columnWeight="1"
+            android:layout_gravity="center"
+            android:text="黄金票据"
+            android:textColor="#000000"
+            android:textSize="15sp" />
             
         <!-- Convert disabled-->
             <!--

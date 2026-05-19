@@ -57,6 +57,7 @@ public class MainActivity extends AppCompatActivity {
     private ImageView nft;
     private ImageView news;
     private ImageView medalSystem;
+    private ImageView goldMarket;
     private LinearLayout support;
     private NavigationHelper navigationHelper;
     private RelativeLayout sendlist;
@@ -437,11 +438,11 @@ public class MainActivity extends AppCompatActivity {
         support = findViewById(R.id.support);
         accountstate=findViewById(R.id.WTextview);
         tsv_dollar=findViewById(R.id.tsv_dollar);
-        nft = findViewById(R.id.nft);
         news = findViewById(R.id.news);
         medalSystem = findViewById(R.id.medalSystem);
         receive = findViewById(R.id.receiveicon);
         accounts = findViewById(R.id.accounts);
+        goldMarket = findViewById(R.id.gold_market);
         //ImageView convertBtn = findViewById(R.id.convertBtn);
     }
 
@@ -546,6 +547,10 @@ public class MainActivity extends AppCompatActivity {
             Intent intent = new Intent();
             intent.setClass(MainActivity.this,MedalRankingActivity.class);
             startActivity(intent);
+        });
+
+        goldMarket.setOnClickListener(view -> {
+            startActivity(new Intent(this, com.example.brokerfi.xc.agent.gold.GoldNoteMarketActivity.class));
         });
         
         //findViewById(R.id.convertBtn).setOnClickListener(view -> {
