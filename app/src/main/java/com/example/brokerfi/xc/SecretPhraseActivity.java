@@ -51,4 +51,10 @@ public class SecretPhraseActivity extends AppCompatActivity {
         intent.setClass(SecretPhraseActivity.this, CongratulationsActivity.class);
         startActivity(intent);
     }
+
+    public void nextAction(View view) {
+        Intent intent = new Intent();
+        intent.setClass(SecretPhraseActivity.this, ComfirmSecretActivity.class);
+        startActivity(intent);
+    }
 }

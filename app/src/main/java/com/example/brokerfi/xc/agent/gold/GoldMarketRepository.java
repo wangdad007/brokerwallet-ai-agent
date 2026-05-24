@@ -1,6 +1,10 @@
 package com.example.brokerfi.xc.agent.gold;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.util.Log;
+
+import com.example.brokerfi.BuildConfig;
 
 import org.json.JSONObject;
 import org.web3j.abi.FunctionEncoder;
@@ -8,7 +12,19 @@ import org.web3j.abi.FunctionReturnDecoder;
 import org.web3j.abi.TypeReference;
 import org.web3j.abi.datatypes.*;
 import org.web3j.abi.datatypes.generated.*;
+import org.web3j.crypto.Credentials;
+import org.web3j.crypto.RawTransaction;
+import org.web3j.crypto.TransactionEncoder;
+import org.web3j.protocol.Web3j;
+import org.web3j.protocol.core.DefaultBlockParameterName;
+import org.web3j.protocol.core.methods.request.Transaction;
+import org.web3j.protocol.core.methods.response.EthCall;
+import org.web3j.protocol.core.methods.response.EthGetTransactionCount;
+import org.web3j.protocol.core.methods.response.EthSendTransaction;
+import org.web3j.protocol.http.HttpService;
+import org.web3j.utils.Numeric;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -18,18 +34,78 @@ import java.util.List;
 public class GoldMarketRepository {
     private static final String TAG = "GoldMarketRepo";
 
-    private static final String CONTRACT_ADDRESS = "0xf8e81D47203A594245E36C48e151709F0C19fBe8";
+    private static final String PREFS_NAME = "gold_market_prefs";
+    private static final String KEY_CONTRACT_ADDR = "contract_address";
+    private static final String KEY_RPC_URL = "rpc_url";
+    private static final BigDecimal WEI_PER_BKC = new BigDecimal("1000000000000000000");
     public static final int GOLD_GAME_ID = 1;
 
-    private final String privateKey;
+    private static String cachedAddress;
 
-    public GoldMarketRepository(String privateKey) {
+    private final String privateKey;
+    private final String contractAddress;
+    private final boolean useLocalRpc;
+    private final Web3j web3j;
+    private final Credentials credentials;
+    private final String walletAddress;
+    private final boolean developerMarketToolsEnabled;
+
+    // ── config ──
+
+    public static String getContractAddress(Context ctx) {
+        boolean developerToolsEnabled = GoldMarketSecurityPolicy.isDeveloperMarketToolsEnabled(BuildConfig.DEBUG);
+        if (cachedAddress != null && developerToolsEnabled) return cachedAddress;
+        String saved = ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .getString(KEY_CONTRACT_ADDR, null);
+        cachedAddress = GoldMarketSecurityPolicy.resolveContractAddress(developerToolsEnabled, saved);
+        return cachedAddress;
+    }
+
+    public static void setContractAddress(Context ctx, String address) {
+        if (!GoldMarketSecurityPolicy.isDeveloperMarketToolsEnabled(BuildConfig.DEBUG)) return;
+        ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit().putString(KEY_CONTRACT_ADDR, address).apply();
+        cachedAddress = address;
+    }
+
+    public static String getRpcUrl(Context ctx) {
+        String saved = ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .getString(KEY_RPC_URL, "");
+        return GoldMarketSecurityPolicy.resolveRpcUrl(
+                GoldMarketSecurityPolicy.isDeveloperMarketToolsEnabled(BuildConfig.DEBUG), saved);
+    }
+
+    public static void setRpcUrl(Context ctx, String url) {
+        if (!GoldMarketSecurityPolicy.isDeveloperMarketToolsEnabled(BuildConfig.DEBUG)) return;
+        ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit().putString(KEY_RPC_URL, url).apply();
+    }
+
+    // ── constructor ──
+
+    public GoldMarketRepository(Context ctx, String privateKey) {
         this.privateKey = privateKey;
+        this.developerMarketToolsEnabled = GoldMarketSecurityPolicy.isDeveloperMarketToolsEnabled(BuildConfig.DEBUG);
+        this.contractAddress = getContractAddress(ctx);
+        String rpcUrl = getRpcUrl(ctx);
+        this.useLocalRpc = rpcUrl != null && !rpcUrl.isEmpty();
+        if (useLocalRpc) {
+            Log.d(TAG, "LocalRPC mode: url=" + rpcUrl + " wallet=" + Credentials.create(privateKey).getAddress());
+            this.web3j = Web3j.build(new HttpService(rpcUrl));
+            this.credentials = Credentials.create(privateKey);
+            this.walletAddress = credentials.getAddress();
+        } else {
+            this.web3j = null;
+            this.credentials = null;
+            this.walletAddress = BrokerChainClient.getAddress(privateKey);
+        }
     }
 
     public String getWalletAddress() {
-        return BrokerChainClient.getAddress(privateKey);
+        return walletAddress != null ? walletAddress : "";
     }
+
+    // ── callbacks ──
 
     public interface DataCallback<T> {
         void onSuccess(T result);
@@ -42,59 +118,110 @@ public class GoldMarketRepository {
         void onError(String error);
     }
 
-    private String extractHexResult(String responseJson) {
-        if (responseJson == null || responseJson.isEmpty()) return "0x";
+    static BigInteger parseTokenAmountToWei(String amountText) {
+        if (amountText == null) return null;
+        String normalized = amountText.trim();
+        if (normalized.isEmpty()) return null;
         try {
-            if (responseJson.trim().startsWith("{")) {
-                JSONObject obj = new JSONObject(responseJson);
-                String res = "0x";
-                if (obj.has("result")) {
-                    res = obj.getString("result");
-                } else if (obj.has("data")) {
-                    res = obj.getString("data");
-                }
-                if (res.toLowerCase().contains("reverted") || res.toLowerCase().contains("error")) {
-                    return "0x";
-                }
-                return res;
-            }
-            if (responseJson.toLowerCase().contains("reverted")) return "0x";
-            return responseJson.trim();
-        } catch (Exception e) {
-            return "0x";
+            BigDecimal amount = new BigDecimal(normalized);
+            if (amount.compareTo(BigDecimal.ZERO) <= 0) return null;
+            BigInteger wei = amount.multiply(WEI_PER_BKC).toBigIntegerExact();
+            return wei.compareTo(BigInteger.ZERO) > 0 ? wei : null;
+        } catch (ArithmeticException | NumberFormatException e) {
+            return null;
         }
     }
 
-    private String ethCall(org.web3j.abi.datatypes.Function function) throws Exception {
-        String data = FunctionEncoder.encode(function);
-        String response = BrokerChainClient.sendEthCall(privateKey, CONTRACT_ADDRESS, data);
-        return extractHexResult(response);
+    static org.web3j.abi.datatypes.Function buildClaimRewardFunction(int gameId, int optionId) {
+        return new org.web3j.abi.datatypes.Function(
+            "claimReward",
+            Arrays.asList(new Uint256(gameId), new Uint8(optionId)),
+            Collections.emptyList());
     }
 
-    public void sendTransaction(BigInteger value, org.web3j.abi.datatypes.Function function,
+    // ── RPC transport ──
+
+    private String ethCall(org.web3j.abi.datatypes.Function function) throws Exception {
+        String data = FunctionEncoder.encode(function);
+        if (useLocalRpc) {
+            Log.d(TAG, "standard ethCall to=" + contractAddress + " data=" + data.substring(0, Math.min(66, data.length())) + "...");
+            Transaction txn = Transaction.createEthCallTransaction(walletAddress, contractAddress, data);
+            EthCall resp = web3j.ethCall(txn, DefaultBlockParameterName.LATEST).send();
+            Log.d(TAG, "standard ethCall result: hasError=" + resp.hasError() + " value=" + resp.getValue());
+            if (resp.hasError()) throw new Exception(resp.getError().getMessage());
+            return resp.getValue();
+        } else {
+            String response = BrokerChainClient.sendEthCall(privateKey, contractAddress, data);
+            Log.d(TAG, "ethCall response: " + (response != null ? response.substring(0, Math.min(200, response.length())) : "null"));
+            return extractHexResult(response);
+        }
+    }
+
+    private void sendTransaction(BigInteger value, org.web3j.abi.datatypes.Function function,
                                  String successMsg, TxCallback callback) {
         AppExecutors.getInstance().networkIO().execute(() -> {
             try {
                 String data = FunctionEncoder.encode(function);
-                String valueHex = value.compareTo(BigInteger.ZERO) > 0
-                        ? value.toString(16) : "0x0";
-                String response = BrokerChainClient.sendEthTx(
-                        privateKey, CONTRACT_ADDRESS, data, valueHex);
-
-                if (response == null || response.toLowerCase().contains("error")
-                        || response.toLowerCase().contains("failed")) {
-                    postError(callback, "交易失败: " + response);
+                if (useLocalRpc) {
+                    standardSendTx(value, data, successMsg, callback);
                 } else {
-                    AppExecutors.getInstance().mainThread().execute(() -> {
-                        callback.onTxSent("Transaction Sent");
-                        callback.onConfirmed(successMsg);
-                    });
+                    brokerChainSendTx(value, data, successMsg, callback);
                 }
             } catch (Exception e) {
                 postError(callback, "交易异常: " + e.getMessage());
             }
         });
     }
+
+    private void standardSendTx(BigInteger value, String data, String successMsg, TxCallback callback) throws Exception {
+        EthGetTransactionCount count = web3j.ethGetTransactionCount(walletAddress, DefaultBlockParameterName.LATEST).send();
+        BigInteger nonce = count.getTransactionCount();
+        RawTransaction rawTx = RawTransaction.createTransaction(
+                nonce, new BigInteger("20000000000"), new BigInteger("5000000"),
+                contractAddress, value, data);
+        byte[] signed = TransactionEncoder.signMessage(rawTx, credentials);
+        EthSendTransaction resp = web3j.ethSendRawTransaction(Numeric.toHexString(signed)).send();
+        if (resp.hasError()) {
+            postError(callback, resp.getError().getMessage());
+        } else {
+            AppExecutors.getInstance().mainThread().execute(() -> {
+                callback.onTxSent(resp.getTransactionHash());
+                callback.onConfirmed(successMsg);
+            });
+        }
+    }
+
+    private void brokerChainSendTx(BigInteger value, String data, String successMsg, TxCallback callback) throws Exception {
+        String valueHex = value.compareTo(BigInteger.ZERO) > 0 ? value.toString(16) : "0x0";
+        String response = BrokerChainClient.sendEthTx(privateKey, contractAddress, data, valueHex);
+        if (response == null || response.toLowerCase().contains("error") || response.toLowerCase().contains("failed")) {
+            postError(callback, "交易失败: " + response);
+        } else {
+            AppExecutors.getInstance().mainThread().execute(() -> {
+                callback.onTxSent("Transaction Sent");
+                callback.onConfirmed(successMsg);
+            });
+        }
+    }
+
+    private String extractHexResult(String responseJson) {
+        if (responseJson == null || responseJson.isEmpty()) { Log.w(TAG, "extractHexResult: null/empty"); return "0x"; }
+        try {
+            if (responseJson.trim().startsWith("{")) {
+                JSONObject obj = new JSONObject(responseJson);
+                String res = "0x";
+                if (obj.has("result")) res = obj.getString("result");
+                else if (obj.has("data")) res = obj.getString("data");
+                else Log.w(TAG, "extractHexResult: no result/data. Keys: " + obj.keys());
+                if (res.toLowerCase().contains("reverted") || res.toLowerCase().contains("error")) return "0x";
+                return res;
+            }
+            if (responseJson.toLowerCase().contains("reverted")) return "0x";
+            return responseJson.trim();
+        } catch (Exception e) { return "0x"; }
+    }
+
+    // ── contract methods ──
 
     @SuppressWarnings("unchecked")
     public void getGameInfo(int id, DataCallback<GameModel> callback) {
@@ -112,15 +239,14 @@ public class GoldMarketRepository {
                     ));
 
                 String infoHex = ethCall(fInfo);
+                Log.d(TAG, "getGameInfo(" + id + ") infoHex=" + infoHex + " len=" + (infoHex != null ? infoHex.length() : 0));
                 if (infoHex == null || infoHex.equals("0x")) {
-                    postError(callback, "获取市场信息失败");
+                    Log.e(TAG, "getGameInfo failed: contract may not exist at " + contractAddress);
+                    postError(callback, "获取市场信息失败（合约: " + contractAddress + "）");
                     return;
                 }
                 List<Type> res = FunctionReturnDecoder.decode(infoHex, fInfo.getOutputParameters());
-                if (res.isEmpty()) {
-                    postError(callback, "数据解析为空");
-                    return;
-                }
+                if (res.isEmpty()) { postError(callback, "数据解析为空"); return; }
 
                 GameModel model = new GameModel();
                 model.id = id;
@@ -140,9 +266,13 @@ public class GoldMarketRepository {
                 model.deadlineSec = ((Uint256) res.get(9)).getValue().longValue();
                 model.isRefunded = ((Bool) res.get(10)).getValue();
 
+                String addr = getWalletAddress();
+                if (addr == null || addr.isEmpty() || addr.equals("0x")) {
+                    postError(callback, "无法获取钱包地址"); return;
+                }
                 org.web3j.abi.datatypes.Function fExtra = new org.web3j.abi.datatypes.Function(
                     "getGameExtraData",
-                    Arrays.asList(new Uint256(id), new Address(getWalletAddress())),
+                    Arrays.asList(new Uint256(id), new Address(addr)),
                     Arrays.asList(
                         new TypeReference<DynamicArray<Uint256>>() {},
                         new TypeReference<DynamicArray<Uint256>>() {}
@@ -169,50 +299,54 @@ public class GoldMarketRepository {
 
     public void buyShares(int gameId, int optionId, BigInteger amountWei, TxCallback callback) {
         org.web3j.abi.datatypes.Function f = new org.web3j.abi.datatypes.Function(
-            "buyShares",
-            Arrays.asList(new Uint256(gameId), new Uint8(optionId)),
-            Collections.emptyList());
+            "buyShares", Arrays.asList(new Uint256(gameId), new Uint8(optionId)), Collections.emptyList());
         sendTransaction(amountWei, f, "买入成功", callback);
     }
 
     public void sellShares(int gameId, int optionId, BigInteger shareAmount, TxCallback callback) {
         org.web3j.abi.datatypes.Function f = new org.web3j.abi.datatypes.Function(
-            "sellShares",
-            Arrays.asList(new Uint256(gameId), new Uint8(optionId), new Uint256(shareAmount)),
-            Collections.emptyList());
+            "sellShares", Arrays.asList(new Uint256(gameId), new Uint8(optionId), new Uint256(shareAmount)), Collections.emptyList());
         sendTransaction(BigInteger.ZERO, f, "卖出成功", callback);
     }
 
-    public void claimReward(int gameId, TxCallback callback) {
+    public void createGame(String desc, String condition, String avatarUrl,
+                           String detailedInfo, List<String> optionNamesList,
+                           long durationSec, TxCallback callback) {
+        if (!developerMarketToolsEnabled) {
+            postError(callback, "\u521b\u5efa\u5e02\u573a\u4ec5\u9650\u5b98\u65b9\u6216\u5f00\u53d1\u6d4b\u8bd5\u6a21\u5f0f");
+            return;
+        }
+        List<Utf8String> utf8Options = new ArrayList<>();
+        for (String name : optionNamesList) utf8Options.add(new Utf8String(name));
         org.web3j.abi.datatypes.Function f = new org.web3j.abi.datatypes.Function(
-            "claimReward",
-            Collections.singletonList(new Uint256(gameId)),
+            "createGame", Arrays.asList(
+                new Utf8String(desc), new Utf8String(condition),
+                new Utf8String(avatarUrl), new Utf8String(detailedInfo),
+                new DynamicArray<>(utf8Options), new Uint256(durationSec)),
             Collections.emptyList());
-        sendTransaction(BigInteger.ZERO, f, "领取成功", callback);
+        sendTransaction(BigInteger.ZERO, f, "市场创建成功", callback);
+    }
+
+    public void claimReward(int gameId, int optionId, TxCallback callback) {
+        sendTransaction(BigInteger.ZERO, buildClaimRewardFunction(gameId, optionId), "领取成功", callback);
     }
 
     private void postError(TxCallback callback, String error) {
         AppExecutors.getInstance().mainThread().execute(() -> callback.onError(error));
     }
-
     private <T> void postError(DataCallback<T> callback, String error) {
         AppExecutors.getInstance().mainThread().execute(() -> callback.onError(error));
     }
 
     public static class GameModel {
         public int id;
-        public String desc;
-        public String condition;
-        public String avatarUrl;
-        public String detailedInfo;
+        public String desc, condition, avatarUrl, detailedInfo;
         public List<String> optionNames;
         public int optionCount;
         public BigInteger totalPool;
-        public boolean isResolved;
+        public boolean isResolved, isRefunded;
         public int winningOption;
         public long deadlineSec;
-        public boolean isRefunded;
-        public List<BigInteger> virtualReserves;
-        public List<BigInteger> myShares;
+        public List<BigInteger> virtualReserves, myShares;
     }
 }
