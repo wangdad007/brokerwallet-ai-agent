@@ -71,7 +71,7 @@ contract PredictionMarket {
         g.detailedInfo = _detailedInfo;
         g.optionNames = _optionNames;
         g.optionCount = uint8(_optionNames.length);
-        g.deadline = block.timestamp + _duration;
+        g.deadline = block.timestamp + _durationToChainUnits(_duration);
 
         for (uint8 i = 0; i < g.optionCount; i++) {
             g.virtualReserves[i] = INITIAL_VIRTUAL_RESERVE;
@@ -271,6 +271,13 @@ contract PredictionMarket {
         for (uint8 i = 0; i < g.optionCount; i++) {
             totalVirtual += g.virtualReserves[i];
         }
+    }
+
+    function _durationToChainUnits(uint256 durationSeconds) private view returns (uint256) {
+        if (block.timestamp > 10000000000) {
+            return durationSeconds * 1000;
+        }
+        return durationSeconds;
     }
 
     function _totalOptionShares(Game storage g) private view returns (uint256 totalShares) {

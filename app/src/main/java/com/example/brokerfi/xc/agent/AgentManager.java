@@ -56,15 +56,15 @@ public class AgentManager {
 
                 // 构建 prompt
                 StringBuilder sb = new StringBuilder();
-                sb.append("Analyze these Broker staking shards and give rebalancing advice:\n");
+                sb.append("分析以下经纪分片质押数据，给出调仓建议：\n");
                 for (ShardProfit s : shards) {
-                    sb.append(String.format("- Shard %d: profit=%.4f BKC, stake=%.0f BKC, yield=%.2f%%\n",
+                    sb.append(String.format("- 分片 %d: 收益=%.4f BKC, 质押=%.0f BKC, 收益率=%.2f%%\n",
                             s.shardIndex, s.profit, s.staked, s.yieldPct * 100));
                 }
-                sb.append("\nGive: 1) which shard to withdraw from, 2) which shard to stake more, 3) estimated improvement. Keep under 150 words.");
+                sb.append("\n请给出：1) 建议从哪个分片撤出，2) 建议加仓哪个分片，3) 预估改善幅度。150字以内。");
 
                 DeepSeekClient.chat(
-                        "You are a DeFi staking strategist. Analyze shard profit data and give specific, numbered advice.",
+                        "你是一个DeFi质押策略分析师。请根据分片收益数据，用中文给出具体、编号的建议。",
                         sb.toString(),
                         new DeepSeekClient.ChatCallback() {
                             @Override
@@ -79,7 +79,7 @@ public class AgentManager {
                             public void onError(String error) {
                                 // 即使 AI 不可用，也返回原始数据
                                 BrokerReport report = new BrokerReport();
-                                report.rawAnalysis = "AI analysis unavailable. Raw data shown below.";
+                                report.rawAnalysis = "AI分析不可用，以下为原始数据：";
                                 report.shards = shards;
                                 callback.onBrokerReport(report);
                             }
@@ -111,14 +111,14 @@ public class AgentManager {
                 }
 
                 StringBuilder sb = new StringBuilder();
-                sb.append("Analyze these listed NFTs and recommend which are worth buying:\n");
+                sb.append("分析以下已上架NFT，推荐值得购买的：\n");
                 int count = Math.min(result.names.length, 20);
                 for (int i = 0; i < count; i++) {
-                    sb.append(String.format("- #%d: %s, price=%s, shares=%s\n",
+                    sb.append(String.format("- #%d: %s, 价格=%s, 份数=%s\n",
                             result.nftIds[i], result.names[i],
                             result.pricesList[i], result.sharesList[i]));
                 }
-                sb.append("\nRecommend top 3 with reasoning. Keep under 150 words.");
+                sb.append("\n推荐前3个并给出理由。150字以内。");
 
                 DeepSeekClient.chatSimple(sb.toString(), new DeepSeekClient.ChatCallback() {
                     @Override
@@ -128,7 +128,7 @@ public class AgentManager {
 
                     @Override
                     public void onError(String error) {
-                        callback.onGeneralAdvice("NFT Market (no AI)", "Found " + result.names.length + " NFTs listed.");
+                        callback.onGeneralAdvice("NFT市场（离线模式）", "已发现 " + result.names.length + " 个上架NFT。");
                     }
                 });
             } catch (Exception e) {
@@ -141,7 +141,7 @@ public class AgentManager {
 
     public void askAnything(String question, AnalysisCallback callback) {
         if (containsPrivateKey(question)) {
-            callback.onError("Your message may contain a private key or seed phrase. For your security, it was not sent to AI.");
+            callback.onError("您的消息可能包含私钥或助记词，为保障安全，未发送至AI。");
             return;
         }
         DeepSeekClient.chatSimple(question, new DeepSeekClient.ChatCallback() {
@@ -155,6 +155,30 @@ public class AgentManager {
                 callback.onError(error);
             }
         });
+    }
+
+    public void askGoldResearch(String question, AnalysisCallback callback) {
+        if (containsPrivateKey(question)) {
+            callback.onError("您的消息可能包含私钥或助记词，为保障安全，未发送至AI。");
+            return;
+        }
+        DeepSeekClient.chat(
+                "你是 BrokerChain 黄金票据预测市场的 AI 投研助手。"
+                        + "只围绕黄金现货、美元、避险需求、链上预测池和交易风险回答。"
+                        + "如果用户提供 App 页面行情或链上池子数据，必须以这些数据为准，不要编造其他实时价格。"
+                        + "输出中文，简洁、可操作，并明确风险提示。",
+                question,
+                new DeepSeekClient.ChatCallback() {
+                    @Override
+                    public void onSuccess(String response) {
+                        callback.onGeneralAdvice(question, response);
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        callback.onError(error);
+                    }
+                });
     }
 
     private static boolean containsPrivateKey(String text) {

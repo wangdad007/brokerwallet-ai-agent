@@ -87,12 +87,22 @@ public class BrokerChainClient {
     // 作用：处理区块链最底层的账号体系，包含私钥推导公钥、公钥推导地址、数据签名
     // =====================================================================
 
+    // secp256k1 曲线阶 n，私钥必须满足 1 ≤ k < n
+    private static final BigInteger SECP256K1_N = new BigInteger(
+        "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141", 16);
+
     /**
      * 根据以太坊标准，利用椭圆曲线算法 (secp256k1) 从私钥计算出公钥
      */
     public static String getPublicKeyFromPrivateKey(String privateKeyHex) {
         if (privateKeyHex.startsWith("0x")) privateKeyHex = privateKeyHex.substring(2);
         BigInteger privateKey = new BigInteger(privateKeyHex, 16);
+
+        // 验证私钥有效范围
+        if (privateKey.compareTo(BigInteger.ZERO) <= 0 || privateKey.compareTo(SECP256K1_N) >= 0) {
+            Log.e(TAG, "getPublicKeyFromPrivateKey: private key out of valid range (0 < k < n)");
+            return null;
+        }
 
         // 获取比特币和以太坊都在使用的 secp256k1 椭圆曲线参数
         ECNamedCurveParameterSpec spec = ECNamedCurveTable.getParameterSpec("secp256k1");
@@ -140,7 +150,21 @@ public class BrokerChainClient {
      */
     public static String getAddress(String privateKey) {
         try {
-            String publicKey = getPublicKeyFromPrivateKey(privateKey);
+            if (privateKey == null || privateKey.isEmpty()) {
+                Log.e(TAG, "getAddress: privateKey is null or empty");
+                return "";
+            }
+            // 移除可能的 0x 前缀
+            String cleanKey = privateKey.startsWith("0x") ? privateKey.substring(2) : privateKey;
+            if (cleanKey.length() != 64) {
+                Log.e(TAG, "getAddress: invalid private key length: " + cleanKey.length());
+                return "";
+            }
+            String publicKey = getPublicKeyFromPrivateKey(cleanKey);
+            if (publicKey == null || publicKey.isEmpty()) {
+                Log.e(TAG, "getAddress: failed to derive public key");
+                return "";
+            }
             byte[] decode = Hex.decode(publicKey);
 
             KeccakDigest keccakDigest = new KeccakDigest(256);
@@ -154,6 +178,7 @@ public class BrokerChainClient {
             System.arraycopy(keccakHash, keccakHash.length - 20, addressBytes, 0, 20);
             return "0x" + Hex.toHexString(addressBytes);
         } catch (Exception e) {
+            Log.e(TAG, "getAddress: exception - " + e.getMessage());
             e.printStackTrace();
             return "";
         }

@@ -2,10 +2,12 @@ package com.example.brokerfi.xc.agent;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.util.Log;
 
 import com.google.gson.Gson;
 import com.google.gson.annotations.SerializedName;
 
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -18,9 +20,12 @@ import java.util.concurrent.Executors;
 
 public class DeepSeekClient {
 
+    private static final String TAG = "DeepSeekClient";
     private static final String API_URL = "https://api.deepseek.com/chat/completions";
     private static final String PREFS_NAME = "deepseek_prefs";
     private static final String KEY_API_KEY = "api_key";
+    private static final int CONNECT_TIMEOUT_MS = 15000;
+    private static final int READ_TIMEOUT_MS = 45000;
 
     private static Context appContext;
     private static final Gson gson = new Gson();
@@ -32,14 +37,14 @@ public class DeepSeekClient {
 
     public static boolean isConfigured() {
         if (appContext == null) return false;
-        String key = getApiKey();
-        return key != null && key.startsWith("sk-") && key.length() > 10;
+        return isValidApiKey(getApiKey());
     }
 
     public static String getApiKey() {
         if (appContext == null) return null;
-        return appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        String key = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 .getString(KEY_API_KEY, null);
+        return key == null ? null : key.trim();
     }
 
     public static boolean setApiKey(String key) {
@@ -55,7 +60,15 @@ public class DeepSeekClient {
     }
 
     public static void chat(String systemPrompt, String userMessage, ChatCallback callback) {
+        if (callback == null) return;
+        String apiKey = getApiKey();
+        if (!isValidApiKey(apiKey)) {
+            callback.onError("NO_API_KEY");
+            return;
+        }
+
         executor.execute(() -> {
+            HttpURLConnection conn = null;
             try {
                 List<Message> messages = new ArrayList<>();
                 messages.add(new Message("system", systemPrompt));
@@ -70,54 +83,81 @@ public class DeepSeekClient {
                 String json = gson.toJson(request);
 
                 URL url = new URL(API_URL);
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("POST");
-                conn.setRequestProperty("Content-Type", "application/json");
-                conn.setRequestProperty("Authorization", "Bearer " + getApiKey());
+                conn.setRequestProperty("Accept", "application/json");
+                conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+                conn.setRequestProperty("Authorization", "Bearer " + apiKey);
                 conn.setDoOutput(true);
-                conn.setConnectTimeout(30000);
-                conn.setReadTimeout(60000);
+                conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
+                conn.setReadTimeout(READ_TIMEOUT_MS);
 
                 try (OutputStream os = conn.getOutputStream()) {
                     os.write(json.getBytes(StandardCharsets.UTF_8));
                 }
 
                 int code = conn.getResponseCode();
-                if (code == 200) {
-                    Scanner scanner = new Scanner(conn.getInputStream(), "UTF-8")
-                            .useDelimiter("\\A");
-                    String body = scanner.hasNext() ? scanner.next() : "";
-                    scanner.close();
-
+                String body = readStream(code >= 200 && code < 300
+                        ? conn.getInputStream()
+                        : conn.getErrorStream());
+                if (code >= 200 && code < 300) {
                     ChatResponse response = gson.fromJson(body, ChatResponse.class);
-                    String content = response.choices.get(0).message.content;
+                    String content = extractContent(response);
                     callback.onSuccess(content);
                 } else {
-                    java.io.InputStream errStream = conn.getErrorStream();
-                    String err;
-                    if (errStream != null) {
-                        Scanner scanner = new Scanner(errStream, "UTF-8")
-                                .useDelimiter("\\A");
-                        err = scanner.hasNext() ? scanner.next() : "HTTP " + code;
-                        scanner.close();
-                    } else {
-                        err = "HTTP " + code + " (no body)";
-                    }
-                    callback.onError(err);
+                    String error = buildHttpError(code, body);
+                    Log.w(TAG, error);
+                    callback.onError(error);
                 }
-                conn.disconnect();
             } catch (Exception e) {
-                callback.onError(e.getMessage());
+                Log.w(TAG, "DeepSeek request failed", e);
+                callback.onError(e.getClass().getSimpleName() + ": " + e.getMessage());
+            } finally {
+                if (conn != null) {
+                    conn.disconnect();
+                }
             }
         });
     }
 
     public static void chatSimple(String userMessage, ChatCallback callback) {
-        chat("You are a helpful blockchain DeFi assistant. Keep answers concise and actionable.",
+        chat("你是一个专业的区块链DeFi助手，服务于BrokerChain钱包用户。请用中文回答，简洁、可操作。",
                 userMessage, callback);
     }
 
     // --- request/response models ---
+
+    private static boolean isValidApiKey(String key) {
+        return key != null && key.startsWith("sk-") && key.length() > 10;
+    }
+
+    private static String readStream(InputStream stream) {
+        if (stream == null) return "";
+        try (Scanner scanner = new Scanner(stream, "UTF-8").useDelimiter("\\A")) {
+            return scanner.hasNext() ? scanner.next() : "";
+        }
+    }
+
+    private static String extractContent(ChatResponse response) {
+        if (response == null || response.choices == null || response.choices.isEmpty()
+                || response.choices.get(0) == null
+                || response.choices.get(0).message == null
+                || response.choices.get(0).message.content == null
+                || response.choices.get(0).message.content.trim().isEmpty()) {
+            throw new IllegalStateException("DeepSeek returned an empty response");
+        }
+        return response.choices.get(0).message.content.trim();
+    }
+
+    private static String buildHttpError(int code, String body) {
+        String detail = body == null || body.trim().isEmpty()
+                ? "no response body"
+                : body.trim();
+        if (detail.length() > 300) {
+            detail = detail.substring(0, 300) + "...";
+        }
+        return "HTTP " + code + ": " + detail;
+    }
 
     static class ChatRequest {
         String model;

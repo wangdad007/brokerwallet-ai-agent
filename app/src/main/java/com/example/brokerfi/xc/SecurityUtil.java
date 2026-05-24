@@ -204,12 +204,21 @@ public class SecurityUtil {
     }
     
     //The standard private key format is a 32-byte 256-bit hexadecimal number.
+    //旧格式私钥是十进制大整数，长度通常远小于64或远大于64
     public static boolean isNewPrivateKeyFormat(String privateKey) {
         if (privateKey == null || privateKey.length() != 64) {
             return false;
         }
-        // IS hexadecimal
-        return privateKey.matches("[0-9a-fA-F]+");
+        // 必须是纯十六进制字符
+        if (!privateKey.matches("[0-9a-fA-F]+")) {
+            return false;
+        }
+        // 关键检查：如果全是数字（0-9），极大概率是旧格式十进制私钥
+        // 真随机的64位十六进制私钥全为数字的概率约 (10/16)^64 ≈ 10^-13
+        if (privateKey.matches("[0-9]+")) {
+            return false;
+        }
+        return true;
     }
     
 

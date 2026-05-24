@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.CountDownLatch;
@@ -18,12 +19,18 @@ import java.util.regex.Pattern;
 
 public class GoldAdvisoryManager {
 
+    private static double sinaPrevClose = 0;
+    private static boolean sinaPrevCloseFetched = false;
+
     public static class Advisory {
         public String signal = "HOLD";
         public int confidence = 50;
         public double priceUsd = 0;
         public double change24h = 0;
         public double usdCny = 0;
+        public String quoteSource = "";
+        public String quoteUpdatedAt = "";
+        public boolean quoteDelayed = false;
         public String summary = "";
         public List<String> factors = new ArrayList<>();
     }
@@ -34,13 +41,17 @@ public class GoldAdvisoryManager {
     }
 
     public static void fetch(AdvisoryCallback callback) {
+        if (!DeepSeekClient.isConfigured()) {
+            AppExecutors.getInstance().mainThread().execute(() -> callback.onError("NO_API_KEY"));
+            return;
+        }
         AppExecutors.getInstance().networkIO().execute(() -> {
-            AtomicReference<double[]> goldData = new AtomicReference<>(new double[]{0, 0});
+            AtomicReference<Advisory> goldQuote = new AtomicReference<>(emptyQuote());
             AtomicReference<Double> usdCny = new AtomicReference<>(0.0);
             CountDownLatch latch = new CountDownLatch(2);
 
             AppExecutors.getInstance().networkIO().execute(() -> {
-                try { goldData.set(fetchGoldWithChange()); } finally { latch.countDown(); }
+                try { goldQuote.set(fetchGoldQuote()); } finally { latch.countDown(); }
             });
             AppExecutors.getInstance().networkIO().execute(() -> {
                 try { usdCny.set(fetchUsdCny()); } finally { latch.countDown(); }
@@ -48,17 +59,19 @@ public class GoldAdvisoryManager {
 
             try { latch.await(); } catch (InterruptedException ignored) {}
 
-            double price = goldData.get()[0];
-            double change = goldData.get()[1];
+            Advisory quote = goldQuote.get();
+            double price = quote.priceUsd;
+            double change = quote.change24h;
             double cny = usdCny.get();
 
             String systemPrompt = buildSystemPrompt();
-            String userMessage = buildUserPrompt(price, change, cny);
+            String userMessage = buildUserPrompt(quote, cny);
 
             DeepSeekClient.chat(systemPrompt, userMessage, new DeepSeekClient.ChatCallback() {
                 @Override
                 public void onSuccess(String reply) {
                     Advisory a = parseAdvisory(reply, price, change, cny);
+                    copyQuoteMeta(quote, a);
                     AppExecutors.getInstance().mainThread().execute(() -> callback.onSuccess(a));
                 }
                 @Override
@@ -69,9 +82,20 @@ public class GoldAdvisoryManager {
         });
     }
 
+    public static void fetchPrice(AdvisoryCallback callback) {
+        AppExecutors.getInstance().networkIO().execute(() -> {
+            try {
+                Advisory quote = fetchGoldQuote();
+                AppExecutors.getInstance().mainThread().execute(() -> callback.onSuccess(quote));
+            } catch (Exception e) {
+                AppExecutors.getInstance().mainThread().execute(() -> callback.onError(e.getMessage()));
+            }
+        });
+    }
+
     // Gold price: gold-api.com with sina fallback
 
-    static double[] fetchGoldWithChange() {
+    static Advisory fetchGoldQuote() {
         try {
             URL url = new URL("https://api.gold-api.com/price/XAU");
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -84,9 +108,16 @@ public class GoldAdvisoryManager {
                     JSONObject json = new JSONObject(body);
                     double price = json.optDouble("price", 0);
                     if (price > 0) {
-                        double prevClose = fetchSinaPrevClose();
+                        double prevClose = getSinaPrevClose();
                         double change = prevClose > 0 ? (price - prevClose) / prevClose * 100 : 0;
-                        return new double[]{price, change};
+                        Advisory quote = emptyQuote();
+                        quote.priceUsd = price;
+                        quote.change24h = change;
+                        quote.quoteSource = "gold-api.com";
+                        quote.quoteUpdatedAt = json.optString("updatedAtReadable",
+                                json.optString("updatedAt", ""));
+                        quote.quoteDelayed = isWeekendNow();
+                        return quote;
                     }
                 }
             }
@@ -94,7 +125,9 @@ public class GoldAdvisoryManager {
         return fetchGoldSina();
     }
 
-    private static double fetchSinaPrevClose() {
+    private static synchronized double getSinaPrevClose() {
+        if (sinaPrevCloseFetched) return sinaPrevClose;
+        sinaPrevCloseFetched = true;
         try {
             URL url = new URL("https://hq.sinajs.cn/list=hf_XAU");
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -109,15 +142,15 @@ public class GoldAdvisoryManager {
                     int end = body.lastIndexOf('"');
                     if (start >= 0 && end > start) {
                         String[] fields = body.substring(start + 1, end).split(",");
-                        if (fields.length > 1) return Double.parseDouble(fields[1]);
+                        if (fields.length > 1) sinaPrevClose = Double.parseDouble(fields[1]);
                     }
                 }
             }
         } catch (Exception ignored) {}
-        return 0;
+        return sinaPrevClose;
     }
 
-    private static double[] fetchGoldSina() {
+    private static Advisory fetchGoldSina() {
         try {
             URL url = new URL("https://hq.sinajs.cn/list=hf_XAU");
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -136,13 +169,23 @@ public class GoldAdvisoryManager {
                             double price = Double.parseDouble(fields[0]);
                             double prevClose = Double.parseDouble(fields[1]);
                             double change = (prevClose > 0) ? (price - prevClose) / prevClose * 100 : 0;
-                            if (price > 0) return new double[]{price, change};
+                            if (price > 0) {
+                                Advisory quote = emptyQuote();
+                                quote.priceUsd = price;
+                                quote.change24h = change;
+                                quote.quoteSource = "新浪财经";
+                                quote.quoteUpdatedAt = fields.length > 12
+                                        ? fields[12] + " " + fields[6]
+                                        : fields.length > 6 ? fields[6] : "";
+                                quote.quoteDelayed = true;
+                                return quote;
+                            }
                         }
                     }
                 }
             }
         } catch (Exception ignored) {}
-        return new double[]{0, 0};
+        return emptyQuote();
     }
 
     // USD/CNY exchange rate
@@ -168,12 +211,14 @@ public class GoldAdvisoryManager {
     private static String buildSystemPrompt() {
         return "你是一位专业的黄金市场分析师，服务于散户投资者。" +
                 "请综合多个维度进行分析，给出简明投资建议。" +
+                "如果用户提供App页面行情或链上预测池数据，必须以这些数据为准，不要编造其他实时价格。" +
                 "严格按要求的JSON格式输出，不要用代码块包裹。";
     }
 
-    private static String buildUserPrompt(double price, double change, double cny) {
-        String priceInfo = price > 0
-                ? String.format("当前黄金现货价格 $%.2f/盎司，24小时涨跌幅 %+.2f%%", price, change)
+    private static String buildUserPrompt(Advisory quote, double cny) {
+        String priceInfo = quote.priceUsd > 0
+                ? String.format("当前黄金现货价格 $%.2f/盎司，24小时涨跌幅 %+.2f%%，来源 %s，更新时间 %s",
+                        quote.priceUsd, quote.change24h, quote.quoteSource, quote.quoteUpdatedAt)
                 : "（实时金价暂时获取失败）";
         String cnyInfo = cny > 0
                 ? String.format("当前美元兑人民币汇率 %.4f", cny)
@@ -189,7 +234,7 @@ public class GoldAdvisoryManager {
                 "4. 央行购金动态与机构资金流向\n\n" +
                 "严格按此 JSON 格式输出（不要用代码块包裹）：\n" +
                 "GOLD_ADVISORY:{\"signal\":\"BUY或HOLD或SELL\",\"confidence\":置信度0到100," +
-                "\"priceUsd\":" + (price > 0 ? price : 0) + "," +
+                "\"priceUsd\":" + (quote.priceUsd > 0 ? quote.priceUsd : 0) + "," +
                 "\"summary\":\"一句话核心结论（中文，30字以内）\"," +
                 "\"factors\":[\"因素1\",\"因素2\",\"因素3\"]}";
     }
@@ -215,13 +260,32 @@ public class GoldAdvisoryManager {
                 }
             } else {
                 String upper = reply.toUpperCase();
-                if (upper.contains("BUY") || upper.contains("买入")) a.signal = "BUY";
-                else if (upper.contains("SELL") || upper.contains("卖出")) a.signal = "SELL";
+                if (upper.contains("BUY") || upper.contains("买入") || upper.contains("看多")) a.signal = "BUY";
+                else if (upper.contains("SELL") || upper.contains("卖出") || upper.contains("看空")) a.signal = "SELL";
                 a.summary = reply.length() > 80 ? reply.substring(0, 80) + "…" : reply;
             }
         } catch (Exception e) {
             a.summary = "结果解析异常，请重试";
         }
         return a;
+    }
+
+    private static Advisory emptyQuote() {
+        Advisory quote = new Advisory();
+        quote.quoteSource = "";
+        quote.quoteUpdatedAt = "";
+        quote.quoteDelayed = true;
+        return quote;
+    }
+
+    private static void copyQuoteMeta(Advisory from, Advisory to) {
+        to.quoteSource = from.quoteSource;
+        to.quoteUpdatedAt = from.quoteUpdatedAt;
+        to.quoteDelayed = from.quoteDelayed;
+    }
+
+    private static boolean isWeekendNow() {
+        int dayOfWeek = Calendar.getInstance().get(Calendar.DAY_OF_WEEK);
+        return dayOfWeek == Calendar.SATURDAY || dayOfWeek == Calendar.SUNDAY;
     }
 }

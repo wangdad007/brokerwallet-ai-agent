@@ -53,14 +53,24 @@ public class StorageUtil {
         String acc = StorageUtil.getCurrentAccount(activity);
         int i;
         if (acc == null){
-            i=0;
-        }else {
-            i = Integer.parseInt(acc);
+            i = 0;
+        } else {
+            try {
+                i = Integer.parseInt(acc);
+            } catch (NumberFormatException e) {
+                i = 0;
+            }
         }
         if (account != null) {
             String[] split = account.split(";");
-            String privatekey = split[i];
-            return privatekey;
+            // 边界检查：防止数组越界崩溃
+            if (i < 0 || i >= split.length) {
+                i = 0;
+                saveCurrentAccount(activity, "0");
+            }
+            if (split.length > 0) {
+                return split[i];
+            }
         }
         return null;
     }
