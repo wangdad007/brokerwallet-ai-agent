@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/white"
+    android:fitsSystemWindows="true">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:padding="16dp">
+
+        <ImageView
+            android:id="@+id/btn_back"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_centerVertical="true"
+            android:src="@drawable/up_circle"
+            android:contentDescription="Back" />
+
+        <TextView
+            android:id="@+id/tv_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:text="博弈池定制"
+            android:textColor="#000000"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+    </RelativeLayout>
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="20dp">
+
+            <TextView
+                android:id="@+id/tv_template_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="模版名称"
+                android:textColor="#000000"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tv_template_detail"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="模版详细说明文字加载中..."
+                android:textColor="#666666"
+                android:textSize="14sp"
+                android:lineSpacingExtra="4dp" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="24dp"
+                android:background="#EEEEEE" />
+
+            <!-- Dynamic Input Section -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="核心规则定制"
+                android:textColor="#000000"
+                android:textSize="17sp"
+                android:textStyle="bold" />
+
+            <!-- Direction Selection (for TYPE_PRICE) -->
+            <LinearLayout
+                android:id="@+id/container_direction"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone"
+                android:layout_marginTop="12dp">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="预测涨跌方向"
+                    android:textSize="13sp"
+                    android:textColor="#888888" />
+                <Spinner
+                    android:id="@+id/spinner_direction"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginTop="4dp"
+                    android:background="@drawable/custom_edittext_background" />
+            </LinearLayout>
+
+            <!-- Indicator Selection (for TYPE_TECHNICAL) -->
+            <LinearLayout
+                android:id="@+id/container_technical"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone"
+                android:layout_marginTop="12dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="技术指标类型"
+                    android:textSize="13sp"
+                    android:textColor="#888888" />
+                <Spinner
+                    android:id="@+id/spinner_indicator"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginTop="4dp"
+                    android:background="@drawable/custom_edittext_background" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="判断逻辑"
+                    android:textSize="13sp"
+                    android:textColor="#888888" />
+                <Spinner
+                    android:id="@+id/spinner_operator"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginTop="4dp"
+                    android:background="@drawable/custom_edittext_background" />
+            </LinearLayout>
+
+            <EditText
+                android:id="@+id/et_param1"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/custom_edittext_background"
+                android:hint="输入数值或参数"
+                android:padding="16dp"
+                android:textSize="15sp"
+                android:inputType="text"
+                android:importantForAutofill="no" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="时间周期设置"
+                android:textColor="#000000"
+                android:textSize="17sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btn_select_start_time"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/custom_button_bg_white"
+                android:gravity="start|center_vertical"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:text="开始日期: 立即开始"
+                android:textAllCaps="false"
+                android:textColor="#000000"
+                android:textSize="15sp" />
+
+            <Button
+                android:id="@+id/btn_select_time"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/custom_button_bg_white"
+                android:gravity="start|center_vertical"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:text="截止日期: 未选择"
+                android:textAllCaps="false"
+                android:textColor="#000000"
+                android:textSize="15sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="初始配置"
+                android:textColor="#000000"
+                android:textSize="17sp"
+                android:textStyle="bold" />
+
+            <EditText
+                android:id="@+id/et_initial_liquidity"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/custom_edittext_background"
+                android:hint="初始流动性 (BKC, 默认 100)"
+                android:inputType="numberDecimal"
+                android:padding="16dp"
+                android:textSize="15sp"
+                android:importantForAutofill="no" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="* 博弈判定将以系统获取的权威行情数据为准"
+                android:textColor="#999999"
+                android:textSize="12sp" />
+
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <Button
+        android:id="@+id/btn_deploy"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_margin="20dp"
+        android:background="@drawable/custom_button_background"
+        android:text="部署博弈池"
+        android:textAllCaps="false"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+</LinearLayout>

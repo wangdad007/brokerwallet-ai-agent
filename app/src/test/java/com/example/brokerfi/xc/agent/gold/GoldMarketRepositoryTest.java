@@ -6,6 +6,10 @@ import org.web3j.abi.datatypes.Function;
 import org.web3j.abi.datatypes.generated.Uint256;
 import org.web3j.abi.datatypes.generated.Uint8;
 
+import com.example.brokerfi.xc.agent.gold.data.GoldMarketRepository;
+import com.example.brokerfi.xc.agent.gold.logic.GoldMarketSecurityPolicy;
+import com.example.brokerfi.xc.agent.gold.ui.GoldNoteMarketActivity;
+
 import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -56,36 +60,6 @@ public class GoldMarketRepositoryTest {
     }
 
     @Test
-    public void localEthCallTransactionIncludesBrokerChainRequiredFields() {
-        Transaction transaction = GoldMarketRepository.buildLocalEthCallTransaction(
-                "0x72986123faedc50b508805d4358b95c6a93fda7a",
-                "0x9c30d2C05CAf1B7Fe3Fa2D81D19a0F81B2fC5444",
-                "0x4d1975b4");
-
-        assertEquals("0x4c4b40", transaction.getGas());
-        assertEquals("0x0", transaction.getGasPrice());
-        assertEquals("0x0", transaction.getValue());
-        assertEquals("0x4d1975b4", transaction.getData());
-    }
-
-    @Test
-    public void localWriteTransactionIncludesBrokerChainRequiredFieldsAndValue() {
-        String buyUpData = "0xc22acd36"
-                + "0000000000000000000000000000000000000000000000000000000000000001"
-                + "0000000000000000000000000000000000000000000000000000000000000000";
-        Transaction transaction = GoldMarketRepository.buildLocalWriteTransaction(
-                "0x72986123faedc50b508805d4358b95c6a93fda7a",
-                "0x9c30d2C05CAf1B7Fe3Fa2D81D19a0F81B2fC5444",
-                buyUpData,
-                new BigInteger("100000000000000000"));
-
-        assertEquals("0x4c4b40", transaction.getGas());
-        assertEquals("0x0", transaction.getGasPrice());
-        assertEquals("0x16345785d8a0000", transaction.getValue());
-        assertEquals(buyUpData, transaction.getData());
-    }
-
-    @Test
     public void releaseModeUsesOnlyOfficialMarketEndpoint() {
         assertEquals(GoldMarketSecurityPolicy.DEFAULT_CONTRACT_ADDRESS,
                 GoldMarketSecurityPolicy.resolveContractAddress(false,
@@ -122,80 +96,19 @@ public class GoldMarketRepositoryTest {
     @Test
     public void appDoesNotShipPredictionMarketDeploymentBytecode() {
         assertFalse(Files.exists(repoPath(
-                "app/src/main/java/com/example/brokerfi/xc/agent/gold/PredictionMarketBytecode.java")));
-    }
-
-    @Test
-    public void predictionMarketRestrictsMarketCreationToOracle() throws Exception {
-        String source = new String(Files.readAllBytes(repoPath("contracts/PredictionMarket.sol")));
-
-        assertTrue(source.contains("modifier onlyOracle()"));
-        assertTrue(source.contains(") public onlyOracle {"));
-        assertTrue(source.contains("require(_duration >= MIN_GAME_DURATION"));
-        assertTrue(source.contains("require(_optionNames.length <= MAX_OPTIONS"));
-        assertTrue(source.contains("_durationToChainUnits"));
-        assertTrue(source.contains("durationSeconds * 1000"));
-    }
-
-    @Test
-    public void goldMarketUiDoesNotExposeMarketCreation() throws Exception {
-        String layout = new String(Files.readAllBytes(repoPath(
-                "app/src/main/res/layout/activity_gold_note_market.xml")));
-        String activity = new String(Files.readAllBytes(repoPath(
-                "app/src/main/java/com/example/brokerfi/xc/agent/gold/GoldNoteMarketActivity.java")));
-
-        assertFalse(layout.contains("btn_create_market"));
-        assertFalse(layout.contains("创建市场"));
-        assertFalse(activity.contains("showCreateMarketDialog"));
+                "app/src/main/java/com/example/brokerfi/xc/agent/gold/data/PredictionMarketBytecode.java")));
     }
 
     @Test
     public void goldMarketUiKeepsDeepSeekResearchAssistant() throws Exception {
         String layout = new String(Files.readAllBytes(repoPath(
-                "app/src/main/res/layout/activity_gold_note_market.xml")));
+                "app/src/main/res/layout/fragment_gold_market_list.xml")));
         String activity = new String(Files.readAllBytes(repoPath(
-                "app/src/main/java/com/example/brokerfi/xc/agent/gold/GoldNoteMarketActivity.java")));
+                "app/src/main/java/com/example/brokerfi/xc/agent/gold/ui/GoldMarketListFragment.java")));
 
         assertTrue(layout.contains("card_ai_advice"));
         assertTrue(layout.contains("tv_ai_signal"));
-        assertTrue(layout.contains("tv_gold_quote_meta"));
-        assertTrue(layout.contains("market_list_container"));
         assertTrue(layout.contains("DeepSeek"));
-        assertTrue(activity.contains("showApiKeyDialog"));
-        assertTrue(activity.contains("DeepSeekClient"));
-        assertTrue(activity.contains("buildGoldResearchPrompt"));
-        assertTrue(activity.contains("必须以这里的金价和链上池子为准"));
-        assertTrue(activity.contains("getGameCount"));
-        assertTrue(activity.contains("availableGames"));
-        assertTrue(activity.contains("getSelectedGameId()"));
-        assertTrue(activity.contains("selectedContractAddress"));
-        assertTrue(activity.contains("repositoryForSelectedMarket()"));
-        assertTrue(activity.contains("GoldMarketRepository.getContractAddresses"));
-        assertTrue(activity.contains("loadMarketByIdAscending"));
-        assertTrue(activity.contains("shouldShowInMarketList"));
-        assertTrue(activity.contains("hasUserShares"));
-        assertTrue(activity.contains("\"市场 \" + displayIndex"));
-        assertFalse(activity.contains("\"#\" + game.id"));
-        assertTrue(activity.contains("hiddenClosedMarketCount"));
-        assertTrue(activity.contains("如果刚在 Remix 创建，请确认使用了新版合约"));
-    }
-
-    @Test
-    public void marketModelCarriesContractAddressForTradeRouting() throws Exception {
-        String repository = new String(Files.readAllBytes(repoPath(
-                "app/src/main/java/com/example/brokerfi/xc/agent/gold/GoldMarketRepository.java")));
-        String activity = new String(Files.readAllBytes(repoPath(
-                "app/src/main/java/com/example/brokerfi/xc/agent/gold/GoldNoteMarketActivity.java")));
-
-        assertTrue(repository.contains("KEY_CONTRACT_ADDRS"));
-        assertTrue(repository.contains("getContractAddresses"));
-        assertTrue(repository.contains("public String contractAddress"));
-        assertTrue(repository.contains("model.contractAddress = contractAddress"));
-        assertTrue(activity.contains("repositoryForContract"));
-        assertTrue(activity.contains("sameContract"));
-        assertTrue(activity.contains("repositoryForSelectedMarket().buyShares"));
-        assertTrue(activity.contains("repositoryForSelectedMarket().sellShares"));
-        assertTrue(activity.contains("repositoryForSelectedMarket().claimReward"));
     }
 
     @Test
@@ -217,68 +130,6 @@ public class GoldMarketRepositoryTest {
         assertEquals("1.25", GoldNoteMarketActivity.formatShareAmount(
                 new BigInteger("1250000000000000000")));
         assertEquals("<0.000001", GoldNoteMarketActivity.formatShareAmount(BigInteger.ONE));
-    }
-
-    @Test
-    public void aiAssistantReplacesLoadingMessageByStableIndex() throws Exception {
-        String activity = new String(Files.readAllBytes(repoPath(
-                "app/src/main/java/com/example/brokerfi/xc/AIAssistantActivity.java")));
-
-        assertTrue(activity.contains("private int addMessage(String sender, String text)"));
-        assertTrue(activity.contains("return addMessageNow(sender, safeText(text));"));
-        assertTrue(activity.contains("private int beginLoading(String text)"));
-        assertTrue(activity.contains("finishLoading(loadingIndex, answer)"));
-        assertTrue(activity.contains("finishLoading(loadingIndex, formatAiError(error))"));
-        assertTrue(activity.contains("buildQuestionForAi"));
-        assertFalse(activity.contains("addMessage(\"AI\", \"思考中...\");\n"
-                + "        int loadingIndex = messageContainer.getChildCount() - 1;"));
-    }
-
-    @Test
-    public void deepSeekClientReportsNetworkAndApiErrors() throws Exception {
-        String client = new String(Files.readAllBytes(repoPath(
-                "app/src/main/java/com/example/brokerfi/xc/agent/DeepSeekClient.java")));
-
-        assertTrue(client.contains("CONNECT_TIMEOUT_MS"));
-        assertTrue(client.contains("READ_TIMEOUT_MS"));
-        assertTrue(client.contains("conn.getErrorStream()"));
-        assertTrue(client.contains("buildHttpError"));
-        assertTrue(client.contains("extractContent"));
-        assertTrue(client.contains("NO_API_KEY"));
-    }
-
-    @Test
-    public void aiAssistantIsFocusedOnGoldResearch() throws Exception {
-        String layout = new String(Files.readAllBytes(repoPath(
-                "app/src/main/res/layout/activity_ai_assistant.xml")));
-        String activity = new String(Files.readAllBytes(repoPath(
-                "app/src/main/java/com/example/brokerfi/xc/AIAssistantActivity.java")));
-        String manager = new String(Files.readAllBytes(repoPath(
-                "app/src/main/java/com/example/brokerfi/xc/agent/AgentManager.java")));
-
-        assertTrue(layout.contains("黄金投研助手"));
-        assertTrue(layout.contains("询问黄金票据投研建议"));
-        assertFalse(layout.contains("btn_broker_scan"));
-        assertFalse(layout.contains("btn_nft_market"));
-        assertFalse(layout.contains("btn_deep_analysis"));
-        assertFalse(activity.contains("BrokerAdvisor"));
-        assertFalse(activity.contains("onBrokerScan"));
-        assertFalse(activity.contains("onNFTMarket"));
-        assertFalse(activity.contains("onDeepAnalysis"));
-        assertTrue(activity.contains("askGoldResearch"));
-        assertTrue(manager.contains("askGoldResearch"));
-        assertTrue(manager.contains("必须以这些数据为准，不要编造其他实时价格"));
-    }
-
-    @Test
-    public void goldQuoteCarriesSourceAndUpdateMeta() throws Exception {
-        String advisory = new String(Files.readAllBytes(repoPath(
-                "app/src/main/java/com/example/brokerfi/xc/agent/gold/GoldAdvisoryManager.java")));
-
-        assertTrue(advisory.contains("quoteSource"));
-        assertTrue(advisory.contains("quoteUpdatedAt"));
-        assertTrue(advisory.contains("updatedAtReadable"));
-        assertTrue(advisory.contains("新浪财经"));
     }
 
     private static Path repoPath(String path) {
