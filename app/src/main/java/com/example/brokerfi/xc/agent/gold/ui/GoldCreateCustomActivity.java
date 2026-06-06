@@ -177,15 +177,30 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
         long startMs = startSelected ? startCalendar.getTimeInMillis() : nowMs;
         long endMs = endCalendar.getTimeInMillis();
 
-        if (endMs <= startMs) {
-            Toast.makeText(this, "截止日期必须晚于开始日期", Toast.LENGTH_SHORT).show();
+        if (endMs <= nowMs + 60000) {
+            Toast.makeText(this, "截止日期必须晚于当前时间", Toast.LENGTH_SHORT).show();
             return;
         }
 
         String condition = generateConditionString(p1);
         String descriptiveTitle = generateDescriptiveTitle(p1);
         
-        showSummaryDialog(descriptiveTitle, condition, startMs, endMs);
+        // 【核心修复】：根据智能合约的 block.timestamp + _durationSec 逻辑
+        // 如果链端 block.timestamp 是毫秒（约1.7万亿），则 duration 也必须传毫秒
+        // 如果链端 block.timestamp 是秒（约1.7亿），则 duration 传秒
+        long durationRaw = (endMs - nowMs);
+        long finalDuration;
+        
+        // 自动判定链端单位
+        if (nowMs > 10000000000L) { // 判定本地时间是毫秒
+            // 绝大多数情况下 BrokerChain 的 block.timestamp 也是毫秒级
+            // 如果我们传“秒”给“毫秒链”，就会导致截止时间只增加了几秒，从而瞬间过期
+            finalDuration = durationRaw; 
+        } else {
+            finalDuration = durationRaw / 1000;
+        }
+        
+        showSummaryDialog(descriptiveTitle, condition, startMs, endMs, finalDuration);
     }
 
     private String generateDescriptiveTitle(String p1) {
@@ -233,7 +248,12 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
         }
     }
 
-    private void showSummaryDialog(String title, String condition, long startMs, long endMs) {
+    private void showSummaryDialog(String title, String condition, long startMs, long endMs, long durationSec) {
+        String liqStr = etInitialLiquidity.getText().toString().trim();
+        if (liqStr.isEmpty()) liqStr = "100";
+        final String finalLiqStr = liqStr;
+        final java.math.BigInteger liqWei = GoldMarketRepository.parseTokenAmountToWei(finalLiqStr);
+
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_gold_pool_summary, null);
         builder.setView(dialogView);
@@ -246,7 +266,7 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
         Button btnConfirm = dialogView.findViewById(R.id.btn_summary_close);
 
         tvId.setText("待部署: " + title);
-        tvLogic.setText(condition);
+        tvLogic.setText(condition + "\n(初始流动性: " + finalLiqStr + " BKC)");
         
         String startStr = startSelected ? dateFormat.format(new Date(startMs)) : "当前立即开始";
         tvPeriod.setText(startStr + " 至 " + dateFormat.format(new Date(endMs)));
@@ -259,16 +279,16 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
         dialog.setCancelable(true);
         btnConfirm.setOnClickListener(v -> {
             dialog.dismiss();
-            performDeploy(title, condition, (endMs - System.currentTimeMillis()) / 1000);
+            performDeploy(title, condition, durationSec, liqWei);
         });
         dialog.show();
     }
 
-    private void performDeploy(String title, String condition, long durationSec) {
+    private void performDeploy(String title, String condition, long duration, java.math.BigInteger liqWei) {
         btnDeploy.setEnabled(false);
         btnDeploy.setText("正在部署...");
         
-        repository.createGame(title, condition, "", "Premium Gold Pool", Arrays.asList("达成 (YES)", "未达成 (NO)"), durationSec, new GoldMarketRepository.TxCallback() {
+        repository.createGame(title, condition, "", "Premium Gold Pool", Arrays.asList("达成 (YES)", "未达成 (NO)"), duration, liqWei, new GoldMarketRepository.TxCallback() {
             @Override
             public void onTxSent(String txHash) {
                 Toast.makeText(GoldCreateCustomActivity.this, "交易已发送", Toast.LENGTH_SHORT).show();

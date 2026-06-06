@@ -131,10 +131,22 @@ public class GoldNoteMarketActivity extends AppCompatActivity {
     public static String formatShareAmount(BigInteger value) {
         if (value == null || value.compareTo(BigInteger.ZERO) <= 0) return "0";
         BigDecimal shares = new BigDecimal(value).divide(DISPLAY_TOKEN_UNIT, 18, RoundingMode.DOWN);
-        if (shares.compareTo(BigDecimal.ZERO) > 0 && shares.compareTo(MIN_DISPLAY_SHARE) < 0) {
+        if (shares.compareTo(BigDecimal.ZERO) > 0 && shares.compareTo(new BigDecimal("0.000001")) < 0) {
             return "<0.000001";
         }
         return shares.setScale(6, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString();
+    }
+
+    public static String formatRemainingTime(long remainingSeconds) {
+        if (remainingSeconds <= 0) return "已截止";
+        
+        long days = remainingSeconds / 86400;
+        
+        if (days >= 1) {
+            return String.format(Locale.getDefault(), "距结束 %d 天", days);
+        } else {
+            return "距结束不足 1 天";
+        }
     }
 
     public static String formatBkc(BigInteger value) {
@@ -145,9 +157,13 @@ public class GoldNoteMarketActivity extends AppCompatActivity {
 
     public static long remainingSecondsUntilDeadline(long rawDeadline, long nowMillis) {
         if (rawDeadline <= 0) return 0;
-        if (rawDeadline > 10_000_000_000L) { // ms
-            return Math.max(0, (rawDeadline - nowMillis + 999) / 1000);
-        }
-        return Math.max(0, rawDeadline - nowMillis / 1000);
+
+        // 【关键修复】：判定链端单位
+        // 如果 rawDeadline > 10^10，说明是毫秒级时间戳 (1.7万亿级)
+        // 如果 rawDeadline < 10^10，说明是秒级时间戳 (1.7亿级)
+        long deadlineMillis = (rawDeadline > 10000000000L) ? rawDeadline : rawDeadline * 1000;
+        
+        long diff = deadlineMillis - nowMillis;
+        return diff > 0 ? (diff / 1000) : 0;
     }
 }

@@ -15,40 +15,60 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- Total Holdings Summary Card -->
-            <LinearLayout
+            <!-- Total Holdings Summary Card (Premium Dark) -->
+            <RelativeLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="20dp"
-                android:background="@drawable/custom_button_background">
+                android:padding="24dp"
+                android:background="@drawable/custom_button_background"
+                android:elevation="8dp">
 
                 <TextView
+                    android:id="@+id/label_balance"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="个人总持仓"
+                    android:text="个人总持仓估值"
                     android:textColor="#CCFFFFFF"
-                    android:textSize="14sp" />
+                    android:textSize="13sp" />
 
                 <TextView
                     android:id="@+id/tv_total_balance"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_below="@id/label_balance"
                     android:layout_marginTop="8dp"
                     android:text="0.00 BKC"
                     android:textColor="#FFFFFF"
-                    android:textSize="32sp"
+                    android:textSize="34sp"
                     android:textStyle="bold" />
+
+                <View
+                    android:id="@+id/divider_card"
+                    android:layout_width="match_parent"
+                    android:layout_height="0.5dp"
+                    android:layout_below="@id/tv_total_balance"
+                    android:layout_marginTop="20dp"
+                    android:background="#33FFFFFF" />
 
                 <TextView
                     android:id="@+id/tv_total_pnl"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="+0.00 (0.00%)"
+                    android:layout_below="@id/divider_card"
+                    android:layout_marginTop="16dp"
+                    android:text="累计参与 0 个博弈池"
                     android:textColor="#AAFFFFFF"
                     android:textSize="14sp" />
-            </LinearLayout>
+
+                <ImageView
+                    android:layout_width="60dp"
+                    android:layout_height="60dp"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:src="@drawable/logo4"
+                    android:alpha="0.15" />
+
+            </RelativeLayout>
 
             <TextView
                 android:layout_width="match_parent"

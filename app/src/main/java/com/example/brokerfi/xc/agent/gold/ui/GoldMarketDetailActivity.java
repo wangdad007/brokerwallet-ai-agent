@@ -81,9 +81,8 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         swipeRefresh = findViewById(R.id.swipe_refresh);
         swipeRefresh.setOnRefreshListener(this::loadMarketData);
 
-        findViewById(R.id.btn_buy_up).setOnClickListener(v -> showBuyDialog(0, "看涨"));
-        findViewById(R.id.btn_buy_down).setOnClickListener(v -> showBuyDialog(1, "看跌"));
-        findViewById(R.id.btn_sell).setOnClickListener(v -> showSellDialog());
+        findViewById(R.id.btn_buy_up).setOnClickListener(v -> showBuyDialog(0, "YES"));
+        findViewById(R.id.btn_buy_down).setOnClickListener(v -> showBuyDialog(1, "NO"));
         btnClaimReward.setOnClickListener(v -> claimReward());
     }
 
@@ -169,14 +168,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
     private void updateCountdown() {
         if (currentGame == null) return;
         long rem = GoldNoteMarketActivity.remainingSecondsUntilDeadline(currentGame.deadlineSec, System.currentTimeMillis());
-        if (rem <= 0) {
-            tvCountdown.setText("已截止");
-            return;
-        }
-        long h = rem / 3600;
-        long m = (rem % 3600) / 60;
-        long s = rem % 60;
-        tvCountdown.setText(String.format(Locale.getDefault(), "倒计时: %02d:%02d:%02d", h, m, s));
+        tvCountdown.setText(GoldNoteMarketActivity.formatRemainingTime(rem));
     }
 
     private void showBuyDialog(int optionId, String name) {
@@ -199,45 +191,6 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
                 }
                 @Override public void onConfirmed(String msg) {
                     Toast.makeText(GoldMarketDetailActivity.this, "购买成功", Toast.LENGTH_SHORT).show();
-                    loadMarketData();
-                }
-                @Override public void onError(String err) {
-                    Toast.makeText(GoldMarketDetailActivity.this, err, Toast.LENGTH_LONG).show();
-                }
-            });
-        });
-        builder.setNegativeButton("取消", null);
-        builder.show();
-    }
-
-    private void showSellDialog() {
-        if (currentGame == null || currentGame.myShares == null) return;
-        int opt = currentGame.myShares.get(0).compareTo(BigInteger.ZERO) > 0 ? 0 : 1;
-        BigInteger shares = currentGame.myShares.get(opt);
-        if (shares.compareTo(BigInteger.ZERO) <= 0) {
-            Toast.makeText(this, "暂无持仓可卖", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("卖出份额");
-        final EditText input = new EditText(this);
-        input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
-        input.setHint("输入份额数量");
-        builder.setView(input);
-
-        builder.setPositiveButton("确认卖出", (dialog, which) -> {
-            String val = input.getText().toString();
-            if (val.isEmpty()) return;
-            BigInteger amount = GoldMarketRepository.parseTokenAmountToWei(val);
-            if (amount == null) return;
-
-            repository.sellShares(gameId, opt, amount, new GoldMarketRepository.TxCallback() {
-                @Override public void onTxSent(String txHash) {
-                    Toast.makeText(GoldMarketDetailActivity.this, "交易已提交", Toast.LENGTH_SHORT).show();
-                }
-                @Override public void onConfirmed(String msg) {
-                    Toast.makeText(GoldMarketDetailActivity.this, "卖出成功", Toast.LENGTH_SHORT).show();
                     loadMarketData();
                 }
                 @Override public void onError(String err) {

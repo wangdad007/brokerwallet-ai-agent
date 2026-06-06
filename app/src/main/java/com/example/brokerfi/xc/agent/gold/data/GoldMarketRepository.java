@@ -427,16 +427,19 @@ public class GoldMarketRepository {
 
     public void createGame(String desc, String condition, String avatarUrl,
                            String detailedInfo, List<String> optionNamesList,
-                           long durationSec, TxCallback callback) {
+                           long durationSec, BigInteger initialLiquidityWei, TxCallback callback) {
         List<Utf8String> utf8Options = new ArrayList<>();
         for (String name : optionNamesList) utf8Options.add(new Utf8String(name));
+        
         org.web3j.abi.datatypes.Function f = new org.web3j.abi.datatypes.Function(
             "createGame", Arrays.asList(
                 new Utf8String(desc), new Utf8String(condition),
                 new Utf8String(avatarUrl), new Utf8String(detailedInfo),
                 new DynamicArray<>(utf8Options), new Uint256(durationSec)),
             Collections.emptyList());
-        sendTransaction(BigInteger.ZERO, f, "博弈池创建成功", callback);
+            
+        // 核心修正：将 initialLiquidityWei 作为交易的 Value 发送给合约
+        sendTransaction(initialLiquidityWei, f, "博弈池部署成功", callback);
     }
 
     /**

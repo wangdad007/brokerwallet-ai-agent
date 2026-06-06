@@ -166,9 +166,10 @@
                         android:layout_marginEnd="8dp"
                         android:layout_weight="1"
                         android:background="@drawable/custom_button_background"
-                        android:text="买入看涨"
+                        android:text="买入 YES"
                         android:textAllCaps="false"
-                        android:textColor="#FFFFFF" />
+                        android:textColor="#FFFFFF"
+                        android:textStyle="bold" />
 
                     <Button
                         android:id="@+id/btn_buy_down"
@@ -177,20 +178,13 @@
                         android:layout_marginStart="8dp"
                         android:layout_weight="1"
                         android:background="@drawable/custom_red_background"
-                        android:text="买入看跌"
+                        android:text="买入 NO"
                         android:textAllCaps="false"
-                        android:textColor="#FFFFFF" />
+                        android:textColor="#FFFFFF"
+                        android:textStyle="bold" />
                 </LinearLayout>
 
-                <Button
-                    android:id="@+id/btn_sell"
-                    android:layout_width="match_parent"
-                    android:layout_height="52dp"
-                    android:layout_marginTop="12dp"
-                    android:background="@drawable/custom_button_bg_white"
-                    android:text="卖出平仓"
-                    android:textAllCaps="false"
-                    android:textColor="#000000" />
+                <!-- Removed Sell Button -->
 
                 <TextView
                     android:layout_width="match_parent"

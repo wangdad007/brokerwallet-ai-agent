@@ -153,7 +153,8 @@ public class BrokerChainClient {
     }
 
     public static String sendEthTx(String privateKey, String to, String data, String value) throws Exception {
-        String gas = "0x4c4b40";
+        // 将 Gas Limit 调高至 800万 (0x7a1200)，防止因字符串过长导致部署失败
+        String gas = "0x7a1200";
         String finalValue = (value == null || value.isEmpty() || value.equals("0")) ? "0x0" : value;
         if (!finalValue.startsWith("0x")) finalValue = "0x" + finalValue;
 

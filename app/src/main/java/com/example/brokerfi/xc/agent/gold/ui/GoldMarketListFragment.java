@@ -21,9 +21,19 @@ import com.example.brokerfi.xc.agent.DeepSeekClient;
 import com.example.brokerfi.xc.agent.gold.data.GoldMarketRepository;
 import com.example.brokerfi.xc.agent.gold.logic.GoldAdvisoryManager;
 
+import java.util.Collections;
+import android.text.Spannable;
+import android.text.SpannableString;
+import android.text.SpannableStringBuilder;
+import android.text.style.AbsoluteSizeSpan;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.StyleSpan;
+import android.graphics.Typeface;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class GoldMarketListFragment extends Fragment {
     private GoldMarketRepository repository;
@@ -33,6 +43,8 @@ public class GoldMarketListFragment extends Fragment {
     private TextView tvAiSignal, tvAiConfidence, tvAiSummary;
     private LinearLayout marketListContainer;
     private SwipeRefreshLayout swipeRefresh;
+
+    private boolean isLoading = false;
 
     @Nullable
     @Override
@@ -76,6 +88,9 @@ public class GoldMarketListFragment extends Fragment {
     }
 
     private void loadMarketData() {
+        if (isLoading) return;
+        isLoading = true;
+        
         availableGames.clear();
         marketListContainer.removeAllViews();
         repository.getGameCount(new GoldMarketRepository.DataCallback<Integer>() {
@@ -83,6 +98,7 @@ public class GoldMarketListFragment extends Fragment {
             public void onSuccess(Integer count) {
                 if (count == null || count <= 0) {
                     swipeRefresh.setRefreshing(false);
+                    isLoading = false;
                     return;
                 }
                 loadAllGames(count);
@@ -91,32 +107,55 @@ public class GoldMarketListFragment extends Fragment {
             @Override
             public void onError(String error) {
                 swipeRefresh.setRefreshing(false);
+                isLoading = false;
                 Toast.makeText(requireContext(), "获取列表失败: " + error, Toast.LENGTH_SHORT).show();
             }
         });
     }
 
     private void loadAllGames(int count) {
+        final int[] responseCount = {0};
         for (int i = 1; i <= count; i++) {
             repository.getGameInfo(i, new GoldMarketRepository.DataCallback<GoldMarketRepository.GameModel>() {
                 @Override
                 public void onSuccess(GoldMarketRepository.GameModel model) {
-                    availableGames.add(model);
-                    if (availableGames.size() >= count) {
-                        renderMarketList();
-                        swipeRefresh.setRefreshing(false);
+                    synchronized (availableGames) {
+                        // Check for duplicates before adding
+                        boolean exists = false;
+                        for (GoldMarketRepository.GameModel g : availableGames) {
+                            if (g.id == model.id) { exists = true; break; }
+                        }
+                        if (!exists) {
+                            availableGames.add(model);
+                        }
+                        
+                        responseCount[0]++;
+                        if (responseCount[0] >= count) {
+                            isLoading = false;
+                            finishLoading();
+                        }
                     }
                 }
 
                 @Override
                 public void onError(String error) {
-                    if (availableGames.size() >= count - 1) {
-                        renderMarketList();
-                        swipeRefresh.setRefreshing(false);
+                    synchronized (availableGames) {
+                        responseCount[0]++;
+                        if (responseCount[0] >= count) {
+                            isLoading = false;
+                            finishLoading();
+                        }
                     }
                 }
             });
         }
+    }
+
+    private void finishLoading() {
+        // Sort by ID descending to show newest first
+        Collections.sort(availableGames, (g1, g2) -> Integer.compare(g2.id, g1.id));
+        renderMarketList();
+        swipeRefresh.setRefreshing(false);
     }
 
     private void renderMarketList() {
@@ -125,9 +164,10 @@ public class GoldMarketListFragment extends Fragment {
         for (GoldMarketRepository.GameModel game : availableGames) {
             View card = inflater.inflate(R.layout.item_gold_market_card, marketListContainer, false);
             
-            // Use the descriptive name stored in 'desc' field
+            // Enhanced Typography for Title
             TextView tvTitle = card.findViewById(R.id.tv_market_title);
-            tvTitle.setText(game.desc != null && !game.desc.isEmpty() ? game.desc : "博弈池 #" + game.id);
+            String rawTitle = game.desc != null && !game.desc.isEmpty() ? game.desc : "博弈池 #" + game.id;
+            tvTitle.setText(styleMarketTitle(rawTitle));
             
             ((TextView) card.findViewById(R.id.tv_market_condition)).setText("判定条件: " + game.condition);
             ((TextView) card.findViewById(R.id.tv_total_pool)).setText(GoldNoteMarketActivity.formatBkc(game.totalPool) + " BKC");
@@ -135,16 +175,9 @@ public class GoldMarketListFragment extends Fragment {
             long remaining = GoldNoteMarketActivity.remainingSecondsUntilDeadline(game.deadlineSec, System.currentTimeMillis());
             String status = remaining > 0 ? "进行中" : "已到期";
             ((TextView) card.findViewById(R.id.tv_market_status)).setText(status);
-            ((TextView) card.findViewById(R.id.tv_market_status)).setTextColor(remaining > 0 ? Color.parseColor("#047857") : Color.RED);
+            ((TextView) card.findViewById(R.id.tv_market_status)).setTextColor(remaining > 0 ? 0xFF047857 : Color.RED);
 
-            if (remaining > 0) {
-                long h = remaining / 3600;
-                long m = (remaining % 3600) / 60;
-                long s = remaining % 60;
-                ((TextView) card.findViewById(R.id.tv_deadline)).setText(String.format(Locale.getDefault(), "距结束 %02d:%02d:%02d", h, m, s));
-            } else {
-                ((TextView) card.findViewById(R.id.tv_deadline)).setText("已截止");
-            }
+            ((TextView) card.findViewById(R.id.tv_deadline)).setText(GoldNoteMarketActivity.formatRemainingTime(remaining));
 
             card.setOnClickListener(v -> {
                 Intent intent = new Intent(requireContext(), GoldMarketDetailActivity.class);
@@ -153,6 +186,55 @@ public class GoldMarketListFragment extends Fragment {
             });
             marketListContainer.addView(card);
         }
+    }
+
+    private SpannableStringBuilder styleMarketTitle(String title) {
+        SpannableStringBuilder ssb = new SpannableStringBuilder(title);
+        
+        // 1. Style Dates: Smaller, Grey
+        Pattern datePattern = Pattern.compile("\\d{4}-\\d{2}-\\d{2}");
+        Matcher matcher = datePattern.matcher(title);
+        while (matcher.find()) {
+            ssb.setSpan(new ForegroundColorSpan(0xFF888888), matcher.start(), matcher.end(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            ssb.setSpan(new AbsoluteSizeSpan(12, true), matcher.start(), matcher.end(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+
+        // 2. Style "黄金价格" or specific assets: Medium size, Bold Black
+        String[] subjects = {"黄金价格", "黄金波幅", "成交量", "指标", "金价", "黄金收益率"};
+        for (String sub : subjects) {
+            int start = title.indexOf(sub);
+            if (start >= 0) {
+                int end = start + sub.length();
+                ssb.setSpan(new ForegroundColorSpan(Color.BLACK), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                ssb.setSpan(new StyleSpan(Typeface.BOLD), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                ssb.setSpan(new AbsoluteSizeSpan(15, true), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+        }
+
+        // 3. Highlight Key Directions: Large, Bold, Green/Red
+        String[] ups = {"上涨", "剧烈", "高于", "跑赢", "Touched", "触及", "达标", "YES", "Price Up"};
+        for (String kw : ups) {
+            int start = title.indexOf(kw);
+            if (start >= 0) {
+                int end = start + kw.length();
+                ssb.setSpan(new ForegroundColorSpan(0xFF047857), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                ssb.setSpan(new StyleSpan(Typeface.BOLD), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                ssb.setSpan(new AbsoluteSizeSpan(18, true), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+        }
+
+        String[] downs = {"下跌", "Price Down", "平稳", "低于", "跑输", "NO", "未达标"};
+        for (String kw : downs) {
+            int start = title.indexOf(kw);
+            if (start >= 0) {
+                int end = start + kw.length();
+                ssb.setSpan(new ForegroundColorSpan(Color.RED), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                ssb.setSpan(new StyleSpan(Typeface.BOLD), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                ssb.setSpan(new AbsoluteSizeSpan(18, true), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+        }
+        
+        return ssb;
     }
 
     private void updateAiAdvice() {
