@@ -459,6 +459,17 @@ public class GoldMarketRepository {
         sendTransaction(BigInteger.ZERO, buildClaimRewardFunction(gameId, optionId), "领取成功", callback);
     }
 
+    /**
+     * 管理员/后台开奖接口
+     * 将 App 判定后的获胜选项同步到链上，使用户可以领奖
+     */
+    public void resolveGame(int gameId, int winningOption, TxCallback callback) {
+        org.web3j.abi.datatypes.Function f = new org.web3j.abi.datatypes.Function(
+            "resolveGame", Arrays.asList(new Uint256(gameId), new Uint8(winningOption)),
+            Collections.emptyList());
+        sendTransaction(BigInteger.ZERO, f, "开奖成功", callback);
+    }
+
     private void postError(TxCallback callback, String error) {
         AppExecutors.getInstance().mainThread().execute(() -> callback.onError(error));
     }

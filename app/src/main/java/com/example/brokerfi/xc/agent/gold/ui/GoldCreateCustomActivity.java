@@ -87,16 +87,25 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
         adapterInd.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerIndicator.setAdapter(adapterInd);
 
-        List<String> operators = Arrays.asList("大于 (Above)", "小于 (Below)", "交叉向上 (Cross Up)", "交叉向下 (Cross Down)");
-        ArrayAdapter<String> adapterOp = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, operators);
-        adapterOp.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerOperator.setAdapter(adapterOp);
+        updateOperatorSpinner(false);
 
         // Setup Direction Spinner
         List<String> directions = Arrays.asList("上涨 (Price Up)", "下跌 (Price Down)", "持平 (Flat/Range)");
         ArrayAdapter<String> adapterDir = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, directions);
         adapterDir.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerDirection.setAdapter(adapterDir);
+    }
+
+    private void updateOperatorSpinner(boolean isVolume) {
+        List<String> operators;
+        if (isVolume) {
+            operators = Arrays.asList("大于 (Above)", "小于 (Below)", "等于 (Equal To)");
+        } else {
+            operators = Arrays.asList("大于 (Above)", "小于 (Below)", "交叉向上 (Cross Up)", "交叉向下 (Cross Down)");
+        }
+        ArrayAdapter<String> adapterOp = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, operators);
+        adapterOp.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerOperator.setAdapter(adapterOp);
     }
 
     private void setupTemplateUI() {
@@ -117,13 +126,18 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
                 break;
             case "TYPE_VOLUME":
                 tvTemplateDetail.setText("博弈上海黄金交易所指定交易日的成交总量。单位为吨。");
+                containerTechnical.setVisibility(View.VISIBLE);
+                findViewById(R.id.spinner_indicator).setVisibility(View.GONE);
+                updateOperatorSpinner(true);
                 etParam1.setHint("目标成交量 (吨)");
-                btnSelectStartTime.setVisibility(View.GONE); // Specific day only
+                btnSelectStartTime.setVisibility(View.GONE);
                 btnSelectTime.setText("选择交易日: 未选择");
                 break;
             case "TYPE_TECHNICAL":
                 tvTemplateDetail.setText("博弈特定技术指标是否达到设定形态。由系统 K 线数据实时计算。");
                 containerTechnical.setVisibility(View.VISIBLE);
+                findViewById(R.id.spinner_indicator).setVisibility(View.VISIBLE);
+                updateOperatorSpinner(false);
                 etParam1.setHint("触发数值 (如: 70)");
                 break;
             case "TYPE_TOUCH":
@@ -177,24 +191,17 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
         long startMs = startSelected ? startCalendar.getTimeInMillis() : nowMs;
         long endMs = endCalendar.getTimeInMillis();
 
-        if (endMs <= nowMs + 60000) {
-            Toast.makeText(this, "截止日期必须晚于当前时间", Toast.LENGTH_SHORT).show();
+        if (endMs <= startMs) {
+            Toast.makeText(this, "截止日期必须晚于开始日期", Toast.LENGTH_SHORT).show();
             return;
         }
 
         String condition = generateConditionString(p1);
         String descriptiveTitle = generateDescriptiveTitle(p1);
         
-        // 【核心修复】：根据智能合约的 block.timestamp + _durationSec 逻辑
-        // 如果链端 block.timestamp 是毫秒（约1.7万亿），则 duration 也必须传毫秒
-        // 如果链端 block.timestamp 是秒（约1.7亿），则 duration 传秒
         long durationRaw = (endMs - nowMs);
         long finalDuration;
-        
-        // 自动判定链端单位
-        if (nowMs > 10000000000L) { // 判定本地时间是毫秒
-            // 绝大多数情况下 BrokerChain 的 block.timestamp 也是毫秒级
-            // 如果我们传“秒”给“毫秒链”，就会导致截止时间只增加了几秒，从而瞬间过期
+        if (nowMs > 10000000000L) {
             finalDuration = durationRaw; 
         } else {
             finalDuration = durationRaw / 1000;
@@ -214,7 +221,7 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
             case "TYPE_VOLATILITY":
                 return String.format("%s 前黄金波幅超过 %s%%", endStr, p1);
             case "TYPE_VOLUME":
-                return String.format("%s 当日成交量超过 %s 吨", endStr, p1);
+                return String.format("%s 当日成交量 %s %s 吨", endStr, spinnerOperator.getSelectedItem().toString().split(" ")[0], p1);
             case "TYPE_TOUCH":
                 return String.format("博弈周期内金价触及 %s USD", p1);
             case "TYPE_TECHNICAL":
@@ -236,7 +243,7 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
             case "TYPE_VOLATILITY":
                 return String.format("博弈周期内波幅 >= %s%% (%s)", p1, period);
             case "TYPE_VOLUME":
-                return String.format("博弈指定日成交量 >= %s 吨 (%s)", p1, dateFormat.format(endCalendar.getTime()));
+                return String.format("博弈指定日成交量 %s %s 吨 (%s)", spinnerOperator.getSelectedItem(), p1, dateFormat.format(endCalendar.getTime()));
             case "TYPE_TECHNICAL":
                 return String.format("指标 %s %s %s (%s)", spinnerIndicator.getSelectedItem(), spinnerOperator.getSelectedItem(), p1, period);
             case "TYPE_TOUCH":

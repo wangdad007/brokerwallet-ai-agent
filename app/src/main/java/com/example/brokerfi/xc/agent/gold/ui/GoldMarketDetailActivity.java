@@ -17,6 +17,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.example.brokerfi.R;
 import com.example.brokerfi.xc.StorageUtil;
 import com.example.brokerfi.xc.agent.gold.data.GoldMarketRepository;
+import com.example.brokerfi.xc.agent.gold.logic.GoldGameJudge;
 import com.example.brokerfi.xc.agent.gold.logic.GoldAdvisoryManager;
 
 import java.math.BigInteger;
@@ -30,7 +31,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
 
     private TextView tvMarketDesc, tvMarketCondition;
     private TextView tvUpPct, tvDownPct, tvPool, tvCountdown, tvHoldings;
-    private View barUp, barDown, btnClaimReward;
+    private View barUp, barDown, btnClaimReward, btnAdminResolve;
     private SwipeRefreshLayout swipeRefresh;
 
     private boolean destroyed = false;
@@ -77,6 +78,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         barUp = findViewById(R.id.bar_up);
         barDown = findViewById(R.id.bar_down);
         btnClaimReward = findViewById(R.id.btn_claim_reward);
+        btnAdminResolve = findViewById(R.id.btn_admin_resolve);
 
         swipeRefresh = findViewById(R.id.swipe_refresh);
         swipeRefresh.setOnRefreshListener(this::loadMarketData);
@@ -84,6 +86,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         findViewById(R.id.btn_buy_up).setOnClickListener(v -> showBuyDialog(0, "YES"));
         findViewById(R.id.btn_buy_down).setOnClickListener(v -> showBuyDialog(1, "NO"));
         btnClaimReward.setOnClickListener(v -> claimReward());
+        btnAdminResolve.setOnClickListener(v -> performAdminResolve());
     }
 
     private void loadMarketData() {
@@ -118,7 +121,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
             GoldAdvisoryManager.fetchPrice(new GoldAdvisoryManager.AdvisoryCallback() {
                 @Override
                 public void onSuccess(GoldAdvisoryManager.Advisory quote) {
-                    int winner = GoldAdvisoryManager.evaluateGameWinner(currentGame, quote);
+                    int winner = GoldGameJudge.evaluateGameWinner(currentGame, quote);
                     String winnerName = winner == 0 ? "看涨 (YES)" : "看跌 (NO)";
                     tvMarketCondition.setText("结算条件: " + currentGame.condition + "\n系统判定胜出: " + winnerName);
                 }
@@ -127,6 +130,9 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         }
 
         btnClaimReward.setVisibility(currentGame.isResolved || currentGame.isRefunded ? View.VISIBLE : View.GONE);
+        
+        // 如果博弈已到期但尚未开奖，显示管理员判定按钮
+        btnAdminResolve.setVisibility(rem <= 0 && !currentGame.isResolved && !currentGame.isRefunded ? View.VISIBLE : View.GONE);
         
         if (currentGame.virtualReserves != null && currentGame.virtualReserves.size() >= 2) {
             BigInteger res0 = currentGame.virtualReserves.get(0);
@@ -200,6 +206,41 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         });
         builder.setNegativeButton("取消", null);
         builder.show();
+    }
+
+    private void performAdminResolve() {
+        if (currentGame == null) return;
+        
+        Toast.makeText(this, "正在获取行情进行判定...", Toast.LENGTH_SHORT).show();
+        GoldAdvisoryManager.fetchPrice(new GoldAdvisoryManager.AdvisoryCallback() {
+            @Override
+            public void onSuccess(GoldAdvisoryManager.Advisory quote) {
+                // 调用新的裁判类进行 if-else 判定
+                int winner = GoldGameJudge.evaluateGameWinner(currentGame, quote);
+                String winnerName = winner == 0 ? "YES" : "NO";
+                
+                new AlertDialog.Builder(GoldMarketDetailActivity.this)
+                    .setTitle("系统判定结果")
+                    .setMessage("根据当前行情，胜出方为: " + winnerName + "\n确定要执行链上结算吗？")
+                    .setPositiveButton("立即开奖", (d, w) -> {
+                        repository.resolveGame(gameId, winner, new GoldMarketRepository.TxCallback() {
+                            @Override public void onTxSent(String txHash) {}
+                            @Override public void onConfirmed(String msg) {
+                                Toast.makeText(GoldMarketDetailActivity.this, "链上结算完成！", Toast.LENGTH_SHORT).show();
+                                loadMarketData();
+                            }
+                            @Override public void onError(String err) {
+                                Toast.makeText(GoldMarketDetailActivity.this, "结算失败: " + err, Toast.LENGTH_LONG).show();
+                            }
+                        });
+                    })
+                    .setNegativeButton("取消", null)
+                    .show();
+            }
+            @Override public void onError(String error) {
+                Toast.makeText(GoldMarketDetailActivity.this, "行情获取失败，无法判定", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void claimReward() {

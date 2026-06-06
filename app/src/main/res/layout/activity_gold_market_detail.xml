@@ -216,6 +216,17 @@
                     android:textColor="#FFFFFF"
                     android:visibility="gone" />
 
+                <Button
+                    android:id="@+id/btn_admin_resolve"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/custom_button_bg_white"
+                    android:text="管理员判定结算"
+                    android:textAllCaps="false"
+                    android:textColor="#000000"
+                    android:visibility="gone" />
+
             </LinearLayout>
         </androidx.core.widget.NestedScrollView>
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>

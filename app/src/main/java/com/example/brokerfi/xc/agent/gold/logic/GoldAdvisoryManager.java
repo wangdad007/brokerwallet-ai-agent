@@ -284,33 +284,4 @@ public class GoldAdvisoryManager {
         int dayOfWeek = Calendar.getInstance().get(Calendar.DAY_OF_WEEK);
         return dayOfWeek == Calendar.SATURDAY || dayOfWeek == Calendar.SUNDAY;
     }
-
-    public static int evaluateGameWinner(GoldMarketRepository.GameModel game, Advisory currentQuote) {
-        if (game == null || currentQuote == null) return -1;
-        String cond = game.condition;
-        if (cond == null || cond.isEmpty()) return -1;
-
-        if (cond.contains("Price >= ")) {
-            try {
-                double target = Double.parseDouble(cond.split(">= ")[1].split(" ")[0]);
-                return currentQuote.priceUsd >= target ? 0 : 1;
-            } catch (Exception ignored) {}
-        }
-        if (cond.contains("Vol >= ")) {
-            try {
-                double threshold = Double.parseDouble(cond.split(">= ")[1].replace("%", "").split(" ")[0]);
-                return Math.abs(currentQuote.change24h) >= threshold ? 0 : 1;
-            } catch (Exception ignored) {}
-        }
-        if (cond.contains("Volume >= ")) {
-            return 1;
-        }
-        if (cond.contains("Touched ")) {
-            try {
-                double target = Double.parseDouble(cond.split("Touched ")[1].split(" ")[0]);
-                return currentQuote.priceUsd >= target ? 0 : 1;
-            } catch (Exception ignored) {}
-        }
-        return 1;
-    }
 }
