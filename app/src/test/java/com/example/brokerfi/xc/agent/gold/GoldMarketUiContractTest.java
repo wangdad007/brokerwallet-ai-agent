@@ -20,6 +20,11 @@ public class GoldMarketUiContractTest {
                     + "GoldMarketDetailActivity.java";
     private static final String DETAIL_LAYOUT_PATH =
             "app/src/main/res/layout/activity_gold_market_detail.xml";
+    private static final String POSITIONS_FRAGMENT_PATH =
+            "app/src/main/java/com/example/brokerfi/xc/agent/gold/ui/"
+                    + "GoldMyPositionsFragment.java";
+    private static final String POSITION_CARD_LAYOUT_PATH =
+            "app/src/main/res/layout/item_gold_position_card.xml";
 
     @Test
     public void chatDisplaysExistingSummaryAndUsesSavedContextForFollowUps() throws Exception {
@@ -287,6 +292,37 @@ public class GoldMarketUiContractTest {
                 "marketAiContext = GoldMarketResearchPromptBuilder.buildContext",
                 "null",
                 "askResearch.run()");
+    }
+
+    @Test
+    public void positionCardsUseSharesAndAmmValuation() throws Exception {
+        String fragment = readUtf8(POSITIONS_FRAGMENT_PATH);
+        String cardLayout = readUtf8(POSITION_CARD_LAYOUT_PATH);
+
+        assertTrue(cardLayout.contains("150.00 份额"));
+        assertTrue(fragment.contains(
+                "GoldPositionValuation.calculateMarket"));
+        assertTrue(fragment.contains(
+                "GoldPositionValuation.calculatePortfolio"));
+        assertTrue(fragment.contains("\" 份额\""));
+        assertFalse("Top summary must not add raw shares as BKC",
+                fragment.contains("totalInvested"));
+
+        String renderPositions = blockAfter(
+                fragment, "private void renderPositions()");
+        assertTrue(renderPositions.contains("shareText.append"));
+        assertTrue(renderPositions.contains("sideNames.add"));
+        assertTrue(renderPositions.contains("marketValue.isComplete()"));
+        assertFalse("Position rendering must not stop at first side",
+                renderPositions.contains("break"));
+
+        String updateSummary = blockAfter(
+                fragment, "private void updateSummary()");
+        assertTrue(updateSummary.contains(
+                "GoldPositionValuation.calculatePortfolio(myPositions)"));
+        assertTrue(updateSummary.contains(
+                "portfolio.getUnavailableMarketCount()"));
+        assertTrue(updateSummary.contains("animateBalance(totalBkc.doubleValue())"));
     }
 
     private static void assertQuoteFetchFailureStillRunsResearch(

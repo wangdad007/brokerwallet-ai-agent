@@ -26,6 +26,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.example.brokerfi.R;
 import com.example.brokerfi.xc.StorageUtil;
 import com.example.brokerfi.xc.agent.gold.data.GoldMarketRepository;
+import com.example.brokerfi.xc.agent.gold.logic.GoldPositionValuation;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -45,12 +46,13 @@ public class GoldMyPositionsFragment extends Fragment {
     private LinearLayout positionsContainer;
     private SwipeRefreshLayout swipeRefresh;
     private double lastTotalBalance = 0.0;
-
     private boolean isLoading = false;
 
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater,
+                             @Nullable ViewGroup container,
+                             @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_gold_my_positions, container, false);
         tvTotalBalance = view.findViewById(R.id.tv_total_balance);
         tvTotalPnl = view.findViewById(R.id.tv_total_pnl);
@@ -71,7 +73,7 @@ public class GoldMyPositionsFragment extends Fragment {
     private void loadPositions() {
         if (isLoading) return;
         isLoading = true;
-        
+
         myPositions.clear();
         positionsContainer.removeAllViews();
         repository.getGameCount(new GoldMarketRepository.DataCallback<Integer>() {
@@ -100,20 +102,15 @@ public class GoldMyPositionsFragment extends Fragment {
         synchronized (myPositions) {
             myPositions.clear();
         }
-        
+
         for (int i = 1; i <= count; i++) {
             repository.getGameInfo(i, new GoldMarketRepository.DataCallback<GoldMarketRepository.GameModel>() {
                 @Override
                 public void onSuccess(GoldMarketRepository.GameModel model) {
                     synchronized (myPositions) {
-                        boolean exists = false;
-                        for (GoldMarketRepository.GameModel g : myPositions) {
-                            if (g.id == model.id) { exists = true; break; }
-                        }
-                        if (!exists && hasUserShares(model)) {
+                        if (!containsGame(model.id) && hasUserShares(model)) {
                             myPositions.add(model);
                         }
-                        
                         responseCount[0]++;
                         if (responseCount[0] >= count) {
                             isLoading = false;
@@ -136,6 +133,13 @@ public class GoldMyPositionsFragment extends Fragment {
         }
     }
 
+    private boolean containsGame(int id) {
+        for (GoldMarketRepository.GameModel game : myPositions) {
+            if (game.id == id) return true;
+        }
+        return false;
+    }
+
     private void finishLoading() {
         renderPositions();
         updateSummary();
@@ -155,29 +159,44 @@ public class GoldMyPositionsFragment extends Fragment {
         LayoutInflater inflater = LayoutInflater.from(requireContext());
         for (GoldMarketRepository.GameModel game : myPositions) {
             View card = inflater.inflate(R.layout.item_gold_position_card, positionsContainer, false);
-            
+
             TextView tvTitle = card.findViewById(R.id.tv_position_title);
-            String rawTitle = game.desc != null && !game.desc.isEmpty() ? game.desc : "博弈池 #" + game.id;
+            String rawTitle = game.desc != null && !game.desc.isEmpty()
+                    ? game.desc
+                    : "博弈池 #" + game.id;
             tvTitle.setText(styleMarketTitle(rawTitle));
-            
-            int sideIndex = -1;
-            for (int i = 0; i < game.myShares.size(); i++) {
-                if (game.myShares.get(i).compareTo(BigInteger.ZERO) > 0) {
-                    sideIndex = i;
-                    break;
+
+            TextView tvSide = card.findViewById(R.id.tv_position_side);
+            TextView tvShares = card.findViewById(R.id.tv_shares);
+            TextView tvCurrentValue = card.findViewById(R.id.tv_current_value);
+            TextView tvProfit = card.findViewById(R.id.tv_profit);
+
+            List<String> sideNames = new ArrayList<>();
+            StringBuilder shareText = new StringBuilder();
+            if (game.myShares != null) {
+                for (int i = 0; i < game.myShares.size(); i++) {
+                    BigInteger shares = game.myShares.get(i);
+                    if (shares == null || shares.compareTo(BigInteger.ZERO) <= 0) continue;
+                    String sideName = optionNameFor(game, i);
+                    sideNames.add(sideName);
+                    if (shareText.length() > 0) shareText.append('\n');
+                    shareText.append(sideName)
+                            .append(' ')
+                            .append(GoldNoteMarketActivity.formatShareAmount(shares))
+                            .append(" 份额");
                 }
             }
-            
-            if (sideIndex != -1) {
-                String sideName = game.optionNames.get(sideIndex);
-                TextView tvSide = card.findViewById(R.id.tv_position_side);
-                tvSide.setText(sideName);
-                tvSide.setTextColor(sideName.contains("YES") || sideName.contains("涨") ? 0xFF047857 : Color.RED);
-                
-                ((TextView) card.findViewById(R.id.tv_shares)).setText(GoldNoteMarketActivity.formatShareAmount(game.myShares.get(sideIndex)) + " 份");
-                ((TextView) card.findViewById(R.id.tv_current_value)).setText("-- BKC");
-                ((TextView) card.findViewById(R.id.tv_profit)).setText("--");
-            }
+
+            tvSide.setText(joinSideNames(sideNames));
+            tvSide.setTextColor(resolveSideColor(sideNames));
+            tvShares.setText(shareText.length() == 0 ? "0 份额" : shareText.toString());
+
+            GoldPositionValuation.MarketValue marketValue =
+                    GoldPositionValuation.calculateMarket(game);
+            tvCurrentValue.setText(marketValue.isComplete()
+                    ? GoldNoteMarketActivity.formatBkc(marketValue.getValueWei()) + " BKC"
+                    : "暂不可估值");
+            tvProfit.setText(game.isRefunded ? "已退款" : (game.isResolved ? "已结算" : "AMM估值"));
 
             card.setOnClickListener(v -> {
                 Intent intent = new Intent(requireContext(), GoldMarketDetailActivity.class);
@@ -189,17 +208,60 @@ public class GoldMyPositionsFragment extends Fragment {
     }
 
     private void updateSummary() {
-        BigDecimal totalInvested = BigDecimal.ZERO;
-        for (GoldMarketRepository.GameModel game : myPositions) {
-            for (BigInteger shares : game.myShares) {
-                if (shares != null && shares.compareTo(BigInteger.ZERO) > 0) {
-                    totalInvested = totalInvested.add(new BigDecimal(shares).divide(new BigDecimal("1000000000000000000"), 2, RoundingMode.HALF_UP));
-                }
-            }
+        GoldPositionValuation.PortfolioValue portfolio =
+                GoldPositionValuation.calculatePortfolio(myPositions);
+        BigDecimal totalBkc = new BigDecimal(portfolio.getValueWei())
+                .divide(new BigDecimal("1000000000000000000"), 6, RoundingMode.HALF_UP);
+
+        animateBalance(totalBkc.doubleValue());
+        String subtitle = String.format(Locale.getDefault(),
+                "累计参与 %d 个博弈池", myPositions.size());
+        if (portfolio.getUnavailableMarketCount() > 0) {
+            subtitle += String.format(Locale.getDefault(),
+                    " · %d 个持仓暂未计入估值",
+                    portfolio.getUnavailableMarketCount());
         }
-        
-        animateBalance(totalInvested.doubleValue());
-        tvTotalPnl.setText(String.format(Locale.getDefault(), "累计参与 %d 个博弈池", myPositions.size()));
+        tvTotalPnl.setText(subtitle);
+    }
+
+    private String optionNameFor(GoldMarketRepository.GameModel game, int index) {
+        if (game.optionNames != null && index < game.optionNames.size()) {
+            return game.optionNames.get(index);
+        }
+        return "选项" + (index + 1);
+    }
+
+    private String joinSideNames(List<String> sideNames) {
+        if (sideNames.isEmpty()) return "--";
+        StringBuilder joined = new StringBuilder();
+        for (String sideName : sideNames) {
+            if (joined.length() > 0) joined.append(" / ");
+            joined.append(sideName);
+        }
+        return joined.toString();
+    }
+
+    private int resolveSideColor(List<String> sideNames) {
+        if (sideNames.isEmpty()) return Color.BLACK;
+        boolean allPositive = true;
+        boolean allNegative = true;
+        for (String sideName : sideNames) {
+            String raw = sideName == null ? "" : sideName;
+            String normalized = raw.toUpperCase(Locale.US);
+            boolean positive = normalized.contains("YES")
+                    || normalized.contains("UP")
+                    || raw.contains("涨")
+                    || raw.contains("达标");
+            boolean negative = normalized.contains("NO")
+                    || normalized.contains("DOWN")
+                    || raw.contains("跌")
+                    || raw.contains("未达标");
+            allPositive = allPositive && positive;
+            allNegative = allNegative && negative;
+        }
+        if (allPositive) return 0xFF047857;
+        if (allNegative) return Color.RED;
+        return Color.BLACK;
     }
 
     private void animateBalance(double target) {
