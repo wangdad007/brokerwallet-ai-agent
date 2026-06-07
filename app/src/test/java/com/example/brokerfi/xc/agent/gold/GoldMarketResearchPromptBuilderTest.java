@@ -12,6 +12,7 @@ import java.util.Arrays;
 import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class GoldMarketResearchPromptBuilderTest {
@@ -43,6 +44,20 @@ public class GoldMarketResearchPromptBuilderTest {
                 "行情来源: gold-api.com",
                 "行情更新时间: 2026-06-07 10:30:00",
                 "延迟行情: 是");
+    }
+
+    @Test
+    public void noProbabilityComplementsRoundedYesProbability() {
+        GoldMarketRepository.GameModel game = completeGame();
+        game.virtualReserves = Arrays.asList(amount("1"), amount("1999"));
+
+        String context = GoldMarketResearchPromptBuilder.buildContext(
+                game, NOW_MILLIS, completeQuote());
+
+        assertContains(context,
+                "YES 概率: 0.1%",
+                "NO 概率: 99.9%");
+        assertFalse(context.contains("NO 概率: 100.0%"));
     }
 
     @Test

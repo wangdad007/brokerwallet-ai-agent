@@ -102,15 +102,21 @@ public final class GoldMarketResearchPromptBuilder {
             return;
         }
 
-        lines.add("YES 概率: " + formatPercent(yesReserve, total));
-        lines.add("NO 概率: " + formatPercent(noReserve, total));
+        BigDecimal yesPercent = roundedPercent(yesReserve, total);
+        BigDecimal noPercent = new BigDecimal("100.0").subtract(yesPercent);
+        lines.add("YES 概率: " + formatPercent(yesPercent));
+        lines.add("NO 概率: " + formatPercent(noPercent));
     }
 
-    private static String formatPercent(BigInteger reserve, BigInteger total) {
-        BigDecimal percent = new BigDecimal(reserve)
+    private static BigDecimal roundedPercent(
+            BigInteger reserve, BigInteger total) {
+        return new BigDecimal(reserve)
                 .multiply(BigDecimal.valueOf(100))
                 .divide(new BigDecimal(total), 1, RoundingMode.HALF_UP);
-        return String.format(Locale.US, "%.1f%%", percent.doubleValue());
+    }
+
+    private static String formatPercent(BigDecimal percent) {
+        return percent.setScale(1, RoundingMode.UNNECESSARY).toPlainString() + "%";
     }
 
     private static String formatBkc(BigInteger value) {
