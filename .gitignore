@@ -87,3 +87,7 @@ lint/tmp/
 *~
 *.bak
 Thumbs.db
+
+# Agent workspaces and visual design drafts
+.worktrees/
+.superpowers/
