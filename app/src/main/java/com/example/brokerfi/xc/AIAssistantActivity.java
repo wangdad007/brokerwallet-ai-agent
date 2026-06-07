@@ -18,8 +18,12 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.example.brokerfi.R;
 import com.example.brokerfi.xc.agent.AgentManager;
 import com.example.brokerfi.xc.agent.DeepSeekClient;
+import com.example.brokerfi.xc.agent.gold.logic.GoldMarketResearchPromptBuilder;
 
 public class AIAssistantActivity extends AppCompatActivity {
+
+    public static final String EXTRA_MARKET_CONTEXT = "MARKET_CONTEXT";
+    public static final String EXTRA_INITIAL_AI_SUMMARY = "INITIAL_AI_SUMMARY";
 
     private LinearLayout messageContainer;
     private ScrollView messageScroll;
@@ -61,8 +65,12 @@ public class AIAssistantActivity extends AppCompatActivity {
 
         sendBtn.setOnClickListener(v -> onSendMessage());
 
+        marketContext = getIntent().getStringExtra(EXTRA_MARKET_CONTEXT);
+        String initialSummary = getIntent().getStringExtra(EXTRA_INITIAL_AI_SUMMARY);
         String initialPrompt = getIntent().getStringExtra("INITIAL_PROMPT");
-        if (!TextUtils.isEmpty(initialPrompt)) {
+        if (!TextUtils.isEmpty(initialSummary)) {
+            addMessage("AI", initialSummary);
+        } else if (!TextUtils.isEmpty(initialPrompt)) {
             marketContext = initialPrompt;
             submitQuestion(initialPrompt);
         }
@@ -106,10 +114,7 @@ public class AIAssistantActivity extends AppCompatActivity {
     }
 
     private String buildQuestionForAi(String text) {
-        if (TextUtils.isEmpty(marketContext) || marketContext.equals(text)) {
-            return text;
-        }
-        return marketContext + "\n\n【用户追问】\n" + text;
+        return GoldMarketResearchPromptBuilder.withFollowUp(marketContext, text);
     }
 
     // ============= UI 辅助 =============
