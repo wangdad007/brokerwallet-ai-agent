@@ -29,6 +29,13 @@ import java.math.BigInteger;
 import java.util.Locale;
 
 public class GoldMarketDetailActivity extends AppCompatActivity {
+    private static final String MARKET_AI_LOADING_MESSAGE =
+            "专属分析仍在生成，请稍后";
+    private static final String MARKET_AI_CONFIG_GUIDANCE =
+            "请先在博弈池列表顶部的总 AI 助手中配置 DeepSeek API Key。";
+    private static final String MARKET_AI_FAILURE_MESSAGE =
+            "AI 分析暂时不可用，请稍后重新进入页面。";
+
     private GoldMarketRepository repository;
     private GoldMarketRepository.GameModel currentGame;
     private int gameId;
@@ -43,6 +50,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
     private boolean marketAiRequested = false;
     private String marketAiContext = "";
     private String marketAiSummary = "";
+    private String marketAiUnavailableMessage = "";
     private boolean destroyed = false;
     private final Handler timerHandler = new Handler(Looper.getMainLooper());
     private final Runnable countdownRunnable = new Runnable() {
@@ -99,16 +107,19 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         findViewById(R.id.btn_buy_up).setOnClickListener(v -> showBuyDialog(0, "YES"));
         findViewById(R.id.btn_buy_down).setOnClickListener(v -> showBuyDialog(1, "NO"));
         cardMarketAi.setOnClickListener(v -> {
-            if (marketAiContext.isEmpty() || marketAiSummary.isEmpty()) {
-                Toast.makeText(this, "专属分析仍在生成，请稍后", Toast.LENGTH_SHORT).show();
+            if (!marketAiContext.isEmpty() && !marketAiSummary.isEmpty()) {
+                Intent intent = new Intent(this, AIAssistantActivity.class);
+                intent.putExtra(AIAssistantActivity.EXTRA_MARKET_CONTEXT,
+                        marketAiContext);
+                intent.putExtra(AIAssistantActivity.EXTRA_INITIAL_AI_SUMMARY,
+                        marketAiSummary);
+                startActivity(intent);
                 return;
             }
-            Intent intent = new Intent(this, AIAssistantActivity.class);
-            intent.putExtra(AIAssistantActivity.EXTRA_MARKET_CONTEXT,
-                    marketAiContext);
-            intent.putExtra(AIAssistantActivity.EXTRA_INITIAL_AI_SUMMARY,
-                    marketAiSummary);
-            startActivity(intent);
+            String message = marketAiUnavailableMessage.isEmpty()
+                    ? MARKET_AI_LOADING_MESSAGE
+                    : marketAiUnavailableMessage;
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
         });
         btnClaimReward.setOnClickListener(v -> claimReward());
         btnAdminResolve.setOnClickListener(v -> performAdminResolve());
@@ -210,9 +221,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         marketAiRequested = true;
 
         if (!DeepSeekClient.isConfigured()) {
-            tvMarketAiStatus.setText("未配置");
-            tvMarketAiSummary.setText(
-                    "请先在博弈池列表顶部的总 AI 助手中配置 DeepSeek API Key。");
+            showMarketAiUnavailable("未配置", MARKET_AI_CONFIG_GUIDANCE);
             return;
         }
 
@@ -234,12 +243,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
 
                     @Override
                     public void onError(String error) {
-                        runOnUiThread(() -> {
-                            if (destroyed) return;
-                            tvMarketAiStatus.setText("暂不可用");
-                            tvMarketAiSummary.setText(
-                                    "AI 分析暂时不可用，请稍后重新进入页面。");
-                        });
+                        showMarketAiUnavailable("暂不可用", MARKET_AI_FAILURE_MESSAGE);
                     }
                 });
 
@@ -255,7 +259,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
             public void onError(String error) {
                 marketAiContext = GoldMarketResearchPromptBuilder.buildContext(
                         gameForResearch, System.currentTimeMillis(), null);
-                askResearch.run();
+                showMarketAiUnavailable("暂不可用", MARKET_AI_FAILURE_MESSAGE);
             }
         });
     }
@@ -264,14 +268,23 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         runOnUiThread(() -> {
             if (destroyed) return;
             if (answer == null || answer.trim().isEmpty()) {
-                tvMarketAiStatus.setText("暂不可用");
-                tvMarketAiSummary.setText(
-                        "AI 分析暂时不可用，请稍后重新进入页面。");
+                showMarketAiUnavailable("暂不可用", MARKET_AI_FAILURE_MESSAGE);
                 return;
             }
+            marketAiUnavailableMessage = "";
             marketAiSummary = answer;
             tvMarketAiStatus.setText("DeepSeek ›");
             tvMarketAiSummary.setText(answer);
+        });
+    }
+
+    private void showMarketAiUnavailable(String status, String message) {
+        runOnUiThread(() -> {
+            if (destroyed) return;
+            marketAiSummary = "";
+            marketAiUnavailableMessage = message;
+            tvMarketAiStatus.setText(status);
+            tvMarketAiSummary.setText(message);
         });
     }
 

@@ -96,6 +96,16 @@ public class GoldMarketUiContractTest {
                 buttonBackground(layout, "btn_buy_down"));
         assertEquals("@drawable/custom_button_background",
                 buttonBackground(layout, "btn_buy_up"));
+        assertMatchingButtonAttribute(
+                layout, "android:textColor", "#FFFFFF");
+        assertMatchingButtonAttribute(
+                layout, "android:textStyle", "bold");
+        assertMatchingButtonAttribute(
+                layout, "android:layout_height", "52dp");
+        assertMatchingButtonAttribute(
+                layout, "android:layout_weight", "1");
+        assertMatchingButtonAttribute(
+                layout, "android:textAllCaps", "false");
     }
 
     @Test
@@ -106,9 +116,23 @@ public class GoldMarketUiContractTest {
         assertTrue(source.contains("private boolean marketAiRequested = false;"));
         assertTrue(source.contains("private String marketAiContext = \"\";"));
         assertTrue(source.contains("private String marketAiSummary = \"\";"));
+        assertTrue(source.contains("private String marketAiUnavailableMessage = \"\";"));
+        assertEquals(
+                "Only field initialization may set the one-shot flag false",
+                1,
+                countOccurrences(source, "marketAiRequested = false"));
+        assertEquals(
+                "The one-shot request flag must only be claimed once",
+                1,
+                countOccurrences(source, "marketAiRequested = true"));
 
         String onCreate = blockAfter(source, "protected void onCreate");
         assertInOrder(onCreate, "DeepSeekClient.init(this)", "initViews()");
+
+        String loadMarketData = blockAfter(source, "private void loadMarketData()");
+        assertFalse(
+                "Refresh/load paths must not reset the one-shot AI flag",
+                loadMarketData.contains("marketAiRequested = false"));
 
         String loadSuccess = blockAfter(
                 source,
@@ -124,6 +148,10 @@ public class GoldMarketUiContractTest {
                 "if (marketAiRequested || currentGame == null) return",
                 "marketAiRequested = true",
                 "DeepSeekClient.isConfigured()");
+        assertTrue(
+                "The one-shot flag must be claimed before quote/network work",
+                request.indexOf("marketAiRequested = true")
+                        < request.indexOf("GoldAdvisoryManager.fetchPrice"));
         assertTrue(request.contains("GoldAdvisoryManager.fetchPrice"));
         assertEquals(
                 "Quote success and error must both build market context",
@@ -135,8 +163,7 @@ public class GoldMarketUiContractTest {
                 "GoldMarketResearchPromptBuilder.buildSummaryPrompt(marketAiContext)"));
         assertTrue(request.contains(
                 "AgentManager.getInstance().askGoldResearch"));
-        assertTrue(request.contains("runOnUiThread"));
-        assertTrue(request.contains("AI 分析暂时不可用"));
+        assertTrue(source.contains("AI 分析暂时不可用"));
         assertTrue(source.contains(
                 "请先在博弈池列表顶部的总 AI 助手中配置 DeepSeek API Key。"));
 
@@ -144,17 +171,60 @@ public class GoldMarketUiContractTest {
                 source, "private void showMarketAiSummary(String answer)");
         assertTrue(renderSummary.contains("runOnUiThread"));
         assertTrue(renderSummary.contains("marketAiSummary = answer"));
+        assertTrue(renderSummary.contains("marketAiUnavailableMessage = \"\""));
 
         String initViews = blockAfter(source, "private void initViews()");
         assertTrue(initViews.contains("R.id.card_market_ai"));
         assertTrue(initViews.contains("EXTRA_MARKET_CONTEXT"));
         assertTrue(initViews.contains("EXTRA_INITIAL_AI_SUMMARY"));
-        assertTrue(initViews.contains("专属分析仍在生成，请稍后"));
+        assertTrue(source.contains("专属分析仍在生成，请稍后"));
 
+        String holdingsBlock = blockAfter(
+                source, "if (currentGame.myShares != null)");
+        String holdingsLoop = blockAfter(
+                holdingsBlock,
+                "for (int i = 0; i < currentGame.myShares.size(); i++)");
+        assertTrue(holdingsLoop.contains("shares.signum() <= 0"));
+        assertTrue(holdingsLoop.contains("holdings.append('\\n')"));
+        assertTrue(holdingsLoop.contains("holdings.append(optionName)"));
+        assertTrue(holdingsLoop.contains("\" 份额\""));
+        assertFalse("Holdings loop must not stop after the first side",
+                holdingsLoop.contains("break"));
+        assertFalse("Holdings loop must not encode one-sided else-if logic",
+                holdingsLoop.contains("else if"));
+        assertFalse("Holdings loop must not return after the first side",
+                holdingsLoop.contains("return"));
+    }
+
+    @Test
+    public void detailActivityUsesUsefulUnavailableMessageInsteadOfLoadingToast()
+            throws Exception {
+        String source = readUtf8(DETAIL_ACTIVITY_PATH);
+
+        String initViews = blockAfter(source, "private void initViews()");
+        String clickHandler = blockAfter(
+                initViews, "cardMarketAi.setOnClickListener");
+        assertTrue(clickHandler.contains("marketAiUnavailableMessage"));
+        assertTrue(clickHandler.contains("MARKET_AI_LOADING_MESSAGE"));
+        assertTrue(source.contains("专属分析仍在生成，请稍后"));
+        assertTrue(clickHandler.contains("startActivity(intent)"));
+
+        String request = blockAfter(
+                source, "private void requestMarketAiSummaryOnce()");
+        assertTrue(request.contains(
+                "showMarketAiUnavailable(\"未配置\", MARKET_AI_CONFIG_GUIDANCE)"));
+        assertTrue(request.contains(
+                "showMarketAiUnavailable(\"暂不可用\", MARKET_AI_FAILURE_MESSAGE)"));
+
+        String unavailable = blockAfter(
+                source,
+                "private void showMarketAiUnavailable(String status, String message)");
+        assertTrue(unavailable.contains("marketAiUnavailableMessage = message"));
+        assertTrue(unavailable.contains("tvMarketAiSummary.setText(message)"));
         assertTrue(source.contains(
-                "for (int i = 0; i < currentGame.myShares.size(); i++)"));
-        assertTrue(source.contains("\" 份额\""));
-        assertFalse(source.contains("else if (s1.compareTo"));
+                "private static final String MARKET_AI_CONFIG_GUIDANCE"));
+        assertTrue(source.contains(
+                "private static final String MARKET_AI_FAILURE_MESSAGE"));
     }
 
     private static String readUtf8(String path) throws Exception {
@@ -175,11 +245,28 @@ public class GoldMarketUiContractTest {
     }
 
     private static String buttonBackground(String layout, String buttonId) {
+        return buttonAttribute(layout, buttonId, "android:background");
+    }
+
+    private static void assertMatchingButtonAttribute(
+            String layout, String attributeName, String expectedValue) {
+        assertEquals(expectedValue,
+                buttonAttribute(layout, "btn_buy_up", attributeName));
+        assertEquals(
+                "Button attribute must match between YES and NO: "
+                        + attributeName,
+                buttonAttribute(layout, "btn_buy_up", attributeName),
+                buttonAttribute(layout, "btn_buy_down", attributeName));
+    }
+
+    private static String buttonAttribute(
+            String layout, String buttonId, String attributeName) {
         String buttonTag = openingTag(layout, "Button", buttonId);
         Pattern background = Pattern.compile(
-                "android:background\\s*=\\s*\"([^\"]+)\"");
+                Pattern.quote(attributeName) + "\\s*=\\s*\"([^\"]+)\"");
         java.util.regex.Matcher matcher = background.matcher(buttonTag);
-        assertTrue("Missing button background for: " + buttonId, matcher.find());
+        assertTrue("Missing " + attributeName + " for: " + buttonId,
+                matcher.find());
         return matcher.group(1);
     }
 
