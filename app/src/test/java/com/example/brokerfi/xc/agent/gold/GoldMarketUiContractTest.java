@@ -215,6 +215,7 @@ public class GoldMarketUiContractTest {
                 "showMarketAiUnavailable(\"未配置\", MARKET_AI_CONFIG_GUIDANCE)"));
         assertTrue(request.contains(
                 "showMarketAiUnavailable(\"暂不可用\", MARKET_AI_FAILURE_MESSAGE)"));
+        assertQuoteFetchFailureStillRunsResearch(request);
 
         String unavailable = blockAfter(
                 source,
@@ -225,6 +226,25 @@ public class GoldMarketUiContractTest {
                 "private static final String MARKET_AI_CONFIG_GUIDANCE"));
         assertTrue(source.contains(
                 "private static final String MARKET_AI_FAILURE_MESSAGE"));
+    }
+
+    private static void assertQuoteFetchFailureStillRunsResearch(
+            String requestSource) {
+        String quoteFetchCallback = blockAfter(
+                requestSource, "GoldAdvisoryManager.fetchPrice");
+        String quoteError = blockAfter(
+                quoteFetchCallback, "public void onError(String error)");
+        assertInOrder(
+                quoteError,
+                "marketAiContext = GoldMarketResearchPromptBuilder.buildContext",
+                "gameForResearch",
+                "System.currentTimeMillis()",
+                "null",
+                "askResearch.run()");
+        assertFalse(
+                "Quote errors should still ask AI with null-quote context; "
+                        + "only AI request errors mark the card unavailable",
+                quoteError.contains("showMarketAiUnavailable"));
     }
 
     private static String readUtf8(String path) throws Exception {

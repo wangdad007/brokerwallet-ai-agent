@@ -259,7 +259,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
             public void onError(String error) {
                 marketAiContext = GoldMarketResearchPromptBuilder.buildContext(
                         gameForResearch, System.currentTimeMillis(), null);
-                showMarketAiUnavailable("暂不可用", MARKET_AI_FAILURE_MESSAGE);
+                askResearch.run();
             }
         });
     }
