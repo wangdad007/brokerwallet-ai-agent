@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.regex.Pattern;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class GoldMarketUiContractTest {
@@ -24,23 +25,76 @@ public class GoldMarketUiContractTest {
                 "public static final String EXTRA_MARKET_CONTEXT = \"MARKET_CONTEXT\";"));
         assertTrue(source.contains(
                 "public static final String EXTRA_INITIAL_AI_SUMMARY = \"INITIAL_AI_SUMMARY\";"));
-        assertTrue(source.contains("addMessage(\"AI\", initialSummary)"));
-        assertTrue(source.contains("GoldMarketResearchPromptBuilder.withFollowUp"));
         assertTrue(source.contains("INITIAL_PROMPT"));
+        assertTrue(source.contains("!isBlank(initialSummary)"));
+        assertTrue(source.contains("!isBlank(initialPrompt)"));
+
+        String summaryBranch = blockAfter(source, "if (!isBlank(initialSummary))");
+        assertTrue(summaryBranch.contains("addMessage(\"AI\", initialSummary)"));
+        assertFalse(
+                "Pre-generated summaries must never trigger another AI request",
+                summaryBranch.contains("submitQuestion("));
+
+        String legacyBranch = blockAfter(source, "else if (!isBlank(initialPrompt))");
+        assertInOrder(
+                legacyBranch,
+                "marketContext = initialPrompt",
+                "legacyInitialPromptInFlight = true",
+                "submitQuestion(initialPrompt)");
+
+        String bypassBranch = blockAfter(
+                source, "if (legacyInitialPromptInFlight)");
+        assertInOrder(
+                bypassBranch,
+                "legacyInitialPromptInFlight = false",
+                "return text");
+
         assertTrue(
-                "Legacy initial prompt must only be submitted when no AI summary was supplied",
-                summaryDisplayGuardsLegacySubmission(source));
+                "Normal follow-ups must delegate context and text to the shared builder",
+                Pattern.compile(
+                        "return\\s+GoldMarketResearchPromptBuilder\\.withFollowUp\\s*"
+                                + "\\(\\s*marketContext\\s*,\\s*text\\s*\\)\\s*;")
+                        .matcher(source)
+                        .find());
+        assertTrue(
+                "Blank checks must reject whitespace-only values",
+                Pattern.compile(
+                        "isBlank\\s*\\(\\s*String\\s+value\\s*\\).*?"
+                                + "TextUtils\\.isEmpty\\(value\\).*?"
+                                + "value\\.trim\\(\\)\\.isEmpty\\(\\)",
+                        Pattern.DOTALL)
+                        .matcher(source)
+                        .find());
     }
 
-    private static boolean summaryDisplayGuardsLegacySubmission(String source) {
-        Pattern guardedLegacySubmission = Pattern.compile(
-                "if\\s*\\(\\s*!TextUtils\\.isEmpty\\(initialSummary\\)\\s*\\)\\s*\\{"
-                        + "[^}]*addMessage\\(\\s*\"AI\"\\s*,\\s*initialSummary\\s*\\)\\s*;"
-                        + "\\s*}\\s*else\\s+if\\s*"
-                        + "\\(\\s*!TextUtils\\.isEmpty\\(initialPrompt\\)\\s*\\)\\s*\\{"
-                        + "[^}]*submitQuestion\\(\\s*initialPrompt\\s*\\)\\s*;",
-                Pattern.DOTALL);
-        return guardedLegacySubmission.matcher(source).find();
+    private static String blockAfter(String source, String marker) {
+        int markerIndex = source.indexOf(marker);
+        assertTrue("Missing source marker: " + marker, markerIndex >= 0);
+        int openingBrace = source.indexOf('{', markerIndex + marker.length());
+        assertTrue("Missing block after: " + marker, openingBrace >= 0);
+
+        int depth = 0;
+        for (int index = openingBrace; index < source.length(); index++) {
+            char current = source.charAt(index);
+            if (current == '{') {
+                depth++;
+            } else if (current == '}') {
+                depth--;
+                if (depth == 0) {
+                    return source.substring(openingBrace + 1, index);
+                }
+            }
+        }
+        throw new AssertionError("Unclosed block after: " + marker);
+    }
+
+    private static void assertInOrder(String source, String... expectedParts) {
+        int previousIndex = -1;
+        for (String expected : expectedParts) {
+            int index = source.indexOf(expected, previousIndex + 1);
+            assertTrue("Expected source part in order: " + expected, index >= 0);
+            previousIndex = index;
+        }
     }
 
     private static Path repoPath(String path) {

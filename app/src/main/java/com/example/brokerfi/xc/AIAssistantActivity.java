@@ -34,6 +34,7 @@ public class AIAssistantActivity extends AppCompatActivity {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private volatile boolean destroyed = false;
     private boolean requestInFlight = false;
+    private boolean legacyInitialPromptInFlight = false;
     private String marketContext = "";
 
     @Override
@@ -65,13 +66,15 @@ public class AIAssistantActivity extends AppCompatActivity {
 
         sendBtn.setOnClickListener(v -> onSendMessage());
 
-        marketContext = getIntent().getStringExtra(EXTRA_MARKET_CONTEXT);
+        String initialMarketContext = getIntent().getStringExtra(EXTRA_MARKET_CONTEXT);
+        marketContext = isBlank(initialMarketContext) ? "" : initialMarketContext;
         String initialSummary = getIntent().getStringExtra(EXTRA_INITIAL_AI_SUMMARY);
         String initialPrompt = getIntent().getStringExtra("INITIAL_PROMPT");
-        if (!TextUtils.isEmpty(initialSummary)) {
+        if (!isBlank(initialSummary)) {
             addMessage("AI", initialSummary);
-        } else if (!TextUtils.isEmpty(initialPrompt)) {
+        } else if (!isBlank(initialPrompt)) {
             marketContext = initialPrompt;
+            legacyInitialPromptInFlight = true;
             submitQuestion(initialPrompt);
         }
     }
@@ -85,9 +88,13 @@ public class AIAssistantActivity extends AppCompatActivity {
     }
 
     private void submitQuestion(String text) {
-        if (!ensureIdle()) return;
+        if (!ensureIdle()) {
+            legacyInitialPromptInFlight = false;
+            return;
+        }
         addMessage("你", text);
         if (!DeepSeekClient.isConfigured()) {
+            legacyInitialPromptInFlight = false;
             addMessage("AI", "请先配置 DeepSeek API Key（点击齿轮图标）。");
             return;
         }
@@ -114,7 +121,15 @@ public class AIAssistantActivity extends AppCompatActivity {
     }
 
     private String buildQuestionForAi(String text) {
+        if (legacyInitialPromptInFlight) {
+            legacyInitialPromptInFlight = false;
+            return text;
+        }
         return GoldMarketResearchPromptBuilder.withFollowUp(marketContext, text);
+    }
+
+    private static boolean isBlank(String value) {
+        return TextUtils.isEmpty(value) || value.trim().isEmpty();
     }
 
     // ============= UI 辅助 =============
