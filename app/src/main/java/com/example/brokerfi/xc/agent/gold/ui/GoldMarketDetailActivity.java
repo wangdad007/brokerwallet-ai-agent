@@ -35,6 +35,8 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
             "请先在博弈池列表顶部的总 AI 助手中配置 DeepSeek API Key。";
     private static final String MARKET_AI_FAILURE_MESSAGE =
             "AI 分析暂时不可用，请稍后重新进入页面。";
+    private static final String MARKET_AI_LOAD_FAILURE_MESSAGE =
+            "博弈池加载失败，暂时无法生成专属分析。";
 
     private GoldMarketRepository repository;
     private GoldMarketRepository.GameModel currentGame;
@@ -51,6 +53,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
     private String marketAiContext = "";
     private String marketAiSummary = "";
     private String marketAiUnavailableMessage = "";
+    private int marketDataLoadSeq = 0;
     private boolean destroyed = false;
     private final Handler timerHandler = new Handler(Looper.getMainLooper());
     private final Runnable countdownRunnable = new Runnable() {
@@ -126,9 +129,11 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
     }
 
     private void loadMarketData() {
+        final int requestId = ++marketDataLoadSeq;
         repository.getGameInfo(gameId, new GoldMarketRepository.DataCallback<GoldMarketRepository.GameModel>() {
             @Override
             public void onSuccess(GoldMarketRepository.GameModel model) {
+                if (requestId != marketDataLoadSeq) return;
                 if (destroyed) return;
                 currentGame = model;
                 updateUI();
@@ -138,8 +143,12 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
 
             @Override
             public void onError(String error) {
+                if (requestId != marketDataLoadSeq) return;
                 if (destroyed) return;
                 Toast.makeText(GoldMarketDetailActivity.this, "加载失败: " + error, Toast.LENGTH_SHORT).show();
+                if (marketAiSummary.isEmpty()) {
+                    showMarketAiUnavailable("加载失败", MARKET_AI_LOAD_FAILURE_MESSAGE);
+                }
                 swipeRefresh.setRefreshing(false);
             }
         });
@@ -250,6 +259,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         GoldAdvisoryManager.fetchPrice(new GoldAdvisoryManager.AdvisoryCallback() {
             @Override
             public void onSuccess(GoldAdvisoryManager.Advisory quote) {
+                if (destroyed) return;
                 marketAiContext = GoldMarketResearchPromptBuilder.buildContext(
                         gameForResearch, System.currentTimeMillis(), quote);
                 askResearch.run();
@@ -257,6 +267,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
 
             @Override
             public void onError(String error) {
+                if (destroyed) return;
                 marketAiContext = GoldMarketResearchPromptBuilder.buildContext(
                         gameForResearch, System.currentTimeMillis(), null);
                 askResearch.run();

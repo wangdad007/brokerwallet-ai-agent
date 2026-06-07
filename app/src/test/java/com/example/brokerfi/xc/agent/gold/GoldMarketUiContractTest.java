@@ -228,6 +228,67 @@ public class GoldMarketUiContractTest {
                 "private static final String MARKET_AI_FAILURE_MESSAGE"));
     }
 
+    @Test
+    public void detailActivityIgnoresStaleLoadsAndGuardsAsyncAiWork()
+            throws Exception {
+        String source = readUtf8(DETAIL_ACTIVITY_PATH);
+
+        assertTrue(source.contains("private int marketDataLoadSeq = 0;"));
+        assertTrue(source.contains(
+                "private static final String MARKET_AI_LOAD_FAILURE_MESSAGE"));
+
+        String loadMarketData = blockAfter(source, "private void loadMarketData()");
+        assertInOrder(
+                loadMarketData,
+                "final int requestId = ++marketDataLoadSeq",
+                "repository.getGameInfo");
+
+        String loadSuccess = blockAfter(
+                loadMarketData,
+                "public void onSuccess(GoldMarketRepository.GameModel model)");
+        assertInOrder(
+                loadSuccess,
+                "if (requestId != marketDataLoadSeq) return",
+                "if (destroyed) return",
+                "currentGame = model",
+                "updateUI()",
+                "requestMarketAiSummaryOnce()",
+                "swipeRefresh.setRefreshing(false)");
+
+        String loadError = blockAfter(
+                loadMarketData, "public void onError(String error)");
+        assertInOrder(
+                loadError,
+                "if (requestId != marketDataLoadSeq) return",
+                "if (destroyed) return",
+                "Toast.makeText",
+                "if (marketAiSummary.isEmpty())",
+                "showMarketAiUnavailable(\"加载失败\", MARKET_AI_LOAD_FAILURE_MESSAGE)",
+                "swipeRefresh.setRefreshing(false)");
+
+        String request = blockAfter(
+                source, "private void requestMarketAiSummaryOnce()");
+        String quoteFetchCallback = blockAfter(
+                request, "GoldAdvisoryManager.fetchPrice");
+        String quoteSuccess = blockAfter(
+                quoteFetchCallback,
+                "public void onSuccess(GoldAdvisoryManager.Advisory quote)");
+        assertInOrder(
+                quoteSuccess,
+                "if (destroyed) return",
+                "marketAiContext = GoldMarketResearchPromptBuilder.buildContext",
+                "askResearch.run()");
+
+        String quoteError = blockAfter(
+                quoteFetchCallback, "public void onError(String error)");
+        assertInOrder(
+                quoteError,
+                "if (destroyed) return",
+                "marketAiContext = GoldMarketResearchPromptBuilder.buildContext",
+                "null",
+                "askResearch.run()");
+    }
+
     private static void assertQuoteFetchFailureStillRunsResearch(
             String requestSource) {
         String quoteFetchCallback = blockAfter(
@@ -236,6 +297,7 @@ public class GoldMarketUiContractTest {
                 quoteFetchCallback, "public void onError(String error)");
         assertInOrder(
                 quoteError,
+                "if (destroyed) return",
                 "marketAiContext = GoldMarketResearchPromptBuilder.buildContext",
                 "gameForResearch",
                 "System.currentTimeMillis()",
