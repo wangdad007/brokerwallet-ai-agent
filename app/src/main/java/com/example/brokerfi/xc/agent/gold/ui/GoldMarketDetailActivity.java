@@ -1,6 +1,7 @@
 package com.example.brokerfi.xc.agent.gold.ui;
 
 import android.app.AlertDialog;
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -15,10 +16,14 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.example.brokerfi.R;
+import com.example.brokerfi.xc.AIAssistantActivity;
 import com.example.brokerfi.xc.StorageUtil;
+import com.example.brokerfi.xc.agent.AgentManager;
+import com.example.brokerfi.xc.agent.DeepSeekClient;
 import com.example.brokerfi.xc.agent.gold.data.GoldMarketRepository;
-import com.example.brokerfi.xc.agent.gold.logic.GoldGameJudge;
 import com.example.brokerfi.xc.agent.gold.logic.GoldAdvisoryManager;
+import com.example.brokerfi.xc.agent.gold.logic.GoldGameJudge;
+import com.example.brokerfi.xc.agent.gold.logic.GoldMarketResearchPromptBuilder;
 
 import java.math.BigInteger;
 import java.util.Locale;
@@ -31,9 +36,13 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
 
     private TextView tvMarketDesc, tvMarketCondition;
     private TextView tvUpPct, tvDownPct, tvPool, tvCountdown, tvHoldings;
-    private View barUp, barDown, btnClaimReward, btnAdminResolve;
+    private TextView tvMarketAiStatus, tvMarketAiSummary;
+    private View barUp, barDown, btnClaimReward, btnAdminResolve, cardMarketAi;
     private SwipeRefreshLayout swipeRefresh;
 
+    private boolean marketAiRequested = false;
+    private String marketAiContext = "";
+    private String marketAiSummary = "";
     private boolean destroyed = false;
     private final Handler timerHandler = new Handler(Looper.getMainLooper());
     private final Runnable countdownRunnable = new Runnable() {
@@ -50,6 +59,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         setContentView(R.layout.activity_gold_market_detail);
         destroyed = false;
 
+        DeepSeekClient.init(this);
         gameId = getIntent().getIntExtra("GAME_ID", 1);
         currentPrivateKey = StorageUtil.getCurrentPrivatekey(this);
         repository = new GoldMarketRepository(this, currentPrivateKey);
@@ -75,8 +85,11 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         tvPool = findViewById(R.id.tv_pool);
         tvCountdown = findViewById(R.id.tv_countdown);
         tvHoldings = findViewById(R.id.tv_holdings);
+        tvMarketAiStatus = findViewById(R.id.tv_market_ai_status);
+        tvMarketAiSummary = findViewById(R.id.tv_market_ai_summary);
         barUp = findViewById(R.id.bar_up);
         barDown = findViewById(R.id.bar_down);
+        cardMarketAi = findViewById(R.id.card_market_ai);
         btnClaimReward = findViewById(R.id.btn_claim_reward);
         btnAdminResolve = findViewById(R.id.btn_admin_resolve);
 
@@ -85,6 +98,18 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
 
         findViewById(R.id.btn_buy_up).setOnClickListener(v -> showBuyDialog(0, "YES"));
         findViewById(R.id.btn_buy_down).setOnClickListener(v -> showBuyDialog(1, "NO"));
+        cardMarketAi.setOnClickListener(v -> {
+            if (marketAiContext.isEmpty() || marketAiSummary.isEmpty()) {
+                Toast.makeText(this, "专属分析仍在生成，请稍后", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            Intent intent = new Intent(this, AIAssistantActivity.class);
+            intent.putExtra(AIAssistantActivity.EXTRA_MARKET_CONTEXT,
+                    marketAiContext);
+            intent.putExtra(AIAssistantActivity.EXTRA_INITIAL_AI_SUMMARY,
+                    marketAiSummary);
+            startActivity(intent);
+        });
         btnClaimReward.setOnClickListener(v -> claimReward());
         btnAdminResolve.setOnClickListener(v -> performAdminResolve());
     }
@@ -96,6 +121,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
                 if (destroyed) return;
                 currentGame = model;
                 updateUI();
+                requestMarketAiSummaryOnce();
                 swipeRefresh.setRefreshing(false);
             }
 
@@ -157,18 +183,96 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
 
         tvPool.setText("总池子: " + GoldNoteMarketActivity.formatBkc(currentGame.totalPool) + " BKC");
 
-        if (currentGame.myShares != null && currentGame.myShares.size() >= 2) {
-            BigInteger s0 = currentGame.myShares.get(0);
-            BigInteger s1 = currentGame.myShares.get(1);
-            if (s0.compareTo(BigInteger.ZERO) > 0) {
-                tvHoldings.setText(currentGame.optionNames.get(0) + ": " + GoldNoteMarketActivity.formatShareAmount(s0) + " 份");
-            } else if (s1.compareTo(BigInteger.ZERO) > 0) {
-                tvHoldings.setText(currentGame.optionNames.get(1) + ": " + GoldNoteMarketActivity.formatShareAmount(s1) + " 份");
-            } else {
-                tvHoldings.setText("暂无持仓");
+        StringBuilder holdings = new StringBuilder();
+        if (currentGame.myShares != null) {
+            for (int i = 0; i < currentGame.myShares.size(); i++) {
+                BigInteger shares = currentGame.myShares.get(i);
+                if (shares == null || shares.signum() <= 0) continue;
+                if (holdings.length() > 0) holdings.append('\n');
+                String optionName = currentGame.optionNames != null
+                        && i < currentGame.optionNames.size()
+                        ? currentGame.optionNames.get(i)
+                        : "选项" + (i + 1);
+                holdings.append(optionName)
+                        .append(": ")
+                        .append(GoldNoteMarketActivity.formatShareAmount(shares))
+                        .append(" 份额");
             }
         }
+        tvHoldings.setText(holdings.length() == 0
+                ? "暂无持仓"
+                : holdings.toString());
         updateCountdown();
+    }
+
+    private void requestMarketAiSummaryOnce() {
+        if (marketAiRequested || currentGame == null) return;
+        marketAiRequested = true;
+
+        if (!DeepSeekClient.isConfigured()) {
+            tvMarketAiStatus.setText("未配置");
+            tvMarketAiSummary.setText(
+                    "请先在博弈池列表顶部的总 AI 助手中配置 DeepSeek API Key。");
+            return;
+        }
+
+        GoldMarketRepository.GameModel gameForResearch = currentGame;
+        tvMarketAiStatus.setText("分析中");
+        Runnable askResearch = () -> AgentManager.getInstance().askGoldResearch(
+                GoldMarketResearchPromptBuilder.buildSummaryPrompt(marketAiContext),
+                new AgentManager.AnalysisCallback() {
+                    @Override
+                    public void onBrokerReport(AgentManager.BrokerReport report) {
+                        String answer = report == null ? "" : report.rawAnalysis;
+                        showMarketAiSummary(answer);
+                    }
+
+                    @Override
+                    public void onGeneralAdvice(String question, String answer) {
+                        showMarketAiSummary(answer);
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        runOnUiThread(() -> {
+                            if (destroyed) return;
+                            tvMarketAiStatus.setText("暂不可用");
+                            tvMarketAiSummary.setText(
+                                    "AI 分析暂时不可用，请稍后重新进入页面。");
+                        });
+                    }
+                });
+
+        GoldAdvisoryManager.fetchPrice(new GoldAdvisoryManager.AdvisoryCallback() {
+            @Override
+            public void onSuccess(GoldAdvisoryManager.Advisory quote) {
+                marketAiContext = GoldMarketResearchPromptBuilder.buildContext(
+                        gameForResearch, System.currentTimeMillis(), quote);
+                askResearch.run();
+            }
+
+            @Override
+            public void onError(String error) {
+                marketAiContext = GoldMarketResearchPromptBuilder.buildContext(
+                        gameForResearch, System.currentTimeMillis(), null);
+                askResearch.run();
+            }
+        });
+    }
+
+    private void showMarketAiSummary(String answer) {
+        runOnUiThread(() -> {
+            if (destroyed) return;
+            if (answer == null || answer.trim().isEmpty()) {
+                tvMarketAiStatus.setText("暂不可用");
+                tvMarketAiSummary.setText(
+                        "AI 分析暂时不可用，请稍后重新进入页面。");
+                return;
+            }
+            marketAiSummary = answer;
+            tvMarketAiStatus.setText("DeepSeek ›");
+            tvMarketAiSummary.setText(answer);
+        });
     }
 
     private void updateCountdown() {
