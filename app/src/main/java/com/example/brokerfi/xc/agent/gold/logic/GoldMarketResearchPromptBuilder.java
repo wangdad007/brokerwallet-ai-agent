@@ -48,13 +48,23 @@ public final class GoldMarketResearchPromptBuilder {
                 lines.add("总池子: " + formatBkc(game.totalPool) + " BKC");
             }
 
-            if (game.deadlineSec <= 0) {
+            if (game.isRefunded) {
+                lines.add("市场状态: 已退款");
+            } else if (game.isResolved) {
+                lines.add("市场状态: 已结算");
+            } else if (game.deadlineSec <= 0) {
                 lines.add("市场状态: 数据不可用");
-                lines.add("剩余时间: 数据不可用");
             } else {
                 long remainingSeconds = remainingSeconds(
                         game.deadlineSec, nowMillis);
                 lines.add("市场状态: " + marketStatus(game, remainingSeconds));
+            }
+
+            if (game.deadlineSec <= 0) {
+                lines.add("剩余时间: 数据不可用");
+            } else {
+                long remainingSeconds = remainingSeconds(
+                        game.deadlineSec, nowMillis);
                 lines.add("剩余时间: " + formatRemainingTime(remainingSeconds));
             }
             addHoldings(lines, game.optionNames, game.myShares);

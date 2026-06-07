@@ -193,6 +193,36 @@ public class GoldMarketResearchPromptBuilderTest {
     }
 
     @Test
+    public void resolvedStatusTakesPrecedenceOverMissingDeadline() {
+        GoldMarketRepository.GameModel game = completeGame();
+        game.isResolved = true;
+        game.deadlineSec = 0;
+
+        String context = GoldMarketResearchPromptBuilder.buildContext(
+                game, NOW_MILLIS, null);
+
+        assertContains(context,
+                "市场状态: 已结算",
+                "剩余时间: 数据不可用");
+        assertFalse(context.contains("市场状态: 数据不可用"));
+    }
+
+    @Test
+    public void refundedStatusTakesPrecedenceOverMissingDeadline() {
+        GoldMarketRepository.GameModel game = completeGame();
+        game.isRefunded = true;
+        game.deadlineSec = 0;
+
+        String context = GoldMarketResearchPromptBuilder.buildContext(
+                game, NOW_MILLIS, null);
+
+        assertContains(context,
+                "市场状态: 已退款",
+                "剩余时间: 数据不可用");
+        assertFalse(context.contains("市场状态: 数据不可用"));
+    }
+
+    @Test
     public void positiveSubSecondDeadlineRoundsUpAndRemainsActive() {
         GoldMarketRepository.GameModel game = completeGame();
         game.deadlineSec = NOW_MILLIS + 1L;
