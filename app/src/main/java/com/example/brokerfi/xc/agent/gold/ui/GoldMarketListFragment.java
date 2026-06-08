@@ -29,6 +29,7 @@ import android.text.style.AbsoluteSizeSpan;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.StyleSpan;
 import android.graphics.Typeface;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -164,20 +165,49 @@ public class GoldMarketListFragment extends Fragment {
         for (GoldMarketRepository.GameModel game : availableGames) {
             View card = inflater.inflate(R.layout.item_gold_market_card, marketListContainer, false);
             
-            // Enhanced Typography for Title
+            // 1. 博弈池名称 (由模版自动生成，已存储在 desc 中)
             TextView tvTitle = card.findViewById(R.id.tv_market_title);
             String rawTitle = game.desc != null && !game.desc.isEmpty() ? game.desc : "博弈池 #" + game.id;
             tvTitle.setText(styleMarketTitle(rawTitle));
             
-            ((TextView) card.findViewById(R.id.tv_market_condition)).setText("判定条件: " + game.condition);
+            // 2. 博弈池总投入的 BKC
             ((TextView) card.findViewById(R.id.tv_total_pool)).setText(GoldNoteMarketActivity.formatBkc(game.totalPool) + " BKC");
 
+            // 3. 博弈池状态 (已到期、进行中)
             long remaining = GoldNoteMarketActivity.remainingSecondsUntilDeadline(game.deadlineSec, System.currentTimeMillis());
             String status = remaining > 0 ? "进行中" : "已到期";
-            ((TextView) card.findViewById(R.id.tv_market_status)).setText(status);
-            ((TextView) card.findViewById(R.id.tv_market_status)).setTextColor(remaining > 0 ? 0xFF047857 : Color.RED);
+            TextView tvStatus = card.findViewById(R.id.tv_market_status);
+            tvStatus.setText(status);
+            tvStatus.setTextColor(remaining > 0 ? 0xFF047857 : Color.RED);
 
+            // 4. 博弈池截止时间
             ((TextView) card.findViewById(R.id.tv_deadline)).setText(GoldNoteMarketActivity.formatRemainingTime(remaining));
+
+            // 5. 各个选项的占比 (Polymarket 风格)
+            if (game.virtualReserves != null && game.virtualReserves.size() >= 2) {
+                BigInteger res0 = game.virtualReserves.get(0);
+                BigInteger res1 = game.virtualReserves.get(1);
+                BigInteger total = res0.add(res1);
+                if (total.compareTo(BigInteger.ZERO) > 0) {
+                    // 合约中 reserveNO 是 res0, reserveYES 是 res1
+                    // 胜率计算: YES 概率 = res0 / total (因为 res0 越大，YES 价格越高)
+                    float yesRatio = (float) (res0.doubleValue() / total.doubleValue() * 100);
+                    float noRatio = 100 - yesRatio;
+
+                    View barYes = card.findViewById(R.id.bar_yes);
+                    View barNo = card.findViewById(R.id.bar_no);
+                    LinearLayout.LayoutParams lpYes = (LinearLayout.LayoutParams) barYes.getLayoutParams();
+                    lpYes.weight = yesRatio;
+                    barYes.setLayoutParams(lpYes);
+
+                    LinearLayout.LayoutParams lpNo = (LinearLayout.LayoutParams) barNo.getLayoutParams();
+                    lpNo.weight = noRatio;
+                    barNo.setLayoutParams(lpNo);
+
+                    ((TextView) card.findViewById(R.id.tv_yes_pct)).setText(String.format(Locale.getDefault(), "YES %.1f%%", yesRatio));
+                    ((TextView) card.findViewById(R.id.tv_no_pct)).setText(String.format(Locale.getDefault(), "%.1f%% NO", noRatio));
+                }
+            }
 
             card.setOnClickListener(v -> {
                 Intent intent = new Intent(requireContext(), GoldMarketDetailActivity.class);

@@ -5,8 +5,9 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.text.InputType;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -29,14 +30,10 @@ import java.math.BigInteger;
 import java.util.Locale;
 
 public class GoldMarketDetailActivity extends AppCompatActivity {
-    private static final String MARKET_AI_LOADING_MESSAGE =
-            "专属分析仍在生成，请稍后";
-    private static final String MARKET_AI_CONFIG_GUIDANCE =
-            "请先在博弈池列表顶部的总 AI 助手中配置 DeepSeek API Key。";
-    private static final String MARKET_AI_FAILURE_MESSAGE =
-            "AI 分析暂时不可用，请稍后重新进入页面。";
-    private static final String MARKET_AI_LOAD_FAILURE_MESSAGE =
-            "博弈池加载失败，暂时无法生成专属分析。";
+    private static final String MARKET_AI_LOADING_MESSAGE = "专属分析仍在生成，请稍后";
+    private static final String MARKET_AI_CONFIG_GUIDANCE = "请先在博弈池列表顶部的总 AI 助手中配置 DeepSeek API Key。";
+    private static final String MARKET_AI_FAILURE_MESSAGE = "AI 分析暂时不可用，请稍后重新进入页面。";
+    private static final String MARKET_AI_LOAD_FAILURE_MESSAGE = "博弈池加载失败，暂时无法生成专属分析。";
 
     private GoldMarketRepository repository;
     private GoldMarketRepository.GameModel currentGame;
@@ -112,16 +109,12 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         cardMarketAi.setOnClickListener(v -> {
             if (!marketAiContext.isEmpty() && !marketAiSummary.isEmpty()) {
                 Intent intent = new Intent(this, AIAssistantActivity.class);
-                intent.putExtra(AIAssistantActivity.EXTRA_MARKET_CONTEXT,
-                        marketAiContext);
-                intent.putExtra(AIAssistantActivity.EXTRA_INITIAL_AI_SUMMARY,
-                        marketAiSummary);
+                intent.putExtra(AIAssistantActivity.EXTRA_MARKET_CONTEXT, marketAiContext);
+                intent.putExtra(AIAssistantActivity.EXTRA_INITIAL_AI_SUMMARY, marketAiSummary);
                 startActivity(intent);
                 return;
             }
-            String message = marketAiUnavailableMessage.isEmpty()
-                    ? MARKET_AI_LOADING_MESSAGE
-                    : marketAiUnavailableMessage;
+            String message = marketAiUnavailableMessage.isEmpty() ? MARKET_AI_LOADING_MESSAGE : marketAiUnavailableMessage;
             Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
         });
         btnClaimReward.setOnClickListener(v -> claimReward());
@@ -133,8 +126,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         repository.getGameInfo(gameId, new GoldMarketRepository.DataCallback<GoldMarketRepository.GameModel>() {
             @Override
             public void onSuccess(GoldMarketRepository.GameModel model) {
-                if (requestId != marketDataLoadSeq) return;
-                if (destroyed) return;
+                if (requestId != marketDataLoadSeq || destroyed) return;
                 currentGame = model;
                 updateUI();
                 requestMarketAiSummaryOnce();
@@ -143,8 +135,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
 
             @Override
             public void onError(String error) {
-                if (requestId != marketDataLoadSeq) return;
-                if (destroyed) return;
+                if (requestId != marketDataLoadSeq || destroyed) return;
                 Toast.makeText(GoldMarketDetailActivity.this, "加载失败: " + error, Toast.LENGTH_SHORT).show();
                 if (marketAiSummary.isEmpty()) {
                     showMarketAiUnavailable("加载失败", MARKET_AI_LOAD_FAILURE_MESSAGE);
@@ -157,29 +148,28 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
     private void updateUI() {
         if (currentGame == null) return;
 
-        tvMarketDesc.setText("博弈池 #" + currentGame.id);
-        tvMarketCondition.setText("结算条件: " + currentGame.condition);
+        // 1. 博弈池名称 (自动生成并存储在 desc 中)
+        tvMarketDesc.setText(currentGame.desc != null ? currentGame.desc : "博弈池 #" + currentGame.id);
+        tvMarketCondition.setText("判定逻辑: " + currentGame.condition);
 
         long rem = GoldNoteMarketActivity.remainingSecondsUntilDeadline(currentGame.deadlineSec, System.currentTimeMillis());
         
-        // 如果已到期但未结算，显示系统判定的结果 (If-Else Logic)
         if (rem <= 0 && !currentGame.isResolved && !currentGame.isRefunded) {
             GoldAdvisoryManager.fetchPrice(new GoldAdvisoryManager.AdvisoryCallback() {
                 @Override
                 public void onSuccess(GoldAdvisoryManager.Advisory quote) {
                     int winner = GoldGameJudge.evaluateGameWinner(currentGame, quote);
                     String winnerName = winner == 0 ? "看涨 (YES)" : "看跌 (NO)";
-                    tvMarketCondition.setText("结算条件: " + currentGame.condition + "\n系统判定胜出: " + winnerName);
+                    tvMarketCondition.setText("判定逻辑: " + currentGame.condition + "\n系统判定胜出: " + winnerName);
                 }
                 @Override public void onError(String error) {}
             });
         }
 
         btnClaimReward.setVisibility(currentGame.isResolved || currentGame.isRefunded ? View.VISIBLE : View.GONE);
-        
-        // 如果博弈已到期但尚未开奖，显示管理员判定按钮
         btnAdminResolve.setVisibility(rem <= 0 && !currentGame.isResolved && !currentGame.isRefunded ? View.VISIBLE : View.GONE);
         
+        // 2. 选项占比可视化
         if (currentGame.virtualReserves != null && currentGame.virtualReserves.size() >= 2) {
             BigInteger res0 = currentGame.virtualReserves.get(0);
             BigInteger res1 = currentGame.virtualReserves.get(1);
@@ -190,7 +180,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
                 tvUpPct.setText(String.format(Locale.getDefault(), "%.1f%%", p0));
                 tvDownPct.setText(String.format(Locale.getDefault(), "%.1f%%", p1));
                 
-                int screenWidth = getResources().getDisplayMetrics().widthPixels - 64;
+                int screenWidth = getResources().getDisplayMetrics().widthPixels - 80; // adjusted for padding
                 LinearLayout.LayoutParams lp0 = (LinearLayout.LayoutParams) barUp.getLayoutParams();
                 lp0.width = (int) (screenWidth * p0 / 100);
                 barUp.setLayoutParams(lp0);
@@ -201,27 +191,24 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
             }
         }
 
+        // 3. 总投入的 BKC
         tvPool.setText("总池子: " + GoldNoteMarketActivity.formatBkc(currentGame.totalPool) + " BKC");
 
+        // 4. 持仓汇总
         StringBuilder holdings = new StringBuilder();
         if (currentGame.myShares != null) {
             for (int i = 0; i < currentGame.myShares.size(); i++) {
                 BigInteger shares = currentGame.myShares.get(i);
                 if (shares == null || shares.signum() <= 0) continue;
                 if (holdings.length() > 0) holdings.append('\n');
-                String optionName = currentGame.optionNames != null
-                        && i < currentGame.optionNames.size()
-                        ? currentGame.optionNames.get(i)
-                        : "选项" + (i + 1);
-                holdings.append(optionName)
-                        .append(": ")
-                        .append(GoldNoteMarketActivity.formatShareAmount(shares))
-                        .append(" 份额");
+                String optionName = (currentGame.optionNames != null && i < currentGame.optionNames.size())
+                        ? currentGame.optionNames.get(i) : "选项" + (i + 1);
+                holdings.append(optionName).append(": ").append(GoldNoteMarketActivity.formatShareAmount(shares)).append(" 份额");
             }
         }
-        tvHoldings.setText(holdings.length() == 0
-                ? "暂无持仓"
-                : holdings.toString());
+        tvHoldings.setText(holdings.length() == 0 ? "暂无持仓" : holdings.toString());
+        
+        // 5. 截止时间
         updateCountdown();
     }
 
@@ -239,37 +226,20 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         Runnable askResearch = () -> AgentManager.getInstance().askGoldResearch(
                 GoldMarketResearchPromptBuilder.buildSummaryPrompt(marketAiContext),
                 new AgentManager.AnalysisCallback() {
-                    @Override
-                    public void onBrokerReport(AgentManager.BrokerReport report) {
-                        String answer = report == null ? "" : report.rawAnalysis;
-                        showMarketAiSummary(answer);
-                    }
-
-                    @Override
-                    public void onGeneralAdvice(String question, String answer) {
-                        showMarketAiSummary(answer);
-                    }
-
-                    @Override
-                    public void onError(String error) {
-                        showMarketAiUnavailable("暂不可用", MARKET_AI_FAILURE_MESSAGE);
-                    }
+                    @Override public void onBrokerReport(AgentManager.BrokerReport report) { showMarketAiSummary(report == null ? "" : report.rawAnalysis); }
+                    @Override public void onGeneralAdvice(String question, String answer) { showMarketAiSummary(answer); }
+                    @Override public void onError(String error) { showMarketAiUnavailable("暂不可用", MARKET_AI_FAILURE_MESSAGE); }
                 });
 
         GoldAdvisoryManager.fetchPrice(new GoldAdvisoryManager.AdvisoryCallback() {
-            @Override
-            public void onSuccess(GoldAdvisoryManager.Advisory quote) {
+            @Override public void onSuccess(GoldAdvisoryManager.Advisory quote) {
                 if (destroyed) return;
-                marketAiContext = GoldMarketResearchPromptBuilder.buildContext(
-                        gameForResearch, System.currentTimeMillis(), quote);
+                marketAiContext = GoldMarketResearchPromptBuilder.buildContext(gameForResearch, System.currentTimeMillis(), quote);
                 askResearch.run();
             }
-
-            @Override
-            public void onError(String error) {
+            @Override public void onError(String error) {
                 if (destroyed) return;
-                marketAiContext = GoldMarketResearchPromptBuilder.buildContext(
-                        gameForResearch, System.currentTimeMillis(), null);
+                marketAiContext = GoldMarketResearchPromptBuilder.buildContext(gameForResearch, System.currentTimeMillis(), null);
                 askResearch.run();
             }
         });
@@ -305,56 +275,63 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         tvCountdown.setText(GoldNoteMarketActivity.formatRemainingTime(rem));
     }
 
-    private void showBuyDialog(int optionId, String name) {
+    private void showBuyDialog(int optionId, String optionName) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("买入 " + name);
-        final EditText input = new EditText(this);
-        input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
-        input.setHint("输入 BKC 数量");
-        builder.setView(input);
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_gold_buy_confirm, null);
+        builder.setView(dialogView);
 
-        builder.setPositiveButton("确认买入", (dialog, which) -> {
-            String val = input.getText().toString();
+        TextView tvTitle = dialogView.findViewById(R.id.tv_buy_title);
+        tvTitle.setText("确认下注 " + optionName);
+        EditText etAmount = dialogView.findViewById(R.id.et_buy_amount);
+        Button btnConfirm = dialogView.findViewById(R.id.btn_buy_confirm);
+        Button btnCancel = dialogView.findViewById(R.id.btn_buy_cancel);
+
+        AlertDialog dialog = builder.create();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
+
+        btnConfirm.setOnClickListener(v -> {
+            String val = etAmount.getText().toString().trim();
             if (val.isEmpty()) return;
             BigInteger wei = GoldMarketRepository.parseTokenAmountToWei(val);
             if (wei == null) return;
 
+            dialog.dismiss();
             repository.buyShares(gameId, optionId, wei, new GoldMarketRepository.TxCallback() {
                 @Override public void onTxSent(String txHash) {
-                    Toast.makeText(GoldMarketDetailActivity.this, "交易已提交", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(GoldMarketDetailActivity.this, "交易已发送", Toast.LENGTH_SHORT).show();
                 }
                 @Override public void onConfirmed(String msg) {
-                    Toast.makeText(GoldMarketDetailActivity.this, "购买成功", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(GoldMarketDetailActivity.this, "下注成功", Toast.LENGTH_SHORT).show();
                     loadMarketData();
                 }
                 @Override public void onError(String err) {
-                    Toast.makeText(GoldMarketDetailActivity.this, err, Toast.LENGTH_LONG).show();
+                    Toast.makeText(GoldMarketDetailActivity.this, "失败: " + err, Toast.LENGTH_LONG).show();
                 }
             });
         });
-        builder.setNegativeButton("取消", null);
-        builder.show();
+
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+        dialog.show();
     }
 
     private void performAdminResolve() {
         if (currentGame == null) return;
-        
-        Toast.makeText(this, "正在获取行情进行判定...", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "获取行情中...", Toast.LENGTH_SHORT).show();
         GoldAdvisoryManager.fetchPrice(new GoldAdvisoryManager.AdvisoryCallback() {
             @Override
             public void onSuccess(GoldAdvisoryManager.Advisory quote) {
-                // 调用新的裁判类进行 if-else 判定
                 int winner = GoldGameJudge.evaluateGameWinner(currentGame, quote);
                 String winnerName = winner == 0 ? "YES" : "NO";
-                
                 new AlertDialog.Builder(GoldMarketDetailActivity.this)
-                    .setTitle("系统判定结果")
-                    .setMessage("根据当前行情，胜出方为: " + winnerName + "\n确定要执行链上结算吗？")
-                    .setPositiveButton("立即开奖", (d, w) -> {
+                    .setTitle("管理员开奖确认")
+                    .setMessage("判定结果: " + winnerName + "\n确定要执行链上结算吗？")
+                    .setPositiveButton("立即结算", (d, w) -> {
                         repository.resolveGame(gameId, winner, new GoldMarketRepository.TxCallback() {
                             @Override public void onTxSent(String txHash) {}
                             @Override public void onConfirmed(String msg) {
-                                Toast.makeText(GoldMarketDetailActivity.this, "链上结算完成！", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(GoldMarketDetailActivity.this, "结算完成！", Toast.LENGTH_SHORT).show();
                                 loadMarketData();
                             }
                             @Override public void onError(String err) {
@@ -362,11 +339,10 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
                             }
                         });
                     })
-                    .setNegativeButton("取消", null)
-                    .show();
+                    .setNegativeButton("取消", null).show();
             }
             @Override public void onError(String error) {
-                Toast.makeText(GoldMarketDetailActivity.this, "行情获取失败，无法判定", Toast.LENGTH_SHORT).show();
+                Toast.makeText(GoldMarketDetailActivity.this, "获取失败", Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -381,7 +357,6 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
             }
         }
         if (opt == -1) return;
-
         repository.claimReward(gameId, opt, new GoldMarketRepository.TxCallback() {
             @Override public void onTxSent(String txHash) {}
             @Override public void onConfirmed(String msg) {
