@@ -4,117 +4,90 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract PolymarketGold is Ownable, ReentrancyGuard {
+contract PolymarketGoldV2 is Ownable, ReentrancyGuard {
 
+// ------------------- 核心数据结构 (IPFS 瘦身版) -------------------
     struct Game {
         uint256 id;
-        string desc;
-        string condition;
-        string avatarUrl;
-        string detailedInfo;
-        string[] optionNames;
-        uint256 totalPool;     // 总资金池 (wei)
-        bool isResolved;
-        uint8 winningOption;
-        uint256 deadlineSec;
+        string ipfsCID;        // 【核心改动】指向 IPFS 上 JSON 规则文件的唯一指纹 (借书码)
+        uint256 totalPool;     // 总锁仓资金 (Wei)
+        bool isResolved;       // 是否已开奖
+        uint8 winningOption;   // 赢家选项 (0: YES, 1: NO)
+        uint256 deadlineSec;   // 绝对截止时间戳
         bool isRefunded;
 
-        // FPMM (恒定乘积做市商) 核心储备金
-        uint256 reserveYES; // 0号选项储备
-        uint256 reserveNO;  // 1号选项储备
+        // AMM 自动做市商的储备池
+        uint256 reserveYES;
+        uint256 reserveNO;
     }
 
     uint256 public gameCount;
     mapping(uint256 => Game) public games;
 
-    // gameId => user => optionId => 持有的 YES/NO 币数量
+    // 用户持仓: gameId => userAddress => optionId => 持有的 YES 或 NO 币数量
     mapping(uint256 => mapping(address => mapping(uint8 => uint256))) public userShares;
 
-    event GameCreated(uint256 indexed gameId, string desc, uint256 liquidity);
+    // 事件中也只记录 CID，极大节省上链成本
+    event GameCreated(uint256 indexed gameId, string ipfsCID, uint256 liquidity);
     event SharesBought(uint256 indexed gameId, address indexed buyer, uint8 optionId, uint256 amountIn, uint256 sharesOut);
-    event SharesSold(uint256 indexed gameId, address indexed seller, uint8 optionId, uint256 sharesIn, uint256 amountOut);
     event GameResolved(uint256 indexed gameId, uint8 winningOption);
     event RewardClaimed(uint256 indexed gameId, address indexed user, uint256 reward);
 
     constructor() Ownable(msg.sender) {}
 
-    /**
-     * @dev 内部工具：计算平方根，用于二次方程求解
-     */
-    function sqrt(uint256 y) internal pure returns (uint256 z) {
-        if (y > 3) {
-            z = y;
-            uint256 x = y / 2 + 1;
-            while (x < z) {
-                z = x;
-                x = (y / x + x) / 2;
-            }
-        } else if (y != 0) {
-        z = 1;
-    }
-    }
+    // ------------------- 核心业务逻辑 -------------------
 
     /**
-     * @dev 创建博弈池 (必须注入初始流动性 msg.value)
+     * @dev 1. 部署博弈池 (现在只需传入短小精悍的 CID 和倒计时时长)
      */
     function createGame(
-    string memory _desc,
-    string memory _condition,
-    string memory _avatarUrl,
-    string memory _detailedInfo,
-    string[] memory _optionNames,
+    string memory _ipfsCID,
     uint256 _durationSec
     ) external payable {
-    // Polymarket 的 AMM 数学模型最适合二元市场
-        require(_optionNames.length == 2, "Polymarket AMM requires exactly 2 options (YES/NO)");
-        require(msg.value > 0, "Must provide initial AMM liquidity");
+        require(bytes(_ipfsCID).length > 0, "CID cannot be empty");
+        require(msg.value > 0, "Must inject initial liquidity");
+        require(_durationSec > 0, "Duration must be > 0");
 
         gameCount++;
         Game storage newGame = games[gameCount];
         newGame.id = gameCount;
-        newGame.desc = _desc;
-        newGame.condition = _condition;
-        newGame.avatarUrl = _avatarUrl;
-        newGame.detailedInfo = _detailedInfo;
-        newGame.optionNames = _optionNames;
+        newGame.ipfsCID = _ipfsCID;
+
+        // 相对时间秒数转为绝对时间戳
         newGame.deadlineSec = block.timestamp + _durationSec;
 
         newGame.totalPool = msg.value;
-
-        // 初始状态：池子生成等量的 YES 币和 NO 币
         newGame.reserveYES = msg.value;
         newGame.reserveNO = msg.value;
 
-        emit GameCreated(gameCount, _desc, msg.value);
+        emit GameCreated(gameCount, _ipfsCID, msg.value);
     }
 
     /**
-     * @dev Polymarket 核心逻辑：买入份额 (通过恒定乘积 x * y = k 自动计算价格)
+     * @dev 2. 买入 YES 或 NO 币 (Polymarket 核心定价公式)
      */
     function buyShares(uint256 _gameId, uint8 _optionId) external payable nonReentrant {
         Game storage game = games[_gameId];
         uint256 amount = msg.value;
         require(amount > 0, "Amount must be > 0");
-        require(!game.isResolved && !game.isRefunded, "Game ended");
+        require(!game.isResolved && !game.isRefunded, "Game already ended");
         require(block.timestamp < game.deadlineSec, "Past deadline");
+        require(_optionId < 2, "Only YES(0) and NO(1) options allowed");
 
-        uint256 k = game.reserveYES * game.reserveNO; // 恒定乘积 k
-        uint256 sharesToUser = amount; // 存入 amount 将首先等量铸造 YES 和 NO 币
+        // 恒定乘积 k = x * y
+        uint256 k = game.reserveYES * game.reserveNO;
+        uint256 sharesToUser = amount;
 
         if (_optionId == 0) {
-        // 用户想要 YES 币：将铸造的 NO 币全部卖给池子
+        // 买入 YES 币：将等额 NO 币留给系统，换取 YES 币
             game.reserveNO += amount;
             uint256 newReserveYES = k / game.reserveNO;
-
-            // 池子找零给用户的 YES 币
             sharesToUser += (game.reserveYES - newReserveYES);
             game.reserveYES = newReserveYES;
-
         } else {
-    // 用户想要 NO 币：将铸造的 YES 币全部卖给池子
+    // 买入 NO 币：将等额 YES 币留给系统，换取 NO 币
         game.reserveYES += amount;
         uint256 newReserveNO = k / game.reserveYES;
-
         sharesToUser += (game.reserveNO - newReserveNO);
         game.reserveNO = newReserveNO;
     }
@@ -126,68 +99,18 @@ contract PolymarketGold is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Polymarket 核心逻辑：卖出平仓 (求解一元二次方程)
-     */
-    function sellShares(uint256 _gameId, uint8 _optionId, uint256 _shareAmount) external nonReentrant {
-        Game storage game = games[_gameId];
-        require(!game.isResolved && !game.isRefunded, "Game already ended");
-        require(userShares[_gameId][msg.sender][_optionId] >= _shareAmount, "Insufficient shares");
-
-        uint256 x;
-        uint256 y;
-
-        if (_optionId == 0) {
-            x = game.reserveYES;
-            y = game.reserveNO;
-        } else {
-        x = game.reserveNO;
-        y = game.reserveYES;
-    }
-
-        // 二次方程求解：用户退回 _shareAmount 个代币，能拿回多少基础代币(deltaB)？
-        // 方程: deltaB^2 - (x + y + shareAmount) * deltaB + y * shareAmount = 0
-        uint256 b = x + y + _shareAmount;
-        uint256 c = y * _shareAmount;
-
-        // 判别式：b^2 - 4ac
-        uint256 discriminant = (b * b) - (4 * c);
-
-        // 求根公式取较小根：(b - sqrt(discriminant)) / 2
-        uint256 returnAmount = (b - sqrt(discriminant)) / 2;
-
-        require(returnAmount > 0, "Return amount too small");
-        require(game.totalPool >= returnAmount, "Insufficient pool funds");
-
-        // 状态更新
-        userShares[_gameId][msg.sender][_optionId] -= _shareAmount;
-        game.totalPool -= returnAmount;
-
-        if (_optionId == 0) {
-            game.reserveYES = x + _shareAmount - returnAmount;
-            game.reserveNO = y - returnAmount;
-        } else {
-        game.reserveNO = x + _shareAmount - returnAmount;
-        game.reserveYES = y - returnAmount;
-    }
-
-        (bool success, ) = payable(msg.sender).call{value: returnAmount}("");
-        require(success, "Transfer failed");
-
-        emit SharesSold(_gameId, msg.sender, _optionId, _shareAmount, returnAmount);
-    }
-
-    /**
-     * @dev 本地 App 节点清算接口 (由 Admin 触发)
+     * @dev 3. 管理员/App后台本地裁决后写入开奖结果
      */
     function resolveGame(uint256 _gameId, uint8 _winningOption) external onlyOwner {
         Game storage game = games[_gameId];
         require(!game.isResolved && !game.isRefunded, "Already resolved");
+        require(block.timestamp >= game.deadlineSec, "Game not finished yet");
+        require(_winningOption < 2, "Invalid winning option");
 
         game.isResolved = true;
         game.winningOption = _winningOption;
 
-        // 【资金守恒机制】
-        // 获胜侧的代币 = 1 BKC。池子里尚未被用户买走的获胜代币，退还给做市商(Admin)。
+        // 【资金守恒】：将系统中没人买的赢方代币，退回给部署池子的人（做市商成本回收）
         uint256 poolWinningShares = (_winningOption == 0) ? game.reserveYES : game.reserveNO;
         if (poolWinningShares > 0) {
             (bool success, ) = payable(owner()).call{value: poolWinningShares}("");
@@ -198,7 +121,7 @@ contract PolymarketGold is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev 提取奖励：Polymarket 经典特征，1 获胜币 = 1 基础币
+     * @dev 4. 赢家 1:1 提取奖金
      */
     function claimReward(uint256 _gameId, uint8 _optionId) external nonReentrant {
         Game storage game = games[_gameId];
@@ -208,11 +131,9 @@ contract PolymarketGold is Ownable, ReentrancyGuard {
         uint256 shares = userShares[_gameId][msg.sender][_optionId];
         require(shares > 0, "No winning shares to claim");
 
-        // 1 YES 币 = 1 WEI 完美兑付
-        uint256 payout = shares;
+        uint256 payout = shares; // 1 个获胜币 = 1 Wei
 
-        // 清零防重入
-        userShares[_gameId][msg.sender][_optionId] = 0;
+        userShares[_gameId][msg.sender][_optionId] = 0; // 防重入清零
 
         (bool success, ) = payable(msg.sender).call{value: payout}("");
         require(success, "Transfer failed");
@@ -221,27 +142,29 @@ contract PolymarketGold is Ownable, ReentrancyGuard {
     }
 
     // =========================================================
-    // 视图层：严格对齐 Android Web3j 的 Java 解析器，免修改 App
+    // 视图层：返回值由原来的 11 个参数精简为 6 个核心参数
     // =========================================================
 
     function getGameInfo(uint256 _gameId) external view returns (
-    string memory desc, string memory condition, string memory avatarUrl, string memory detailedInfo,
-    string[] memory optionNames, uint8 optionCount, uint256 totalPool,
-    bool isResolved, uint8 winningOption, uint256 deadlineSec, bool isRefunded
+    string memory ipfsCID,
+    uint256 totalPool,
+    bool isResolved,
+    uint8 winningOption,
+    uint256 deadlineSec,
+    bool isRefunded
     ) {
         Game storage g = games[_gameId];
-        return (g.desc, g.condition, g.avatarUrl, g.detailedInfo, g.optionNames,
-        uint8(g.optionNames.length), g.totalPool, g.isResolved,
-        g.winningOption, g.deadlineSec, g.isRefunded);
+        return (
+        g.ipfsCID,
+        g.totalPool,
+        g.isResolved,
+        g.winningOption,
+        g.deadlineSec,
+        g.isRefunded
+        );
     }
 
-    /**
-     * @dev 极其巧妙的 UI 兼容设计：
-     * Java UI 是通过 ( res0 / (res0+res1) ) 来计算 YES 币的胜率进度条的。
-     * 在 AMM 模型中，如果 NO 的库存（reserveNO）越多，说明 YES 越被人买断货，YES 的价格/胜率就越高！
-     * 因此，这里我们把 reserveNO 当作 res0 返回，将 reserveYES 当作 res1 返回，
-     * 这样 Android App 的蓝红进度条就能精准反映出 Polymarket 的实时隐含胜率！
-     */
+    // 依然保留交叉返回，让你的 Android 双色胜率进度条自动精准显示！
     function getGameExtraData(uint256 _gameId, address _user) external view returns (
     uint256[] memory _virtualReserves,
     uint256[] memory _myShares
@@ -250,7 +173,7 @@ contract PolymarketGold is Ownable, ReentrancyGuard {
         _virtualReserves = new uint256[](2);
         _myShares = new uint256[](2);
 
-        // 交叉返回以兼容 UI 胜率计算
+        // NO 的库存对应 YES 的隐含价格
         _virtualReserves[0] = g.reserveNO;
         _virtualReserves[1] = g.reserveYES;
 

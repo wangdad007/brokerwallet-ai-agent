@@ -286,6 +286,13 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         Button btnConfirm = dialogView.findViewById(R.id.btn_buy_confirm);
         Button btnCancel = dialogView.findViewById(R.id.btn_buy_cancel);
 
+        // Make dialog confirm button color consistent with the bet side
+        if (optionId == 0) {
+            btnConfirm.setBackgroundResource(R.drawable.bg_bet_yes);
+        } else {
+            btnConfirm.setBackgroundResource(R.drawable.bg_bet_no);
+        }
+
         AlertDialog dialog = builder.create();
         if (dialog.getWindow() != null) {
             dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);

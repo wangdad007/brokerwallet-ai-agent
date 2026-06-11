@@ -228,7 +228,7 @@
                         android:layout_height="64dp"
                         android:layout_weight="1"
                         android:layout_marginEnd="8dp"
-                        android:background="@drawable/custom_button_background"
+                        android:background="@drawable/bg_bet_yes"
                         android:text="下注 YES"
                         android:textAllCaps="false"
                         android:textColor="#FFFFFF"
@@ -242,7 +242,7 @@
                         android:layout_height="64dp"
                         android:layout_weight="1"
                         android:layout_marginStart="8dp"
-                        android:background="@drawable/custom_red_background"
+                        android:background="@drawable/bg_bet_no"
                         android:text="下注 NO"
                         android:textAllCaps="false"
                         android:textColor="#FFFFFF"
@@ -272,28 +272,30 @@
                     android:textColor="#666666"
                     android:textSize="15sp" />
 
-                <Button
+                <androidx.appcompat.widget.AppCompatButton
                     android:id="@+id/btn_claim_reward"
                     android:layout_width="match_parent"
-                    android:layout_height="56dp"
+                    android:layout_height="60dp"
                     android:layout_marginTop="24dp"
-                    android:background="@drawable/custom_button_background"
+                    android:background="@drawable/bg_bet_yes"
                     android:text="领取收益"
+                    android:textAllCaps="false"
+                    android:textColor="#FFFFFF"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btn_admin_resolve"
+                    android:layout_width="match_parent"
+                    android:layout_height="60dp"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/custom_button_background"
+                    android:text="管理员判定结算"
                     android:textAllCaps="false"
                     android:textColor="#FFFFFF"
                     android:textSize="16sp"
                     android:textStyle="bold"
-                    android:visibility="gone" />
-
-                <Button
-                    android:id="@+id/btn_admin_resolve"
-                    android:layout_width="match_parent"
-                    android:layout_height="56dp"
-                    android:layout_marginTop="12dp"
-                    android:background="@drawable/custom_button_bg_white"
-                    android:text="管理员判定结算"
-                    android:textAllCaps="false"
-                    android:textColor="#000000"
                     android:visibility="gone" />
 
                 <View

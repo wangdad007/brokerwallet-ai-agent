@@ -342,68 +342,71 @@ public class GoldMarketRepository {
     public void getGameInfo(int id, DataCallback<GameModel> callback) {
         AppExecutors.getInstance().networkIO().execute(() -> {
             try {
+                // 1. 准备链上数据请求
                 org.web3j.abi.datatypes.Function fInfo = new org.web3j.abi.datatypes.Function(
                     "getGameInfo", Collections.singletonList(new Uint256(id)),
                     Arrays.asList(
-                        new TypeReference<Utf8String>() {}, new TypeReference<Utf8String>() {},
-                        new TypeReference<Utf8String>() {}, new TypeReference<Utf8String>() {},
-                        new TypeReference<DynamicArray<Utf8String>>() {}, new TypeReference<Uint8>() {},
-                        new TypeReference<Uint256>() {}, new TypeReference<Bool>() {},
-                        new TypeReference<Uint8>() {}, new TypeReference<Uint256>() {},
-                        new TypeReference<Bool>() {}
+                        new TypeReference<Utf8String>() {}, // ipfsCID
+                        new TypeReference<Uint256>() {},    // totalPool
+                        new TypeReference<Bool>() {},       // isResolved
+                        new TypeReference<Uint8>() {},      // winningOption
+                        new TypeReference<Uint256>() {},    // deadlineSec
+                        new TypeReference<Bool>() {}        // isRefunded
                     ));
 
-                String infoHex = ethCall(fInfo);
-                Log.d(TAG, "getGameInfo(" + id + ") infoHex=" + infoHex + " len=" + (infoHex != null ? infoHex.length() : 0));
-                if (infoHex == null || infoHex.equals("0x")) {
-                    Log.e(TAG, "getGameInfo failed: contract may not exist at " + contractAddress);
-                    postError(callback, "获取市场信息失败（合约: " + contractAddress + "）");
-                    return;
-                }
-                List<Type> res = FunctionReturnDecoder.decode(infoHex, fInfo.getOutputParameters());
-                if (res.isEmpty()) { postError(callback, "数据解析为空"); return; }
+                String addr = getWalletAddress();
+                org.web3j.abi.datatypes.Function fExtra = new org.web3j.abi.datatypes.Function(
+                    "getGameExtraData",
+                    Arrays.asList(new Uint256(id), new Address(addr.isEmpty() ? "0x0000000000000000000000000000000000000000" : addr)),
+                    Arrays.asList(new TypeReference<DynamicArray<Uint256>>() {}, new TypeReference<DynamicArray<Uint256>>() {}));
 
+                // 2. 并发执行链上请求
+                final String[] hexResults = new String[2];
+                final java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(2);
+                AppExecutors.getInstance().networkIO().execute(() -> { try { hexResults[0] = ethCall(fInfo); } catch (Exception ignored) {} finally { latch.countDown(); } });
+                AppExecutors.getInstance().networkIO().execute(() -> { try { hexResults[1] = ethCall(fExtra); } catch (Exception ignored) {} finally { latch.countDown(); } });
+                latch.await(15, java.util.concurrent.TimeUnit.SECONDS);
+
+                if (hexResults[0] == null || hexResults[0].equals("0x")) { postError(callback, "链上数据读取失败"); return; }
+
+                // 3. 解析链上基础数据
+                List<Type> res = FunctionReturnDecoder.decode(hexResults[0], fInfo.getOutputParameters());
                 GameModel model = new GameModel();
                 model.id = id;
                 model.contractAddress = contractAddress;
-                model.desc = ((Utf8String) res.get(0)).getValue();
-                model.condition = ((Utf8String) res.get(1)).getValue();
-                model.avatarUrl = ((Utf8String) res.get(2)).getValue();
-                model.detailedInfo = ((Utf8String) res.get(3)).getValue();
+                model.ipfsCID = ((Utf8String) res.get(0)).getValue();
+                model.totalPool = ((Uint256) res.get(1)).getValue();
+                model.isResolved = ((Bool) res.get(2)).getValue();
+                model.winningOption = ((Uint8) res.get(3)).getValue().intValue();
+                model.deadlineSec = ((Uint256) res.get(4)).getValue().longValue();
+                model.isRefunded = ((Bool) res.get(5)).getValue();
 
-                List<Utf8String> namesList = ((DynamicArray<Utf8String>) res.get(4)).getValue();
-                model.optionNames = new ArrayList<>();
-                for (Utf8String u : namesList) model.optionNames.add(u.getValue());
-
-                model.optionCount = ((Uint8) res.get(5)).getValue().intValue();
-                model.totalPool = ((Uint256) res.get(6)).getValue();
-                model.isResolved = ((Bool) res.get(7)).getValue();
-                model.winningOption = ((Uint8) res.get(8)).getValue().intValue();
-                model.deadlineSec = ((Uint256) res.get(9)).getValue().longValue();
-                model.isRefunded = ((Bool) res.get(10)).getValue();
-
-                String addr = getWalletAddress();
-                if (addr == null || addr.isEmpty() || addr.equals("0x")) {
-                    postError(callback, "无法获取钱包地址"); return;
+                // 4. 解析持仓数据
+                if (hexResults[1] != null && !hexResults[1].equals("0x")) {
+                    List<Type> extraRes = FunctionReturnDecoder.decode(hexResults[1], fExtra.getOutputParameters());
+                    List<Uint256> reservesArray = ((DynamicArray<Uint256>) extraRes.get(0)).getValue();
+                    List<Uint256> sharesArray = ((DynamicArray<Uint256>) extraRes.get(1)).getValue();
+                    model.virtualReserves = new ArrayList<>();
+                    model.myShares = new ArrayList<>();
+                    for (int opt = 0; opt < 2; opt++) {
+                        model.virtualReserves.add(reservesArray.get(opt).getValue());
+                        model.myShares.add(sharesArray.get(opt).getValue());
+                    }
                 }
-                org.web3j.abi.datatypes.Function fExtra = new org.web3j.abi.datatypes.Function(
-                    "getGameExtraData",
-                    Arrays.asList(new Uint256(id), new Address(addr)),
-                    Arrays.asList(
-                        new TypeReference<DynamicArray<Uint256>>() {},
-                        new TypeReference<DynamicArray<Uint256>>() {}
-                    ));
 
-                String extraHex = ethCall(fExtra);
-                List<Type> extraRes = FunctionReturnDecoder.decode(extraHex, fExtra.getOutputParameters());
-                List<Uint256> reservesArray = ((DynamicArray<Uint256>) extraRes.get(0)).getValue();
-                List<Uint256> sharesArray = ((DynamicArray<Uint256>) extraRes.get(1)).getValue();
-
-                model.virtualReserves = new ArrayList<>();
-                model.myShares = new ArrayList<>();
-                for (int opt = 0; opt < model.optionCount; opt++) {
-                    model.virtualReserves.add(reservesArray.get(opt).getValue());
-                    model.myShares.add(sharesArray.get(opt).getValue());
+                // 5. 关键步骤：拿着 CID 去 IPFS 下载文本元数据
+                try {
+                    String ipfsJsonStr = PinataClient.downloadJsonFromIPFS(model.ipfsCID);
+                    JSONObject ipfsData = new JSONObject(ipfsJsonStr);
+                    model.desc = ipfsData.optString("desc", "博弈池 #" + id);
+                    model.condition = ipfsData.optString("condition", "暂无详细判定逻辑");
+                    model.avatarUrl = ipfsData.optString("avatarUrl", "");
+                    model.detailedInfo = ipfsData.optString("detailedInfo", "");
+                    model.optionNames = Arrays.asList(ipfsData.optString("optionYES", "YES"), ipfsData.optString("optionNO", "NO"));
+                    model.optionCount = 2;
+                } catch (Exception e) {
+                    Log.e(TAG, "IPFS 数据下载失败: " + e.getMessage());
+                    model.desc = "加载中...";
                 }
 
                 AppExecutors.getInstance().mainThread().execute(() -> callback.onSuccess(model));
@@ -428,18 +431,35 @@ public class GoldMarketRepository {
     public void createGame(String desc, String condition, String avatarUrl,
                            String detailedInfo, List<String> optionNamesList,
                            long durationSec, BigInteger initialLiquidityWei, TxCallback callback) {
-        List<Utf8String> utf8Options = new ArrayList<>();
-        for (String name : optionNamesList) utf8Options.add(new Utf8String(name));
         
-        org.web3j.abi.datatypes.Function f = new org.web3j.abi.datatypes.Function(
-            "createGame", Arrays.asList(
-                new Utf8String(desc), new Utf8String(condition),
-                new Utf8String(avatarUrl), new Utf8String(detailedInfo),
-                new DynamicArray<>(utf8Options), new Uint256(durationSec)),
-            Collections.emptyList());
-            
-        // 核心修正：将 initialLiquidityWei 作为交易的 Value 发送给合约
-        sendTransaction(initialLiquidityWei, f, "博弈池部署成功", callback);
+        AppExecutors.getInstance().networkIO().execute(() -> {
+            try {
+                // 1. 先将元数据上传到 IPFS
+                JSONObject metadata = new JSONObject();
+                metadata.put("desc", desc);
+                metadata.put("condition", condition);
+                metadata.put("avatarUrl", avatarUrl);
+                metadata.put("detailedInfo", detailedInfo);
+                // 存储选项名称，虽然目前固定是 YES/NO
+                metadata.put("optionYES", optionNamesList.get(0));
+                metadata.put("optionNO", optionNamesList.get(1));
+
+                String cid = PinataClient.uploadJsonToIPFS(metadata);
+                Log.d(TAG, "成功上传 IPFS, CID: " + cid);
+
+                // 2. 带着 CID 上链，极大节省 Gas
+                org.web3j.abi.datatypes.Function f = new org.web3j.abi.datatypes.Function(
+                    "createGame", 
+                    Arrays.asList(new Utf8String(cid), new Uint256(durationSec)),
+                    Collections.emptyList());
+                    
+                sendTransaction(initialLiquidityWei, f, "博弈池部署成功", callback);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                postError(callback, "IPFS 上传失败: " + e.getMessage());
+            }
+        });
     }
 
     /**
@@ -480,6 +500,8 @@ public class GoldMarketRepository {
     public static class GameModel {
         public int id;
         public String contractAddress;
+        public String ipfsCID; // 链上存储的 IPFS 哈希
+        // 下面这些将从 IPFS 加载
         public String desc, condition, avatarUrl, detailedInfo;
         public List<String> optionNames;
         public int optionCount;
