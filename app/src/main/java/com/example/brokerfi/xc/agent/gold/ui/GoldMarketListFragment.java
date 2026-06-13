@@ -91,18 +91,18 @@ public class GoldMarketListFragment extends Fragment {
     private void loadMarketData() {
         if (isLoading) return;
         isLoading = true;
-        
+
         availableGames.clear();
         marketListContainer.removeAllViews();
-        repository.getGameCount(new GoldMarketRepository.DataCallback<Integer>() {
+        repository.getAllGamesInfo(new GoldMarketRepository.DataCallback<List<GoldMarketRepository.GameModel>>() {
             @Override
-            public void onSuccess(Integer count) {
-                if (count == null || count <= 0) {
-                    swipeRefresh.setRefreshing(false);
-                    isLoading = false;
-                    return;
+            public void onSuccess(List<GoldMarketRepository.GameModel> models) {
+                isLoading = false;
+                availableGames.clear();
+                if (models != null) {
+                    availableGames.addAll(models);
                 }
-                loadAllGames(count);
+                finishLoading();
             }
 
             @Override
@@ -114,43 +114,6 @@ public class GoldMarketListFragment extends Fragment {
         });
     }
 
-    private void loadAllGames(int count) {
-        final int[] responseCount = {0};
-        for (int i = 1; i <= count; i++) {
-            repository.getGameInfo(i, new GoldMarketRepository.DataCallback<GoldMarketRepository.GameModel>() {
-                @Override
-                public void onSuccess(GoldMarketRepository.GameModel model) {
-                    synchronized (availableGames) {
-                        // Check for duplicates before adding
-                        boolean exists = false;
-                        for (GoldMarketRepository.GameModel g : availableGames) {
-                            if (g.id == model.id) { exists = true; break; }
-                        }
-                        if (!exists) {
-                            availableGames.add(model);
-                        }
-                        
-                        responseCount[0]++;
-                        if (responseCount[0] >= count) {
-                            isLoading = false;
-                            finishLoading();
-                        }
-                    }
-                }
-
-                @Override
-                public void onError(String error) {
-                    synchronized (availableGames) {
-                        responseCount[0]++;
-                        if (responseCount[0] >= count) {
-                            isLoading = false;
-                            finishLoading();
-                        }
-                    }
-                }
-            });
-        }
-    }
 
     private void finishLoading() {
         // Sort by ID descending to show newest first

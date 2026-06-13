@@ -174,7 +174,7 @@ public class GoldMarketRepository {
     public static org.web3j.abi.datatypes.Function buildClaimRewardFunction(int gameId, int optionId) {
         return new org.web3j.abi.datatypes.Function(
             "claimReward",
-            Arrays.asList(new Uint256(gameId), new Uint8(optionId)),
+            Arrays.asList(new Uint256(BigInteger.valueOf(gameId)), new Uint8(BigInteger.valueOf(optionId))),
             Collections.emptyList());
     }
 
@@ -344,7 +344,7 @@ public class GoldMarketRepository {
             try {
                 // 1. 准备链上数据请求
                 org.web3j.abi.datatypes.Function fInfo = new org.web3j.abi.datatypes.Function(
-                    "getGameInfo", Collections.singletonList(new Uint256(id)),
+                    "getGameInfo", Collections.singletonList(new Uint256(BigInteger.valueOf(id))),
                     Arrays.asList(
                         new TypeReference<Utf8String>() {}, // ipfsCID
                         new TypeReference<Uint256>() {},    // totalPool
@@ -355,22 +355,29 @@ public class GoldMarketRepository {
                     ));
 
                 String addr = getWalletAddress();
+                if (addr == null || addr.isEmpty()) addr = "0x0000000000000000000000000000000000000000";
+                
                 org.web3j.abi.datatypes.Function fExtra = new org.web3j.abi.datatypes.Function(
                     "getGameExtraData",
-                    Arrays.asList(new Uint256(id), new Address(addr.isEmpty() ? "0x0000000000000000000000000000000000000000" : addr)),
+                    Arrays.asList(new Uint256(BigInteger.valueOf(id)), new Address(addr)),
                     Arrays.asList(new TypeReference<DynamicArray<Uint256>>() {}, new TypeReference<DynamicArray<Uint256>>() {}));
 
                 // 2. 并发执行链上请求
                 final String[] hexResults = new String[2];
                 final java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(2);
-                AppExecutors.getInstance().networkIO().execute(() -> { try { hexResults[0] = ethCall(fInfo); } catch (Exception ignored) {} finally { latch.countDown(); } });
-                AppExecutors.getInstance().networkIO().execute(() -> { try { hexResults[1] = ethCall(fExtra); } catch (Exception ignored) {} finally { latch.countDown(); } });
-                latch.await(15, java.util.concurrent.TimeUnit.SECONDS);
+                AppExecutors.getInstance().networkIO().execute(() -> { try { hexResults[0] = ethCall(fInfo); } catch (Exception e) { hexResults[0] = "Error: " + e.getMessage(); } finally { latch.countDown(); } });
+                AppExecutors.getInstance().networkIO().execute(() -> { try { hexResults[1] = ethCall(fExtra); } catch (Exception e) { hexResults[1] = "Error: " + e.getMessage(); } finally { latch.countDown(); } });
+                latch.await(30, java.util.concurrent.TimeUnit.SECONDS);
 
-                if (hexResults[0] == null || hexResults[0].equals("0x")) { postError(callback, "链上数据读取失败"); return; }
+                if (hexResults[0] == null || hexResults[0].equals("0x") || hexResults[0].startsWith("Error")) { 
+                    postError(callback, "链上数据读取失败: " + hexResults[0]); 
+                    return; 
+                }
 
                 // 3. 解析链上基础数据
                 List<Type> res = FunctionReturnDecoder.decode(hexResults[0], fInfo.getOutputParameters());
+                if (res.isEmpty()) { postError(callback, "基础数据解析为空"); return; }
+                
                 GameModel model = new GameModel();
                 model.id = id;
                 model.contractAddress = contractAddress;
@@ -381,20 +388,32 @@ public class GoldMarketRepository {
                 model.deadlineSec = ((Uint256) res.get(4)).getValue().longValue();
                 model.isRefunded = ((Bool) res.get(5)).getValue();
 
+                // 默认初始化，防止 UI 端空指针或不显示
+                model.virtualReserves = Arrays.asList(BigInteger.ZERO, BigInteger.ZERO);
+                model.myShares = Arrays.asList(BigInteger.ZERO, BigInteger.ZERO);
+
                 // 4. 解析持仓数据
-                if (hexResults[1] != null && !hexResults[1].equals("0x")) {
-                    List<Type> extraRes = FunctionReturnDecoder.decode(hexResults[1], fExtra.getOutputParameters());
-                    List<Uint256> reservesArray = ((DynamicArray<Uint256>) extraRes.get(0)).getValue();
-                    List<Uint256> sharesArray = ((DynamicArray<Uint256>) extraRes.get(1)).getValue();
-                    model.virtualReserves = new ArrayList<>();
-                    model.myShares = new ArrayList<>();
-                    for (int opt = 0; opt < 2; opt++) {
-                        model.virtualReserves.add(reservesArray.get(opt).getValue());
-                        model.myShares.add(sharesArray.get(opt).getValue());
+                if (hexResults[1] != null && !hexResults[1].equals("0x") && !hexResults[1].startsWith("Error")) {
+                    try {
+                        List<Type> extraRes = FunctionReturnDecoder.decode(hexResults[1], fExtra.getOutputParameters());
+                        if (extraRes.size() >= 2) {
+                            List<Uint256> reservesArray = ((DynamicArray<Uint256>) extraRes.get(0)).getValue();
+                            List<Uint256> sharesArray = ((DynamicArray<Uint256>) extraRes.get(1)).getValue();
+                            
+                            List<BigInteger> vRes = new ArrayList<>();
+                            for (int i = 0; i < Math.min(2, reservesArray.size()); i++) vRes.add(reservesArray.get(i).getValue());
+                            if (vRes.size() >= 2) model.virtualReserves = vRes;
+                            
+                            List<BigInteger> mShares = new ArrayList<>();
+                            for (int i = 0; i < Math.min(2, sharesArray.size()); i++) mShares.add(sharesArray.get(i).getValue());
+                            if (mShares.size() >= 2) model.myShares = mShares;
+                        }
+                    } catch (Exception e) {
+                        Log.e(TAG, "Extra data decode error for game " + id + ": " + e.getMessage());
                     }
                 }
 
-                // 5. 关键步骤：拿着 CID 去 IPFS 下载文本元数据
+                // 5. 关键步骤：下载文本元数据
                 try {
                     String ipfsJsonStr = PinataClient.downloadJsonFromIPFS(model.ipfsCID);
                     JSONObject ipfsData = new JSONObject(ipfsJsonStr);
@@ -406,7 +425,7 @@ public class GoldMarketRepository {
                     model.optionCount = 2;
                 } catch (Exception e) {
                     Log.e(TAG, "IPFS 数据下载失败: " + e.getMessage());
-                    model.desc = "加载中...";
+                    model.desc = null;
                 }
 
                 AppExecutors.getInstance().mainThread().execute(() -> callback.onSuccess(model));
@@ -416,9 +435,183 @@ public class GoldMarketRepository {
         });
     }
 
+    @SuppressWarnings("unchecked")
+    public void getAllGamesInfo(DataCallback<List<GameModel>> callback) {
+        AppExecutors.getInstance().networkIO().execute(() -> {
+            try {
+                org.web3j.abi.datatypes.Function fAll = new org.web3j.abi.datatypes.Function(
+                        "getAllGames", Collections.emptyList(),
+                        Arrays.asList(
+                                new TypeReference<DynamicArray<Uint256>>() {},
+                                new TypeReference<DynamicArray<Utf8String>>() {},
+                                new TypeReference<DynamicArray<Uint256>>() {},
+                                new TypeReference<DynamicArray<Uint256>>() {},
+                                new TypeReference<DynamicArray<Bool>>() {},
+                                new TypeReference<DynamicArray<Bool>>() {},
+                                new TypeReference<DynamicArray<Uint8>>() {}
+                        ));
+
+                String addr = getWalletAddress();
+                org.web3j.abi.datatypes.Function fExtra = new org.web3j.abi.datatypes.Function(
+                        "getAllGamesExtraData",
+                        Collections.singletonList(new Address(addr.isEmpty() ? "0x0000000000000000000000000000000000000000" : addr)),
+                        Arrays.asList(
+                                new TypeReference<DynamicArray<Uint256>>() {},
+                                new TypeReference<DynamicArray<Uint256>>() {},
+                                new TypeReference<DynamicArray<Uint256>>() {},
+                                new TypeReference<DynamicArray<Uint256>>() {}
+                        ));
+
+                final String[] hexResults = new String[2];
+                final java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(2);
+                AppExecutors.getInstance().networkIO().execute(() -> { try { hexResults[0] = ethCall(fAll); } catch (Exception ignored) {} finally { latch.countDown(); } });
+                AppExecutors.getInstance().networkIO().execute(() -> { try { hexResults[1] = ethCall(fExtra); } catch (Exception ignored) {} finally { latch.countDown(); } });
+                latch.await(30, java.util.concurrent.TimeUnit.SECONDS);
+
+                if (hexResults[0] == null || hexResults[0].equals("0x")) { postError(callback, "基础数据读取失败"); return; }
+
+                List<Type> res = FunctionReturnDecoder.decode(hexResults[0], fAll.getOutputParameters());
+                List<Uint256> ids = ((DynamicArray<Uint256>) res.get(0)).getValue();
+                List<Utf8String> cids = ((DynamicArray<Utf8String>) res.get(1)).getValue();
+                List<Uint256> pools = ((DynamicArray<Uint256>) res.get(2)).getValue();
+                List<Uint256> deadlines = ((DynamicArray<Uint256>) res.get(3)).getValue();
+                List<Bool> isResolveds = ((DynamicArray<Bool>) res.get(4)).getValue();
+                List<Bool> isRefundeds = ((DynamicArray<Bool>) res.get(5)).getValue();
+                List<Uint8> winningOptions = ((DynamicArray<Uint8>) res.get(6)).getValue();
+
+                List<Uint256> resNO = null, resYES = null, myYES = null, myNO = null;
+                if (hexResults[1] != null && !hexResults[1].equals("0x")) {
+                    List<Type> extraRes = FunctionReturnDecoder.decode(hexResults[1], fExtra.getOutputParameters());
+                    resNO = ((DynamicArray<Uint256>) extraRes.get(0)).getValue();
+                    resYES = ((DynamicArray<Uint256>) extraRes.get(1)).getValue();
+                    myYES = ((DynamicArray<Uint256>) extraRes.get(2)).getValue();
+                    myNO = ((DynamicArray<Uint256>) extraRes.get(3)).getValue();
+                }
+
+                List<GameModel> models = new ArrayList<>();
+                for (int i = 0; i < ids.size(); i++) {
+                    GameModel m = new GameModel();
+                    m.id = ids.get(i).getValue().intValue();
+                    m.contractAddress = contractAddress;
+                    m.ipfsCID = cids.get(i).getValue();
+                    m.totalPool = pools.get(i).getValue();
+                    m.deadlineSec = deadlines.get(i).getValue().longValue();
+                    m.isResolved = isResolveds.get(i).getValue();
+                    m.isRefunded = isRefundeds.get(i).getValue();
+                    m.winningOption = winningOptions.get(i).getValue().intValue();
+
+                    if (resNO != null && i < resNO.size()) {
+                        m.virtualReserves = Arrays.asList(resNO.get(i).getValue(), resYES.get(i).getValue());
+                        m.myShares = Arrays.asList(myYES.get(i).getValue(), myNO.get(i).getValue());
+                    }
+                    models.add(m);
+                }
+
+                // 并行获取 IPFS 数据
+                java.util.concurrent.CountDownLatch ipfsLatch = new java.util.concurrent.CountDownLatch(models.size());
+                for (GameModel m : models) {
+                    AppExecutors.getInstance().networkIO().execute(() -> {
+                        try {
+                            String json = PinataClient.downloadJsonFromIPFS(m.ipfsCID);
+                            JSONObject obj = new JSONObject(json);
+                            m.desc = obj.optString("desc", "博弈池 #" + m.id);
+                            m.condition = obj.optString("condition", "");
+                            m.avatarUrl = obj.optString("avatarUrl", "");
+                            m.detailedInfo = obj.optString("detailedInfo", "");
+                            m.optionNames = Arrays.asList(obj.optString("optionYES", "YES"), obj.optString("optionNO", "NO"));
+                            m.optionCount = 2;
+                        } catch (Exception e) {
+                            m.desc = "博弈池 #" + m.id;
+                        } finally {
+                            ipfsLatch.countDown();
+                        }
+                    });
+                }
+                ipfsLatch.await(30, java.util.concurrent.TimeUnit.SECONDS);
+
+                AppExecutors.getInstance().mainThread().execute(() -> callback.onSuccess(models));
+            } catch (Exception e) {
+                postError(callback, "批量获取市场异常: " + e.getMessage());
+            }
+        });
+    }
+
+    @SuppressWarnings("unchecked")
+    public void getMyParticipatedGames(DataCallback<List<GameModel>> callback) {
+        AppExecutors.getInstance().networkIO().execute(() -> {
+            try {
+                String addr = getWalletAddress();
+                org.web3j.abi.datatypes.Function function = new org.web3j.abi.datatypes.Function(
+                        "getMyParticipatedGames",
+                        Collections.singletonList(new Address(addr.isEmpty() ? "0x0000000000000000000000000000000000000000" : addr)),
+                        Collections.singletonList(new TypeReference<DynamicArray<ParticipatedGameDTO>>() {})
+                );
+
+                String hex = ethCall(function);
+                if (hex == null || hex.equals("0x")) {
+                    AppExecutors.getInstance().mainThread().execute(() -> callback.onSuccess(new ArrayList<>()));
+                    return;
+                }
+
+                List<Type> res = FunctionReturnDecoder.decode(hex, function.getOutputParameters());
+                if (res.isEmpty()) {
+                    AppExecutors.getInstance().mainThread().execute(() -> callback.onSuccess(new ArrayList<>()));
+                    return;
+                }
+                
+                List<ParticipatedGameDTO> dtos = ((DynamicArray<ParticipatedGameDTO>) res.get(0)).getValue();
+
+                List<GameModel> models = new ArrayList<>();
+                for (ParticipatedGameDTO dto : dtos) {
+                    GameModel m = new GameModel();
+                    m.id = dto.id.intValue();
+                    m.contractAddress = contractAddress;
+                    m.ipfsCID = dto.ipfsCID;
+                    m.totalPool = dto.totalPool;
+                    m.deadlineSec = dto.deadlineSec.longValue();
+                    m.isResolved = dto.isResolved;
+                    m.isRefunded = dto.isRefunded;
+                    m.winningOption = dto.winningOption.intValue();
+                    m.virtualReserves = Arrays.asList(dto.reserveNO, dto.reserveYES);
+                    m.myShares = Arrays.asList(dto.mySharesYES, dto.mySharesNO);
+                    models.add(m);
+                }
+
+                // 并行获取 IPFS 数据
+                java.util.concurrent.CountDownLatch ipfsLatch = new java.util.concurrent.CountDownLatch(models.size());
+                for (GameModel m : models) {
+                    AppExecutors.getInstance().networkIO().execute(() -> {
+                        try {
+                            String json = PinataClient.downloadJsonFromIPFS(m.ipfsCID);
+                            JSONObject obj = new JSONObject(json);
+                            m.desc = obj.optString("desc", "博弈池 #" + m.id);
+                            m.condition = obj.optString("condition", "");
+                            m.avatarUrl = obj.optString("avatarUrl", "");
+                            m.detailedInfo = obj.optString("detailedInfo", "");
+                            m.optionNames = Arrays.asList(obj.optString("optionYES", "YES"), obj.optString("optionNO", "NO"));
+                            m.optionCount = 2;
+                        } catch (Exception e) {
+                            m.desc = "博弈池 #" + m.id;
+                        } finally {
+                            ipfsLatch.countDown();
+                        }
+                    });
+                }
+                ipfsLatch.await(30, java.util.concurrent.TimeUnit.SECONDS);
+
+                AppExecutors.getInstance().mainThread().execute(() -> callback.onSuccess(models));
+            } catch (Exception e) {
+                postError(callback, "获取参与的市场异常: " + e.getMessage());
+            }
+        });
+    }
+
+
     public void buyShares(int gameId, int optionId, BigInteger amountWei, TxCallback callback) {
         org.web3j.abi.datatypes.Function f = new org.web3j.abi.datatypes.Function(
-            "buyShares", Arrays.asList(new Uint256(gameId), new Uint8(optionId)), Collections.emptyList());
+            "buyShares", 
+            Arrays.asList(new Uint256(BigInteger.valueOf(gameId)), new Uint8(BigInteger.valueOf(optionId))), 
+            Collections.emptyList());
         sendTransaction(amountWei, f, "买入成功", callback);
     }
 
@@ -485,7 +678,8 @@ public class GoldMarketRepository {
      */
     public void resolveGame(int gameId, int winningOption, TxCallback callback) {
         org.web3j.abi.datatypes.Function f = new org.web3j.abi.datatypes.Function(
-            "resolveGame", Arrays.asList(new Uint256(gameId), new Uint8(winningOption)),
+            "resolveGame", 
+            Arrays.asList(new Uint256(BigInteger.valueOf(gameId)), new Uint8(BigInteger.valueOf(winningOption))),
             Collections.emptyList());
         sendTransaction(BigInteger.ZERO, f, "开奖成功", callback);
     }
@@ -510,5 +704,34 @@ public class GoldMarketRepository {
         public int winningOption;
         public long deadlineSec;
         public List<BigInteger> virtualReserves, myShares;
+    }
+
+    public static class ParticipatedGameDTO extends DynamicStruct {
+        public BigInteger id;
+        public String ipfsCID;
+        public BigInteger totalPool;
+        public BigInteger deadlineSec;
+        public Boolean isResolved;
+        public Boolean isRefunded;
+        public BigInteger winningOption;
+        public BigInteger reserveNO;
+        public BigInteger reserveYES;
+        public BigInteger mySharesYES;
+        public BigInteger mySharesNO;
+
+        public ParticipatedGameDTO(Uint256 id, Utf8String ipfsCID, Uint256 totalPool, Uint256 deadlineSec, Bool isResolved, Bool isRefunded, Uint8 winningOption, Uint256 reserveNO, Uint256 reserveYES, Uint256 mySharesYES, Uint256 mySharesNO) {
+            super(id, ipfsCID, totalPool, deadlineSec, isResolved, isRefunded, winningOption, reserveNO, reserveYES, mySharesYES, mySharesNO);
+            this.id = id.getValue();
+            this.ipfsCID = ipfsCID.getValue();
+            this.totalPool = totalPool.getValue();
+            this.deadlineSec = deadlineSec.getValue();
+            this.isResolved = isResolved.getValue();
+            this.isRefunded = isRefunded.getValue();
+            this.winningOption = winningOption.getValue();
+            this.reserveNO = reserveNO.getValue();
+            this.reserveYES = reserveYES.getValue();
+            this.mySharesYES = mySharesYES.getValue();
+            this.mySharesNO = mySharesNO.getValue();
+        }
     }
 }

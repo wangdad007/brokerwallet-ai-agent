@@ -5,7 +5,7 @@ import java.util.Collections;
 import java.util.List;
 
 public final class GoldMarketSecurityPolicy {
-    public static final String DEFAULT_CONTRACT_ADDRESS = "0x7A93Fe23C964296999F2Acb4837DcaB0Bb534151";
+    public static final String DEFAULT_CONTRACT_ADDRESS = "0xad4F9eD0F2b51A26314C9f83DF588cCcE26ae03c";
 
     private GoldMarketSecurityPolicy() {
     }

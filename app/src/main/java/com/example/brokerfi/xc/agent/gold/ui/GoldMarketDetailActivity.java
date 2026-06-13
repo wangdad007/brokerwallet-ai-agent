@@ -148,9 +148,9 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
     private void updateUI() {
         if (currentGame == null) return;
 
-        // 1. 博弈池名称 (自动生成并存储在 desc 中)
-        tvMarketDesc.setText(currentGame.desc != null ? currentGame.desc : "博弈池 #" + currentGame.id);
-        tvMarketCondition.setText("判定逻辑: " + currentGame.condition);
+        // 1. 博弈池名称
+        tvMarketDesc.setText(currentGame.desc != null && !currentGame.desc.isEmpty() ? currentGame.desc : "博弈池 #" + currentGame.id);
+        tvMarketCondition.setText("判定逻辑: " + (currentGame.condition != null ? currentGame.condition : "暂无"));
 
         long rem = GoldNoteMarketActivity.remainingSecondsUntilDeadline(currentGame.deadlineSec, System.currentTimeMillis());
         
@@ -159,7 +159,8 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
                 @Override
                 public void onSuccess(GoldAdvisoryManager.Advisory quote) {
                     int winner = GoldGameJudge.evaluateGameWinner(currentGame, quote);
-                    String winnerName = winner == 0 ? "看涨 (YES)" : "看跌 (NO)";
+                    String winnerName = (currentGame.optionNames != null && winner < currentGame.optionNames.size())
+                            ? currentGame.optionNames.get(winner) : (winner == 0 ? "YES" : "NO");
                     tvMarketCondition.setText("判定逻辑: " + currentGame.condition + "\n系统判定胜出: " + winnerName);
                 }
                 @Override public void onError(String error) {}
@@ -169,24 +170,26 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         btnClaimReward.setVisibility(currentGame.isResolved || currentGame.isRefunded ? View.VISIBLE : View.GONE);
         btnAdminResolve.setVisibility(rem <= 0 && !currentGame.isResolved && !currentGame.isRefunded ? View.VISIBLE : View.GONE);
         
-        // 2. 选项占比可视化
+        // 2. 选项占比可视化 (使用权重 LayoutParams 更准确)
         if (currentGame.virtualReserves != null && currentGame.virtualReserves.size() >= 2) {
-            BigInteger res0 = currentGame.virtualReserves.get(0);
-            BigInteger res1 = currentGame.virtualReserves.get(1);
+            BigInteger res0 = currentGame.virtualReserves.get(0); // reserveNO
+            BigInteger res1 = currentGame.virtualReserves.get(1); // reserveYES
             BigInteger total = res0.add(res1);
             if (total.compareTo(BigInteger.ZERO) > 0) {
-                double p0 = res0.doubleValue() / total.doubleValue() * 100;
-                double p1 = 100 - p0;
+                float p0 = (float) (res0.doubleValue() / total.doubleValue() * 100);
+                float p1 = 100 - p0;
                 tvUpPct.setText(String.format(Locale.getDefault(), "%.1f%%", p0));
                 tvDownPct.setText(String.format(Locale.getDefault(), "%.1f%%", p1));
                 
-                int screenWidth = getResources().getDisplayMetrics().widthPixels - 80; // adjusted for padding
+                // 必须明确设置 width 为 0，weight 才能在 LinearLayout 中正确按比例分配空间
                 LinearLayout.LayoutParams lp0 = (LinearLayout.LayoutParams) barUp.getLayoutParams();
-                lp0.width = (int) (screenWidth * p0 / 100);
+                lp0.width = 0;
+                lp0.weight = p0;
                 barUp.setLayoutParams(lp0);
                 
                 LinearLayout.LayoutParams lp1 = (LinearLayout.LayoutParams) barDown.getLayoutParams();
-                lp1.width = (int) (screenWidth * p1 / 100);
+                lp1.width = 0;
+                lp1.weight = p1;
                 barDown.setLayoutParams(lp1);
             }
         }
@@ -202,7 +205,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
                 if (shares == null || shares.signum() <= 0) continue;
                 if (holdings.length() > 0) holdings.append('\n');
                 String optionName = (currentGame.optionNames != null && i < currentGame.optionNames.size())
-                        ? currentGame.optionNames.get(i) : "选项" + (i + 1);
+                        ? currentGame.optionNames.get(i) : (i == 0 ? "YES" : "NO");
                 holdings.append(optionName).append(": ").append(GoldNoteMarketActivity.formatShareAmount(shares)).append(" 份额");
             }
         }

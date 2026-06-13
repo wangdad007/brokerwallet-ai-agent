@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 contract PolymarketGoldV2 is Ownable, ReentrancyGuard {
 
-// ------------------- 核心数据结构 (IPFS 瘦身版) -------------------
+    // ------------------- 核心数据结构 (IPFS 瘦身版) -------------------
     struct Game {
         uint256 id;
         string ipfsCID;        // 指向 IPFS 上 JSON 规则文件的唯一指纹
@@ -17,6 +17,21 @@ contract PolymarketGoldV2 is Ownable, ReentrancyGuard {
         bool isRefunded;       // 是否已退款
         uint256 reserveYES;    // AMM 储备池 YES
         uint256 reserveNO;     // AMM 储备池 NO
+    }
+
+    // [新增] 用于批量视图返回的数据传输对象 (DTO)，完美解决 Stack too deep 问题
+    struct ParticipatedGameDTO {
+        uint256 id;
+        string ipfsCID;
+        uint256 totalPool;
+        uint256 deadlineSec;
+        bool isResolved;
+        bool isRefunded;
+        uint8 winningOption;
+        uint256 reserveNO;
+        uint256 reserveYES;
+        uint256 mySharesYES;
+        uint256 mySharesNO;
     }
 
     uint256 public gameCount;
@@ -68,11 +83,12 @@ contract PolymarketGoldV2 is Ownable, ReentrancyGuard {
             sharesToUser += (game.reserveYES - newReserveYES);
             game.reserveYES = newReserveYES;
         } else {
-        game.reserveYES += amount;
-        uint256 newReserveNO = k / game.reserveYES;
-        sharesToUser += (game.reserveNO - newReserveNO);
-        game.reserveNO = newReserveNO;
-    }
+            // 修复了原代码中这里的缩进问题
+            game.reserveYES += amount;
+            uint256 newReserveNO = k / game.reserveYES;
+            sharesToUser += (game.reserveNO - newReserveNO);
+            game.reserveNO = newReserveNO;
+        }
 
         userShares[_gameId][msg.sender][_optionId] += sharesToUser;
         game.totalPool += amount;
@@ -118,20 +134,20 @@ contract PolymarketGoldV2 is Ownable, ReentrancyGuard {
     // ------------------- 单个视图 -------------------
 
     function getGameInfo(uint256 _gameId) external view returns (
-    string memory ipfsCID,
-    uint256 totalPool,
-    bool isResolved,
-    uint8 winningOption,
-    uint256 deadlineSec,
-    bool isRefunded
+        string memory ipfsCID,
+        uint256 totalPool,
+        bool isResolved,
+        uint8 winningOption,
+        uint256 deadlineSec,
+        bool isRefunded
     ) {
         Game storage g = games[_gameId];
         return (g.ipfsCID, g.totalPool, g.isResolved, g.winningOption, g.deadlineSec, g.isRefunded);
     }
 
     function getGameExtraData(uint256 _gameId, address _user) external view returns (
-    uint256[] memory _virtualReserves,
-    uint256[] memory _myShares
+        uint256[] memory _virtualReserves,
+        uint256[] memory _myShares
     ) {
         Game storage g = games[_gameId];
         _virtualReserves = new uint256[](2);
@@ -149,13 +165,13 @@ contract PolymarketGoldV2 is Ownable, ReentrancyGuard {
     // =========================================================
 
     function getAllGames() external view returns (
-    uint256[] memory ids,
-    string[] memory cids,
-    uint256[] memory pools,
-    uint256[] memory deadlines,
-    bool[] memory isResolvedArr,
-    bool[] memory isRefundedArr,
-    uint8[] memory winningOptions
+        uint256[] memory ids,
+        string[] memory cids,
+        uint256[] memory pools,
+        uint256[] memory deadlines,
+        bool[] memory isResolvedArr,
+        bool[] memory isRefundedArr,
+        uint8[] memory winningOptions
     ) {
         uint256 count = gameCount;
         ids = new uint256[](count);
@@ -180,10 +196,10 @@ contract PolymarketGoldV2 is Ownable, ReentrancyGuard {
     }
 
     function getAllGamesExtraData(address _user) external view returns (
-    uint256[] memory reservesNO,
-    uint256[] memory reservesYES,
-    uint256[] memory mySharesYES,
-    uint256[] memory mySharesNO
+        uint256[] memory reservesNO,
+        uint256[] memory reservesYES,
+        uint256[] memory mySharesYES,
+        uint256[] memory mySharesNO
     ) {
         uint256 count = gameCount;
         reservesNO = new uint256[](count);
@@ -205,19 +221,7 @@ contract PolymarketGoldV2 is Ownable, ReentrancyGuard {
     // 专属视图：一次性只返回该用户参与过（有持仓）的博弈池，极致节省带宽
     // =========================================================
 
-    function getMyParticipatedGames(address _user) external view returns (
-    uint256[] memory ids,
-    string[] memory cids,
-    uint256[] memory pools,
-    uint256[] memory deadlines,
-    bool[] memory isResolvedArr,
-    bool[] memory isRefundedArr,
-    uint8[] memory winningOptions,
-    uint256[] memory reservesNO,
-    uint256[] memory reservesYES,
-    uint256[] memory mySharesYES,
-    uint256[] memory mySharesNO
-    ) {
+    function getMyParticipatedGames(address _user) external view returns (ParticipatedGameDTO[] memory) {
         uint256 total = gameCount;
         uint256 myCount = 0;
 
@@ -228,18 +232,8 @@ contract PolymarketGoldV2 is Ownable, ReentrancyGuard {
             }
         }
 
-        // 初始化所有返回数组
-        ids = new uint256[](myCount);
-        cids = new string[](myCount);
-        pools = new uint256[](myCount);
-        deadlines = new uint256[](myCount);
-        isResolvedArr = new bool[](myCount);
-        isRefundedArr = new bool[](myCount);
-        winningOptions = new uint8[](myCount);
-        reservesNO = new uint256[](myCount);
-        reservesYES = new uint256[](myCount);
-        mySharesYES = new uint256[](myCount);
-        mySharesNO = new uint256[](myCount);
+        // 初始化结构体数组（这只占用堆栈里的 1 个变量槽位）
+        ParticipatedGameDTO[] memory result = new ParticipatedGameDTO[](myCount);
 
         // 第二遍：将真实数据填充进数组
         uint256 index = 0;
@@ -249,20 +243,25 @@ contract PolymarketGoldV2 is Ownable, ReentrancyGuard {
 
             if (sharesY > 0 || sharesN > 0) {
                 Game storage g = games[i];
-                ids[index] = g.id;
-                cids[index] = g.ipfsCID;
-                pools[index] = g.totalPool;
-                deadlines[index] = g.deadlineSec;
-                isResolvedArr[index] = g.isResolved;
-                isRefundedArr[index] = g.isRefunded;
-                winningOptions[index] = g.winningOption;
-                reservesNO[index] = g.reserveNO;
-                reservesYES[index] = g.reserveYES;
-                mySharesYES[index] = sharesY;
-                mySharesNO[index] = sharesN;
+
+                result[index] = ParticipatedGameDTO({
+                    id: g.id,
+                    ipfsCID: g.ipfsCID,
+                    totalPool: g.totalPool,
+                    deadlineSec: g.deadlineSec,
+                    isResolved: g.isResolved,
+                    isRefunded: g.isRefunded,
+                    winningOption: g.winningOption,
+                    reserveNO: g.reserveNO,
+                    reserveYES: g.reserveYES,
+                    mySharesYES: sharesY,
+                    mySharesNO: sharesN
+                });
 
                 index++;
             }
         }
+
+        return result;
     }
 }

@@ -76,16 +76,15 @@ public class GoldMyPositionsFragment extends Fragment {
 
         myPositions.clear();
         positionsContainer.removeAllViews();
-        repository.getGameCount(new GoldMarketRepository.DataCallback<Integer>() {
+        repository.getMyParticipatedGames(new GoldMarketRepository.DataCallback<List<GoldMarketRepository.GameModel>>() {
             @Override
-            public void onSuccess(Integer count) {
-                if (count == null || count <= 0) {
-                    swipeRefresh.setRefreshing(false);
-                    isLoading = false;
-                    updateSummary();
-                    return;
+            public void onSuccess(List<GoldMarketRepository.GameModel> models) {
+                isLoading = false;
+                myPositions.clear();
+                if (models != null) {
+                    myPositions.addAll(models);
                 }
-                checkAllGames(count);
+                finishLoading();
             }
 
             @Override
@@ -97,48 +96,6 @@ public class GoldMyPositionsFragment extends Fragment {
         });
     }
 
-    private void checkAllGames(int count) {
-        final int[] responseCount = {0};
-        synchronized (myPositions) {
-            myPositions.clear();
-        }
-
-        for (int i = 1; i <= count; i++) {
-            repository.getGameInfo(i, new GoldMarketRepository.DataCallback<GoldMarketRepository.GameModel>() {
-                @Override
-                public void onSuccess(GoldMarketRepository.GameModel model) {
-                    synchronized (myPositions) {
-                        if (!containsGame(model.id) && hasUserShares(model)) {
-                            myPositions.add(model);
-                        }
-                        responseCount[0]++;
-                        if (responseCount[0] >= count) {
-                            isLoading = false;
-                            finishLoading();
-                        }
-                    }
-                }
-
-                @Override
-                public void onError(String error) {
-                    synchronized (myPositions) {
-                        responseCount[0]++;
-                        if (responseCount[0] >= count) {
-                            isLoading = false;
-                            finishLoading();
-                        }
-                    }
-                }
-            });
-        }
-    }
-
-    private boolean containsGame(int id) {
-        for (GoldMarketRepository.GameModel game : myPositions) {
-            if (game.id == id) return true;
-        }
-        return false;
-    }
 
     private void finishLoading() {
         renderPositions();
@@ -146,13 +103,6 @@ public class GoldMyPositionsFragment extends Fragment {
         swipeRefresh.setRefreshing(false);
     }
 
-    private boolean hasUserShares(GoldMarketRepository.GameModel game) {
-        if (game == null || game.myShares == null) return false;
-        for (BigInteger shares : game.myShares) {
-            if (shares != null && shares.compareTo(BigInteger.ZERO) > 0) return true;
-        }
-        return false;
-    }
 
     private void renderPositions() {
         positionsContainer.removeAllViews();

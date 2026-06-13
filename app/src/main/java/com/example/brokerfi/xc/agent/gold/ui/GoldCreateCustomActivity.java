@@ -200,11 +200,11 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
         String descriptiveTitle = generateDescriptiveTitle(p1);
         
         long durationRaw = (endMs - nowMs);
-        long finalDuration;
-        if (nowMs > 10000000000L) {
-            finalDuration = durationRaw; 
-        } else {
-            finalDuration = durationRaw / 1000;
+        long finalDuration = durationRaw / 1000; // 转换为秒，因为合约 block.timestamp 是秒级
+        
+        if (finalDuration <= 0) {
+            Toast.makeText(this, "截止时间必须晚于当前时间", Toast.LENGTH_SHORT).show();
+            return;
         }
         
         showSummaryDialog(descriptiveTitle, condition, startMs, endMs, finalDuration);
