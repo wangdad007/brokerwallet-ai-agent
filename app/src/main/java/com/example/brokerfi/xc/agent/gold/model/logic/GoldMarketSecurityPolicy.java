@@ -1,4 +1,4 @@
-package com.example.brokerfi.xc.agent.gold.logic;
+package com.example.brokerfi.xc.agent.gold.model.logic;
 
 import java.util.ArrayList;
 import java.util.Collections;

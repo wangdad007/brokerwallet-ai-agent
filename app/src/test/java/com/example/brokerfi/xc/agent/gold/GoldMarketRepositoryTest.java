@@ -6,9 +6,9 @@ import org.web3j.abi.datatypes.Function;
 import org.web3j.abi.datatypes.generated.Uint256;
 import org.web3j.abi.datatypes.generated.Uint8;
 
-import com.example.brokerfi.xc.agent.gold.data.GoldMarketRepository;
-import com.example.brokerfi.xc.agent.gold.logic.GoldMarketSecurityPolicy;
-import com.example.brokerfi.xc.agent.gold.ui.GoldNoteMarketActivity;
+import com.example.brokerfi.xc.agent.gold.model.data.GoldMarketRepository;
+import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketSecurityPolicy;
+import com.example.brokerfi.xc.agent.gold.view.GoldNoteMarketActivity;
 
 import java.math.BigInteger;
 import java.nio.file.Files;

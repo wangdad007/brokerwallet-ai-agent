@@ -1,6 +1,6 @@
-package com.example.brokerfi.xc.agent.gold.logic;
+package com.example.brokerfi.xc.agent.gold.model.logic;
 
-import com.example.brokerfi.xc.agent.gold.data.GoldMarketRepository;
+import com.example.brokerfi.xc.agent.gold.model.data.GoldMarketRepository;
 
 import java.math.BigInteger;
 import java.util.List;

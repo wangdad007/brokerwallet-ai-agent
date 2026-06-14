@@ -55,7 +55,7 @@ public class MenuActivity extends AppCompatActivity {
             startActivity(new Intent(this, AboutActivity.class));
         });
         goldlist.setOnClickListener(v -> {
-            startActivity(new Intent(this, com.example.brokerfi.xc.agent.gold.ui.GoldNoteMarketActivity.class));
+            startActivity(new Intent(this, com.example.brokerfi.xc.agent.gold.view.GoldNoteMarketActivity.class));
         });
         sendlist.setOnClickListener(view -> {
             IntentIntegrator intentIntegrator = new IntentIntegrator(MenuActivity.this);

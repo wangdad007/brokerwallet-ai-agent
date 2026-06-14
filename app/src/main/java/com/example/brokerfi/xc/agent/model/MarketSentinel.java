@@ -1,4 +1,4 @@
-package com.example.brokerfi.xc.agent;
+package com.example.brokerfi.xc.agent.model;
 
 /**
  * 交易安全守护 — 在用户发起交易前做 AI 辅助安全检查。

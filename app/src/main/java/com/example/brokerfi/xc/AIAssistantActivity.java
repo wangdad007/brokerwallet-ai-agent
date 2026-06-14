@@ -16,9 +16,9 @@ import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.brokerfi.R;
-import com.example.brokerfi.xc.agent.AgentManager;
-import com.example.brokerfi.xc.agent.DeepSeekClient;
-import com.example.brokerfi.xc.agent.gold.logic.GoldMarketResearchPromptBuilder;
+import com.example.brokerfi.xc.agent.model.AgentManager;
+import com.example.brokerfi.xc.agent.model.DeepSeekClient;
+import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketResearchPromptBuilder;
 
 public class AIAssistantActivity extends AppCompatActivity {
 

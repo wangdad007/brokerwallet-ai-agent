@@ -1,4 +1,4 @@
-package com.example.brokerfi.xc.agent.gold.ui;
+package com.example.brokerfi.xc.agent.gold.view;
 
 import android.content.Intent;
 import android.os.Bundle;

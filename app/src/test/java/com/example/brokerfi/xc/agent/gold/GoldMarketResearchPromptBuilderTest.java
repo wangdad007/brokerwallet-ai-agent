@@ -1,8 +1,8 @@
 package com.example.brokerfi.xc.agent.gold;
 
-import com.example.brokerfi.xc.agent.gold.data.GoldMarketRepository;
-import com.example.brokerfi.xc.agent.gold.logic.GoldAdvisoryManager;
-import com.example.brokerfi.xc.agent.gold.logic.GoldMarketResearchPromptBuilder;
+import com.example.brokerfi.xc.agent.gold.model.data.GoldMarketRepository;
+import com.example.brokerfi.xc.agent.gold.model.logic.GoldAdvisoryManager;
+import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketResearchPromptBuilder;
 
 import org.junit.Test;
 

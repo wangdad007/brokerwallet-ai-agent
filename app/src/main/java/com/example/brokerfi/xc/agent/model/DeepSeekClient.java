@@ -1,4 +1,4 @@
-package com.example.brokerfi.xc.agent;
+package com.example.brokerfi.xc.agent.model;
 
 import android.content.Context;
 import android.content.SharedPreferences;

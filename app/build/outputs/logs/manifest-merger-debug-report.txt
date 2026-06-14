@@ -391,24 +391,24 @@ ADDED from /Users/tangyucinder/StudioProjects/brokerwallet-ai-agent/app/src/main
 		ADDED from /Users/tangyucinder/StudioProjects/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:153:13-37
 	android:name
 		ADDED from /Users/tangyucinder/StudioProjects/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:152:13-46
-activity#com.example.brokerfi.xc.agent.gold.ui.GoldNoteMarketActivity
+activity#com.example.brokerfi.xc.agent.gold.view.GoldNoteMarketActivity
 ADDED from /Users/tangyucinder/StudioProjects/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:154:9-156:40
 	android:exported
 		ADDED from /Users/tangyucinder/StudioProjects/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:156:13-37
 	android:name
-		ADDED from /Users/tangyucinder/StudioProjects/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:155:13-68
-activity#com.example.brokerfi.xc.agent.gold.ui.GoldMarketDetailActivity
+		ADDED from /Users/tangyucinder/StudioProjects/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:155:13-70
+activity#com.example.brokerfi.xc.agent.gold.view.GoldMarketDetailActivity
 ADDED from /Users/tangyucinder/StudioProjects/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:157:9-159:40
 	android:exported
 		ADDED from /Users/tangyucinder/StudioProjects/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:159:13-37
 	android:name
-		ADDED from /Users/tangyucinder/StudioProjects/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:158:13-70
-activity#com.example.brokerfi.xc.agent.gold.ui.GoldCreateCustomActivity
+		ADDED from /Users/tangyucinder/StudioProjects/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:158:13-72
+activity#com.example.brokerfi.xc.agent.gold.view.GoldCreateCustomActivity
 ADDED from /Users/tangyucinder/StudioProjects/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:160:9-162:40
 	android:exported
 		ADDED from /Users/tangyucinder/StudioProjects/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:162:13-37
 	android:name
-		ADDED from /Users/tangyucinder/StudioProjects/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:161:13-70
+		ADDED from /Users/tangyucinder/StudioProjects/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:161:13-72
 activity#com.example.brokerfi.xc.WelcomeActivity
 ADDED from /Users/tangyucinder/StudioProjects/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:163:9-171:20
 	android:exported

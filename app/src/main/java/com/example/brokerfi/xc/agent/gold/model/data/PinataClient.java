@@ -1,4 +1,4 @@
-package com.example.brokerfi.xc.agent.gold.data;
+package com.example.brokerfi.xc.agent.gold.model.data;
 
 import org.json.JSONObject;
 import java.io.OutputStream;

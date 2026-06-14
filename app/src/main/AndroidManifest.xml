@@ -152,13 +152,13 @@
             android:name=".xc.ImportActivity"
             android:exported="false" />
         <activity
-            android:name=".xc.agent.gold.ui.GoldNoteMarketActivity"
+            android:name=".xc.agent.gold.view.GoldNoteMarketActivity"
             android:exported="false" />
         <activity
-            android:name=".xc.agent.gold.ui.GoldMarketDetailActivity"
+            android:name=".xc.agent.gold.view.GoldMarketDetailActivity"
             android:exported="false" />
         <activity
-            android:name=".xc.agent.gold.ui.GoldCreateCustomActivity"
+            android:name=".xc.agent.gold.view.GoldCreateCustomActivity"
             android:exported="false" />
         <activity
             android:name=".xc.WelcomeActivity"

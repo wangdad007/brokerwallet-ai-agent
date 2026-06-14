@@ -543,7 +543,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         goldMarket.setOnClickListener(view -> {
-            startActivity(new Intent(this, com.example.brokerfi.xc.agent.gold.ui.GoldNoteMarketActivity.class));
+            startActivity(new Intent(this, com.example.brokerfi.xc.agent.gold.view.GoldNoteMarketActivity.class));
         });
         
         //findViewById(R.id.convertBtn).setOnClickListener(view -> {

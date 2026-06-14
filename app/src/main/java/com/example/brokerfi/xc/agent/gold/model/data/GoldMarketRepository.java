@@ -1,11 +1,11 @@
-package com.example.brokerfi.xc.agent.gold.data;
+package com.example.brokerfi.xc.agent.gold.model.data;
 
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Log;
 
 import com.example.brokerfi.BuildConfig;
-import com.example.brokerfi.xc.agent.gold.logic.GoldMarketSecurityPolicy;
+import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketSecurityPolicy;
 
 import org.json.JSONObject;
 import org.web3j.abi.FunctionEncoder;
