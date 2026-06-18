@@ -1,6 +1,7 @@
 package com.example.brokerfi.xc.agent.gold.view;
 
 import android.app.AlertDialog;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -20,6 +21,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.example.brokerfi.R;
+import com.example.brokerfi.xc.agent.gold.model.logic.GoldAdvisoryManager;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketResearchPromptBuilder;
 import com.example.brokerfi.xc.agent.model.AgentManager;
 import com.example.brokerfi.xc.agent.model.DeepSeekClient;
@@ -30,6 +32,11 @@ public class AIChatFragment extends Fragment {
     private ScrollView messageScroll;
     private EditText inputField;
     private ImageView sendBtn;
+    private ImageView btnConfig;
+    private TextView tvAiSignal;
+    private TextView tvAiConfidence;
+    private TextView tvAiSummary;
+    private LinearLayout cardAiAdvice;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private volatile boolean destroyed = false;
     private boolean requestInFlight = false;
@@ -48,7 +55,7 @@ public class AIChatFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
         DeepSeekClient.init(requireContext());
         showWelcomeMessage();
-        loadInitialGoldAdvice();
+        loadAiAdvice();
     }
 
     private void initViews(View v) {
@@ -56,23 +63,26 @@ public class AIChatFragment extends Fragment {
         messageScroll = v.findViewById(R.id.message_scroll);
         inputField = v.findViewById(R.id.input_field);
         sendBtn = v.findViewById(R.id.send_btn);
+        btnConfig = v.findViewById(R.id.btn_config);
+        tvAiSignal = v.findViewById(R.id.tv_ai_signal);
+        tvAiConfidence = v.findViewById(R.id.tv_ai_confidence);
+        tvAiSummary = v.findViewById(R.id.tv_ai_summary);
+        cardAiAdvice = v.findViewById(R.id.card_ai_advice);
 
         sendBtn.setOnClickListener(v1 -> onSendMessage());
+        btnConfig.setOnClickListener(v1 -> showApiKeyDialog());
+        cardAiAdvice.setOnClickListener(v1 -> onCardAiAdviceClick());
     }
 
-    private void showWelcomeMessage() {
-        addMessage("AI", "你好！我是 BrokerChain 黄金投研助手。\n\n" +
-                "我会基于金价、链上预测池和你的问题，给出黄金票据交易建议。\n" +
-                "请不要输入私钥或助记词。\n\n" +
-                (DeepSeekClient.isConfigured() ?
-                        "DeepSeek AI 已就绪，可以直接询问。" :
-                        "尚未配置 DeepSeek API Key。"));
+    private void onCardAiAdviceClick() {
+        if (!DeepSeekClient.isConfigured()) {
+            showApiKeyDialog();
+            return;
+        }
+        loadInitialGoldAdvice();
     }
 
     private void loadInitialGoldAdvice() {
-        if (!DeepSeekClient.isConfigured()) {
-            return;
-        }
         String initialQuestion = "请给出当前黄金的购买建议，包括趋势分析和风险提示。";
         int loadingIndex = beginLoading("分析黄金走势中...");
         AgentManager.getInstance().askGoldResearch(initialQuestion, new AgentManager.AnalysisCallback() {
@@ -91,6 +101,45 @@ public class AIChatFragment extends Fragment {
                 finishLoading(loadingIndex, formatAiError(error));
             }
         });
+    }
+
+    private void showWelcomeMessage() {
+        addMessage("AI", "你好！我是 BrokerChain 黄金投研助手。\n\n" +
+                "我会基于金价、链上预测池和你的问题，给出黄金票据交易建议。\n" +
+                "请不要输入私钥或助记词。\n\n" +
+                (DeepSeekClient.isConfigured() ?
+                        "DeepSeek AI 已就绪，可以直接询问。" :
+                        "尚未配置 DeepSeek API Key。"));
+    }
+
+    private void loadAiAdvice() {
+        if (!DeepSeekClient.isConfigured()) {
+            tvAiSummary.setText("点击配置 DeepSeek API Key");
+            return;
+        }
+        tvAiSummary.setText("正在获取AI投研建议...");
+        GoldAdvisoryManager.fetch(new GoldAdvisoryManager.AdvisoryCallback() {
+            @Override
+            public void onSuccess(GoldAdvisoryManager.Advisory advisory) {
+                updateAiAdviceUI(advisory);
+            }
+
+            @Override
+            public void onError(String error) {
+                if (!destroyed && isAdded()) {
+                    tvAiSummary.setText("获取失败，请重试");
+                }
+            }
+        });
+    }
+
+    private void updateAiAdviceUI(GoldAdvisoryManager.Advisory advisory) {
+        if (destroyed || !isAdded() || advisory == null) return;
+        tvAiSignal.setText(advisory.signal);
+        tvAiConfidence.setText("DeepSeek 置信度 " + advisory.confidence + "%");
+        tvAiSummary.setText(advisory.summary);
+        int color = advisory.signal.equals("BUY") ? Color.parseColor("#047857") : (advisory.signal.equals("SELL") ? Color.RED : Color.BLACK);
+        tvAiSignal.setTextColor(color);
     }
 
     private void onSendMessage() {
@@ -253,5 +302,23 @@ public class AIChatFragment extends Fragment {
             error = error.substring(0, 300) + "...";
         }
         return "AI 请求失败：" + error;
+    }
+
+    private void showApiKeyDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        builder.setTitle("配置 DeepSeek API Key");
+        final EditText input = new EditText(requireContext());
+        input.setHint("输入你的 API Key");
+        input.setText(DeepSeekClient.getApiKey());
+        builder.setView(input);
+        builder.setPositiveButton("保存", (dialog, which) -> {
+            String key = input.getText().toString().trim();
+            if (!key.isEmpty()) {
+                DeepSeekClient.setApiKey(key);
+                loadAiAdvice();
+            }
+        });
+        builder.setNegativeButton("取消", null);
+        builder.show();
     }
 }
