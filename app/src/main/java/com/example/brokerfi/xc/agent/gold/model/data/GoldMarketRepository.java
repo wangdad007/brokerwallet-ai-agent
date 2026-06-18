@@ -388,9 +388,10 @@ public class GoldMarketRepository {
                 model.deadlineSec = ((Uint256) res.get(4)).getValue().longValue();
                 model.isRefunded = ((Bool) res.get(5)).getValue();
 
-                // 默认初始化，防止 UI 端空指针或不显示
+                // 统一初始化，避免 UI 端判断 null
                 model.virtualReserves = Arrays.asList(BigInteger.ZERO, BigInteger.ZERO);
                 model.myShares = Arrays.asList(BigInteger.ZERO, BigInteger.ZERO);
+                model.optionNames = Arrays.asList("YES", "NO");
 
                 // 4. 解析持仓数据
                 if (hexResults[1] != null && !hexResults[1].equals("0x") && !hexResults[1].startsWith("Error")) {
@@ -400,32 +401,38 @@ public class GoldMarketRepository {
                             List<Uint256> reservesArray = ((DynamicArray<Uint256>) extraRes.get(0)).getValue();
                             List<Uint256> sharesArray = ((DynamicArray<Uint256>) extraRes.get(1)).getValue();
                             
-                            List<BigInteger> vRes = new ArrayList<>();
-                            for (int i = 0; i < Math.min(2, reservesArray.size()); i++) vRes.add(reservesArray.get(i).getValue());
-                            if (vRes.size() >= 2) model.virtualReserves = vRes;
+                            // 合约顺序: 0: reserveNO, 1: reserveYES -> UI 习惯: 0: YES, 1: NO
+                            if (reservesArray.size() >= 2) {
+                                model.virtualReserves = Arrays.asList(reservesArray.get(1).getValue(), reservesArray.get(0).getValue());
+                            }
                             
-                            List<BigInteger> mShares = new ArrayList<>();
-                            for (int i = 0; i < Math.min(2, sharesArray.size()); i++) mShares.add(sharesArray.get(i).getValue());
-                            if (mShares.size() >= 2) model.myShares = mShares;
+                            // 合约顺序: userShares[gameId][user][0] (YES), [1] (NO) -> UI 习惯: 0: YES, 1: NO
+                            if (sharesArray.size() >= 2) {
+                                model.myShares = Arrays.asList(sharesArray.get(0).getValue(), sharesArray.get(1).getValue());
+                            }
                         }
                     } catch (Exception e) {
                         Log.e(TAG, "Extra data decode error for game " + id + ": " + e.getMessage());
                     }
                 }
 
-                // 5. 关键步骤：下载文本元数据
+                // 5. 下载文本元数据
                 try {
                     String ipfsJsonStr = PinataClient.downloadJsonFromIPFS(model.ipfsCID);
-                    JSONObject ipfsData = new JSONObject(ipfsJsonStr);
-                    model.desc = ipfsData.optString("desc", "博弈池 #" + id);
-                    model.condition = ipfsData.optString("condition", "暂无详细判定逻辑");
-                    model.avatarUrl = ipfsData.optString("avatarUrl", "");
-                    model.detailedInfo = ipfsData.optString("detailedInfo", "");
-                    model.optionNames = Arrays.asList(ipfsData.optString("optionYES", "YES"), ipfsData.optString("optionNO", "NO"));
-                    model.optionCount = 2;
+                    if (ipfsJsonStr != null && !ipfsJsonStr.isEmpty()) {
+                        JSONObject ipfsData = new JSONObject(ipfsJsonStr);
+                        model.desc = ipfsData.optString("desc", "博弈池 #" + id);
+                        model.condition = ipfsData.optString("condition", "暂无详细判定逻辑");
+                        model.avatarUrl = ipfsData.optString("avatarUrl", "");
+                        model.detailedInfo = ipfsData.optString("detailedInfo", "");
+                        model.optionNames = Arrays.asList(ipfsData.optString("optionYES", "YES"), ipfsData.optString("optionNO", "NO"));
+                        model.optionCount = 2;
+                    } else {
+                        model.desc = "博弈池 #" + id;
+                    }
                 } catch (Exception e) {
                     Log.e(TAG, "IPFS 数据下载失败: " + e.getMessage());
-                    model.desc = null;
+                    model.desc = "博弈池 #" + id;
                 }
 
                 AppExecutors.getInstance().mainThread().execute(() -> callback.onSuccess(model));
@@ -499,35 +506,49 @@ public class GoldMarketRepository {
                     m.isResolved = isResolveds.get(i).getValue();
                     m.isRefunded = isRefundeds.get(i).getValue();
                     m.winningOption = winningOptions.get(i).getValue().intValue();
+                    m.optionNames = Arrays.asList("YES", "NO");
 
                     if (resNO != null && i < resNO.size()) {
-                        m.virtualReserves = Arrays.asList(resNO.get(i).getValue(), resYES.get(i).getValue());
+                        // 合约顺序: 0: reserveNO, 1: reserveYES -> UI 习惯: 0: YES, 1: NO
+                        m.virtualReserves = Arrays.asList(resYES.get(i).getValue(), resNO.get(i).getValue());
+                        // 合约顺序: myYES, myNO -> UI 习惯: 0: YES, 1: NO
                         m.myShares = Arrays.asList(myYES.get(i).getValue(), myNO.get(i).getValue());
+                    } else {
+                        m.virtualReserves = Arrays.asList(BigInteger.ZERO, BigInteger.ZERO);
+                        m.myShares = Arrays.asList(BigInteger.ZERO, BigInteger.ZERO);
                     }
                     models.add(m);
                 }
 
-                // 并行获取 IPFS 数据
-                java.util.concurrent.CountDownLatch ipfsLatch = new java.util.concurrent.CountDownLatch(models.size());
-                for (GameModel m : models) {
-                    AppExecutors.getInstance().networkIO().execute(() -> {
-                        try {
-                            String json = PinataClient.downloadJsonFromIPFS(m.ipfsCID);
-                            JSONObject obj = new JSONObject(json);
-                            m.desc = obj.optString("desc", "博弈池 #" + m.id);
-                            m.condition = obj.optString("condition", "");
-                            m.avatarUrl = obj.optString("avatarUrl", "");
-                            m.detailedInfo = obj.optString("detailedInfo", "");
-                            m.optionNames = Arrays.asList(obj.optString("optionYES", "YES"), obj.optString("optionNO", "NO"));
-                            m.optionCount = 2;
-                        } catch (Exception e) {
-                            m.desc = "博弈池 #" + m.id;
-                        } finally {
-                            ipfsLatch.countDown();
-                        }
-                    });
+                if (!models.isEmpty()) {
+                    long ipfsStartTime = System.currentTimeMillis();
+                    java.util.concurrent.CountDownLatch ipfsLatch = new java.util.concurrent.CountDownLatch(models.size());
+                    for (GameModel m : models) {
+                        AppExecutors.getInstance().networkIO().execute(() -> {
+                            try {
+                                String json = PinataClient.downloadJsonFromIPFS(m.ipfsCID);
+                                if (json != null && !json.isEmpty()) {
+                                    JSONObject obj = new JSONObject(json);
+                                    m.desc = obj.optString("desc", "博弈池 #" + m.id);
+                                    m.condition = obj.optString("condition", "");
+                                    m.avatarUrl = obj.optString("avatarUrl", "");
+                                    m.detailedInfo = obj.optString("detailedInfo", "");
+                                    m.optionNames = Arrays.asList(obj.optString("optionYES", "YES"), obj.optString("optionNO", "NO"));
+                                    m.optionCount = 2;
+                                } else {
+                                    m.desc = "博弈池 #" + m.id;
+                                }
+                            } catch (Exception e) {
+                                m.desc = "博弈池 #" + m.id;
+                            } finally {
+                                ipfsLatch.countDown();
+                            }
+                        });
+                    }
+                    ipfsLatch.await(30, java.util.concurrent.TimeUnit.SECONDS);
+                    long ipfsEndTime = System.currentTimeMillis();
+                    Log.d("LatencyDebug", "getAllGamesInfo - IPFS 元数据(并行)加载耗时: " + (ipfsEndTime - ipfsStartTime) + "ms");
                 }
-                ipfsLatch.await(30, java.util.concurrent.TimeUnit.SECONDS);
 
                 AppExecutors.getInstance().mainThread().execute(() -> callback.onSuccess(models));
             } catch (Exception e) {
@@ -538,6 +559,7 @@ public class GoldMarketRepository {
 
     @SuppressWarnings("unchecked")
     public void getMyParticipatedGames(DataCallback<List<GameModel>> callback) {
+        final long startTime = System.currentTimeMillis();
         AppExecutors.getInstance().networkIO().execute(() -> {
             try {
                 String addr = getWalletAddress();
@@ -572,33 +594,46 @@ public class GoldMarketRepository {
                     m.isResolved = dto.isResolved;
                     m.isRefunded = dto.isRefunded;
                     m.winningOption = dto.winningOption.intValue();
-                    m.virtualReserves = Arrays.asList(dto.reserveNO, dto.reserveYES);
+                    m.optionNames = Arrays.asList("YES", "NO");
+                    
+                    // 合约 DTO 顺序: reserveNO, reserveYES, mySharesYES, mySharesNO
+                    // UI 统一顺序: 0: YES, 1: NO
+                    m.virtualReserves = Arrays.asList(dto.reserveYES, dto.reserveNO);
                     m.myShares = Arrays.asList(dto.mySharesYES, dto.mySharesNO);
                     models.add(m);
                 }
 
-                // 并行获取 IPFS 数据
-                java.util.concurrent.CountDownLatch ipfsLatch = new java.util.concurrent.CountDownLatch(models.size());
-                for (GameModel m : models) {
-                    AppExecutors.getInstance().networkIO().execute(() -> {
-                        try {
-                            String json = PinataClient.downloadJsonFromIPFS(m.ipfsCID);
-                            JSONObject obj = new JSONObject(json);
-                            m.desc = obj.optString("desc", "博弈池 #" + m.id);
-                            m.condition = obj.optString("condition", "");
-                            m.avatarUrl = obj.optString("avatarUrl", "");
-                            m.detailedInfo = obj.optString("detailedInfo", "");
-                            m.optionNames = Arrays.asList(obj.optString("optionYES", "YES"), obj.optString("optionNO", "NO"));
-                            m.optionCount = 2;
-                        } catch (Exception e) {
-                            m.desc = "博弈池 #" + m.id;
-                        } finally {
-                            ipfsLatch.countDown();
-                        }
-                    });
+                if (!models.isEmpty()) {
+                    long ipfsStartTime = System.currentTimeMillis();
+                    java.util.concurrent.CountDownLatch ipfsLatch = new java.util.concurrent.CountDownLatch(models.size());
+                    for (GameModel m : models) {
+                        AppExecutors.getInstance().networkIO().execute(() -> {
+                            try {
+                                String json = PinataClient.downloadJsonFromIPFS(m.ipfsCID);
+                                if (json != null && !json.isEmpty()) {
+                                    JSONObject obj = new JSONObject(json);
+                                    m.desc = obj.optString("desc", "博弈池 #" + m.id);
+                                    m.condition = obj.optString("condition", "");
+                                    m.avatarUrl = obj.optString("avatarUrl", "");
+                                    m.detailedInfo = obj.optString("detailedInfo", "");
+                                    m.optionNames = Arrays.asList(obj.optString("optionYES", "YES"), obj.optString("optionNO", "NO"));
+                                    m.optionCount = 2;
+                                } else {
+                                    m.desc = "博弈池 #" + m.id;
+                                }
+                            } catch (Exception e) {
+                                m.desc = "博弈池 #" + m.id;
+                            } finally {
+                                ipfsLatch.countDown();
+                            }
+                        });
+                    }
+                    ipfsLatch.await(30, java.util.concurrent.TimeUnit.SECONDS);
+                    long ipfsEndTime = System.currentTimeMillis();
+                    Log.d("LatencyDebug", "getMyParticipatedGames - IPFS 元数据(并行)加载耗时: " + (ipfsEndTime - ipfsStartTime) + "ms");
                 }
-                ipfsLatch.await(30, java.util.concurrent.TimeUnit.SECONDS);
 
+                Log.d("LatencyDebug", "getMyParticipatedGames - 总流程耗时: " + (System.currentTimeMillis() - startTime) + "ms (共 " + models.size() + " 个项目)");
                 AppExecutors.getInstance().mainThread().execute(() -> callback.onSuccess(models));
             } catch (Exception e) {
                 postError(callback, "获取参与的市场异常: " + e.getMessage());
@@ -623,7 +658,7 @@ public class GoldMarketRepository {
 
     public void createGame(String desc, String condition, String avatarUrl,
                            String detailedInfo, List<String> optionNamesList,
-                           long durationSec, BigInteger initialLiquidityWei, TxCallback callback) {
+                           long duration, BigInteger initialLiquidityWei, TxCallback callback) {
         
         AppExecutors.getInstance().networkIO().execute(() -> {
             try {
@@ -640,10 +675,18 @@ public class GoldMarketRepository {
                 String cid = PinataClient.uploadJsonToIPFS(metadata);
                 Log.d(TAG, "成功上传 IPFS, CID: " + cid);
 
-                // 2. 带着 CID 上链，极大节省 Gas
+                // 核心修复：根据环境自动调整时间单位
+                // 关键判断：如果不是本地 RPC (即 BrokerChain)，且传入的 duration 看起来像秒级 (小于 10^10)，
+                // 考虑到 BrokerChain block.timestamp 通常是毫秒级的，这里必须乘以 1000。
+                long finalDuration = duration;
+                if (!useLocalRpc && duration < 10_000_000_000L) {
+                    finalDuration = duration * 1000L;
+                }
+
+                // 2. 带着 CID 上链
                 org.web3j.abi.datatypes.Function f = new org.web3j.abi.datatypes.Function(
                     "createGame", 
-                    Arrays.asList(new Utf8String(cid), new Uint256(durationSec)),
+                    Arrays.asList(new Utf8String(cid), new Uint256(finalDuration)),
                     Collections.emptyList());
                     
                 sendTransaction(initialLiquidityWei, f, "博弈池部署成功", callback);

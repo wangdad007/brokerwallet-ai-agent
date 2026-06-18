@@ -12,7 +12,7 @@ import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
-
+import android.util.Log;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 
@@ -150,9 +150,33 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
         if (end <= start) { Toast.makeText(this, "截止日期必须晚于开始日期", Toast.LENGTH_SHORT).show(); return; }
         String cond = generateConditionString(p1), title = generateDescriptiveTitle(p1);
         long dur = (end - now) / 1000;
+        Log.d("attemptShowSummary","开始时间"+String.valueOf(start));
+        Log.d("attemptShowSummary","结束时间"+String.valueOf(end));
+        Log.d("attemptShowSummary","博弈池持续时间"+String.valueOf(dur));
+
         if (dur <= 0) { Toast.makeText(this, "截止时间必须晚于当前", Toast.LENGTH_SHORT).show(); return; }
         showSummaryDialog(title, cond, start, end, dur);
     }
+
+    private void showSummaryDialog(String title, String condition, long start, long end, long dur) {
+        String liqStr = etInitialLiquidity.getText().toString().trim();
+        if (liqStr.isEmpty()) liqStr = "100";
+        final java.math.BigInteger liqWei = GoldMarketRepository.parseTokenAmountToWei(liqStr);
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        View v = LayoutInflater.from(this).inflate(R.layout.dialog_gold_pool_summary, null);
+        builder.setView(v);
+        ((TextView) v.findViewById(R.id.tv_summary_id)).setText("待部署: " + title);
+        ((TextView) v.findViewById(R.id.tv_summary_logic)).setText(condition + "\n(初始: " + liqStr + " BKC)");
+        ((TextView) v.findViewById(R.id.tv_summary_period)).setText((startSelected ? dateFormat.format(new Date(start)) : "当前") + " 至 " + dateFormat.format(new Date(end)));
+        ((TextView) v.findViewById(R.id.tv_summary_creator)).setText(viewModel.getWalletAddress());
+        ((TextView) v.findViewById(R.id.tv_summary_time)).setText(dateFormat.format(new Date()));
+        Button btn = v.findViewById(R.id.btn_summary_close);
+        btn.setText("确认并部署");
+        AlertDialog dialog = builder.create();
+        btn.setOnClickListener(view -> { dialog.dismiss(); viewModel.createGame(title, condition, "", "Premium", Arrays.asList("达成 (YES)", "未达成 (NO)"), dur, liqWei); });
+        dialog.show();
+    }
+
 
     private String generateDescriptiveTitle(String p1) {
         String startStr = dateFormat.format(startCalendar.getTime()), endStr = dateFormat.format(endCalendar.getTime());
@@ -180,21 +204,4 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
         }
     }
 
-    private void showSummaryDialog(String title, String condition, long start, long end, long dur) {
-        String liqStr = etInitialLiquidity.getText().toString().trim(); if (liqStr.isEmpty()) liqStr = "100";
-        final java.math.BigInteger liqWei = GoldMarketRepository.parseTokenAmountToWei(liqStr);
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        View v = LayoutInflater.from(this).inflate(R.layout.dialog_gold_pool_summary, null);
-        builder.setView(v);
-        ((TextView) v.findViewById(R.id.tv_summary_id)).setText("待部署: " + title);
-        ((TextView) v.findViewById(R.id.tv_summary_logic)).setText(condition + "\n(初始: " + liqStr + " BKC)");
-        ((TextView) v.findViewById(R.id.tv_summary_period)).setText((startSelected ? dateFormat.format(new Date(start)) : "当前") + " 至 " + dateFormat.format(new Date(end)));
-        ((TextView) v.findViewById(R.id.tv_summary_creator)).setText(viewModel.getWalletAddress());
-        ((TextView) v.findViewById(R.id.tv_summary_time)).setText(dateFormat.format(new Date()));
-        Button btn = v.findViewById(R.id.btn_summary_close);
-        btn.setText("确认并部署");
-        AlertDialog dialog = builder.create();
-        btn.setOnClickListener(view -> { dialog.dismiss(); viewModel.createGame(title, condition, "", "Premium", Arrays.asList("达成 (YES)", "未达成 (NO)"), dur, liqWei); });
-        dialog.show();
-    }
 }
