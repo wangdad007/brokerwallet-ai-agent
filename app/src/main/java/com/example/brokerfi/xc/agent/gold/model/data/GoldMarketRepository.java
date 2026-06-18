@@ -341,8 +341,10 @@ public class GoldMarketRepository {
     @SuppressWarnings("unchecked")
     public void getGameInfo(int id, DataCallback<GameModel> callback) {
         AppExecutors.getInstance().networkIO().execute(() -> {
+            long totalStart = System.currentTimeMillis();
             try {
                 // 1. 准备链上数据请求
+                long chainStart = System.currentTimeMillis();
                 org.web3j.abi.datatypes.Function fInfo = new org.web3j.abi.datatypes.Function(
                     "getGameInfo", Collections.singletonList(new Uint256(BigInteger.valueOf(id))),
                     Arrays.asList(
@@ -368,6 +370,9 @@ public class GoldMarketRepository {
                 AppExecutors.getInstance().networkIO().execute(() -> { try { hexResults[0] = ethCall(fInfo); } catch (Exception e) { hexResults[0] = "Error: " + e.getMessage(); } finally { latch.countDown(); } });
                 AppExecutors.getInstance().networkIO().execute(() -> { try { hexResults[1] = ethCall(fExtra); } catch (Exception e) { hexResults[1] = "Error: " + e.getMessage(); } finally { latch.countDown(); } });
                 latch.await(30, java.util.concurrent.TimeUnit.SECONDS);
+
+                long chainEnd = System.currentTimeMillis();
+                Log.d("时延", "getGameInfo - 链上数据加载: " + (chainEnd - chainStart) + "ms");
 
                 if (hexResults[0] == null || hexResults[0].equals("0x") || hexResults[0].startsWith("Error")) { 
                     postError(callback, "链上数据读取失败: " + hexResults[0]); 
@@ -417,6 +422,7 @@ public class GoldMarketRepository {
                 }
 
                 // 5. 下载文本元数据
+                long ipfsStart = System.currentTimeMillis();
                 try {
                     String ipfsJsonStr = PinataClient.downloadJsonFromIPFS(model.ipfsCID);
                     Log.d("getGameInfo","Json数据"+ipfsJsonStr);
@@ -435,9 +441,13 @@ public class GoldMarketRepository {
                     Log.e(TAG, "IPFS 数据下载失败: " + e.getMessage());
                     model.desc = "博弈池 #" + id;
                 }
+                long ipfsEnd = System.currentTimeMillis();
+                Log.d("时延", "getGameInfo - IPFS数据加载: " + (ipfsEnd - ipfsStart) + "ms");
+                Log.d("时延", "getGameInfo - 总耗时: " + (ipfsEnd - totalStart) + "ms");
 
                 AppExecutors.getInstance().mainThread().execute(() -> callback.onSuccess(model));
             } catch (Exception e) {
+                Log.d("时延", "getGameInfo - 失败，总耗时: " + (System.currentTimeMillis() - totalStart) + "ms");
                 postError(callback, "获取详情异常: " + e.getMessage());
             }
         });
@@ -446,7 +456,9 @@ public class GoldMarketRepository {
     @SuppressWarnings("unchecked")
     public void getAllGamesInfo(DataCallback<List<GameModel>> callback) {
         AppExecutors.getInstance().networkIO().execute(() -> {
+            long totalStart = System.currentTimeMillis();
             try {
+                long chainStart = System.currentTimeMillis();
                 org.web3j.abi.datatypes.Function fAll = new org.web3j.abi.datatypes.Function(
                         "getAllGames", Collections.emptyList(),
                         Arrays.asList(
@@ -475,6 +487,9 @@ public class GoldMarketRepository {
                 AppExecutors.getInstance().networkIO().execute(() -> { try { hexResults[0] = ethCall(fAll); } catch (Exception ignored) {} finally { latch.countDown(); } });
                 AppExecutors.getInstance().networkIO().execute(() -> { try { hexResults[1] = ethCall(fExtra); } catch (Exception ignored) {} finally { latch.countDown(); } });
                 latch.await(30, java.util.concurrent.TimeUnit.SECONDS);
+
+                long chainEnd = System.currentTimeMillis();
+                Log.d("时延", "getAllGamesInfo - 链上数据加载: " + (chainEnd - chainStart) + "ms");
 
                 if (hexResults[0] == null || hexResults[0].equals("0x")) { postError(callback, "基础数据读取失败"); return; }
 
@@ -521,14 +536,14 @@ public class GoldMarketRepository {
                     models.add(m);
                 }
 
+                long ipfsStart = System.currentTimeMillis();
                 if (!models.isEmpty()) {
-                    long ipfsStartTime = System.currentTimeMillis();
                     java.util.concurrent.CountDownLatch ipfsLatch = new java.util.concurrent.CountDownLatch(models.size());
                     for (GameModel m : models) {
                         AppExecutors.getInstance().networkIO().execute(() -> {
                             try {
                                 String json = PinataClient.downloadJsonFromIPFS(m.ipfsCID);
-                                Log.d("getAllGamesInfo","Json"+json);
+                                Log.d("getAllGamesInfo","getAllGamesInfo中IPFS正确");
                                 if (json != null && !json.isEmpty()) {
                                     JSONObject obj = new JSONObject(json);
                                     m.desc = obj.optString("desc", "博弈池 #" + m.id);
@@ -542,18 +557,21 @@ public class GoldMarketRepository {
                                 }
                             } catch (Exception e) {
                                 m.desc = "博弈池 #" + m.id;
+                                Log.d("getAllGamesInfo","getAllGamesInfo中IPFS错误");
                             } finally {
                                 ipfsLatch.countDown();
                             }
                         });
                     }
                     ipfsLatch.await(30, java.util.concurrent.TimeUnit.SECONDS);
-                    long ipfsEndTime = System.currentTimeMillis();
-                    Log.d("LatencyDebug", "getAllGamesInfo - IPFS 元数据(并行)加载耗时: " + (ipfsEndTime - ipfsStartTime) + "ms");
                 }
+                long ipfsEnd = System.currentTimeMillis();
+                Log.d("时延", "getAllGamesInfo - IPFS数据加载: " + (ipfsEnd - ipfsStart) + "ms");
+                Log.d("时延", "getAllGamesInfo - 总耗时: " + (ipfsEnd - totalStart) + "ms");
 
                 AppExecutors.getInstance().mainThread().execute(() -> callback.onSuccess(models));
             } catch (Exception e) {
+                Log.d("时延", "getAllGamesInfo - 失败，总耗时: " + (System.currentTimeMillis() - totalStart) + "ms");
                 postError(callback, "批量获取市场异常: " + e.getMessage());
             }
         });
@@ -561,9 +579,10 @@ public class GoldMarketRepository {
 
     @SuppressWarnings("unchecked")
     public void getMyParticipatedGames(DataCallback<List<GameModel>> callback) {
-        final long startTime = System.currentTimeMillis();
+        final long totalStart = System.currentTimeMillis();
         AppExecutors.getInstance().networkIO().execute(() -> {
             try {
+                long chainStart = System.currentTimeMillis();
                 String addr = getWalletAddress();
                 org.web3j.abi.datatypes.Function function = new org.web3j.abi.datatypes.Function(
                         "getMyParticipatedGames",
@@ -584,6 +603,8 @@ public class GoldMarketRepository {
                 }
                 
                 List<ParticipatedGameDTO> dtos = ((DynamicArray<ParticipatedGameDTO>) res.get(0)).getValue();
+                long chainEnd = System.currentTimeMillis();
+                Log.d("时延", "getMyParticipatedGames - 链上数据加载: " + (chainEnd - chainStart) + "ms");
 
                 List<GameModel> models = new ArrayList<>();
                 for (ParticipatedGameDTO dto : dtos) {
@@ -605,8 +626,8 @@ public class GoldMarketRepository {
                     models.add(m);
                 }
 
+                long ipfsStart = System.currentTimeMillis();
                 if (!models.isEmpty()) {
-                    long ipfsStartTime = System.currentTimeMillis();
                     java.util.concurrent.CountDownLatch ipfsLatch = new java.util.concurrent.CountDownLatch(models.size());
                     for (GameModel m : models) {
                         AppExecutors.getInstance().networkIO().execute(() -> {
@@ -631,13 +652,14 @@ public class GoldMarketRepository {
                         });
                     }
                     ipfsLatch.await(30, java.util.concurrent.TimeUnit.SECONDS);
-                    long ipfsEndTime = System.currentTimeMillis();
-                    Log.d("LatencyDebug", "getMyParticipatedGames - IPFS 元数据(并行)加载耗时: " + (ipfsEndTime - ipfsStartTime) + "ms");
                 }
+                long ipfsEnd = System.currentTimeMillis();
+                Log.d("时延", "getMyParticipatedGames - IPFS数据加载: " + (ipfsEnd - ipfsStart) + "ms");
+                Log.d("时延", "getMyParticipatedGames - 总耗时: " + (ipfsEnd - totalStart) + "ms (共 " + models.size() + " 个项目)");
 
-                Log.d("LatencyDebug", "getMyParticipatedGames - 总流程耗时: " + (System.currentTimeMillis() - startTime) + "ms (共 " + models.size() + " 个项目)");
                 AppExecutors.getInstance().mainThread().execute(() -> callback.onSuccess(models));
             } catch (Exception e) {
+                Log.d("时延", "getMyParticipatedGames - 失败，总耗时: " + (System.currentTimeMillis() - totalStart) + "ms");
                 postError(callback, "获取参与的市场异常: " + e.getMessage());
             }
         });
