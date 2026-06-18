@@ -419,6 +419,7 @@ public class GoldMarketRepository {
                 // 5. 下载文本元数据
                 try {
                     String ipfsJsonStr = PinataClient.downloadJsonFromIPFS(model.ipfsCID);
+                    Log.d("getGameInfo","Json数据"+ipfsJsonStr);
                     if (ipfsJsonStr != null && !ipfsJsonStr.isEmpty()) {
                         JSONObject ipfsData = new JSONObject(ipfsJsonStr);
                         model.desc = ipfsData.optString("desc", "博弈池 #" + id);
@@ -527,6 +528,7 @@ public class GoldMarketRepository {
                         AppExecutors.getInstance().networkIO().execute(() -> {
                             try {
                                 String json = PinataClient.downloadJsonFromIPFS(m.ipfsCID);
+                                Log.d("getAllGamesInfo","Json"+json);
                                 if (json != null && !json.isEmpty()) {
                                     JSONObject obj = new JSONObject(json);
                                     m.desc = obj.optString("desc", "博弈池 #" + m.id);
