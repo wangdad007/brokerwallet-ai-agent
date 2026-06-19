@@ -26,6 +26,8 @@ import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketResearchPromptBu
 import com.example.brokerfi.xc.agent.model.AgentManager;
 import com.example.brokerfi.xc.agent.model.DeepSeekClient;
 
+import io.noties.markwon.Markwon;
+
 public class AIChatFragment extends Fragment {
 
     private LinearLayout messageContainer;
@@ -37,6 +39,7 @@ public class AIChatFragment extends Fragment {
     private TextView tvAiConfidence;
     private TextView tvAiSummary;
     private LinearLayout cardAiAdvice;
+    private Markwon markwon;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private volatile boolean destroyed = false;
     private boolean requestInFlight = false;
@@ -54,6 +57,7 @@ public class AIChatFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         DeepSeekClient.init(requireContext());
+        markwon = Markwon.create(requireContext());
         showWelcomeMessage();
         loadAiAdvice();
     }
@@ -217,7 +221,6 @@ public class AIChatFragment extends Fragment {
         bubble.addView(senderView);
 
         TextView textView = new TextView(requireContext());
-        textView.setText(text);
         textView.setTextSize(15);
         textView.setTextColor(sender.equals("AI") ? 0xFF1A1A1A : 0xFFFFFFFF);
         textView.setLineSpacing(4, 1);
@@ -225,6 +228,13 @@ public class AIChatFragment extends Fragment {
         textView.setBackgroundResource(sender.equals("AI")
                 ? R.drawable.custom_light_grey_background
                 : R.drawable.custom_green_background);
+
+        // 使用 Markwon 渲染 Markdown 文本
+        if (sender.equals("AI") && markwon != null) {
+            markwon.setMarkdown(textView, text);
+        } else {
+            textView.setText(text);
+        }
 
         bubble.addView(textView);
         bubble.setGravity(sender.equals("AI") ? Gravity.START : Gravity.END);
@@ -241,7 +251,13 @@ public class AIChatFragment extends Fragment {
             if (child instanceof LinearLayout) {
                 LinearLayout bubble = (LinearLayout) child;
                 if (bubble.getChildCount() >= 2 && bubble.getChildAt(1) instanceof TextView) {
-                    ((TextView) bubble.getChildAt(1)).setText(text);
+                    TextView textView = (TextView) bubble.getChildAt(1);
+                    // 使用 Markwon 渲染 Markdown 文本
+                    if (markwon != null) {
+                        markwon.setMarkdown(textView, text);
+                    } else {
+                        textView.setText(text);
+                    }
                     messageScroll.post(() -> messageScroll.fullScroll(View.FOCUS_DOWN));
                 }
             }

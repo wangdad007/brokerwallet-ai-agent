@@ -62,6 +62,9 @@ dependencies {
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
     implementation("androidx.exifinterface:exifinterface:1.3.6")
     
+    // Markdown 解析库
+    implementation("io.noties.markwon:core:4.6.2")
+    
     // OpenCV for document scanning - using a manual approach
     // Note: OpenCV Android SDK needs to be downloaded manually and added as a module
     // For now, we'll implement a simplified version without OpenCV
