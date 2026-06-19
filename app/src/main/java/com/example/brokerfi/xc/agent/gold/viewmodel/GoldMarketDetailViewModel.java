@@ -6,11 +6,11 @@ import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import com.example.brokerfi.xc.StorageUtil;
+import com.example.brokerfi.xc.agent.ai.AgentManager;
 import com.example.brokerfi.xc.agent.gold.model.data.GoldMarketRepository;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldAdvisoryManager;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketResearchPromptBuilder;
-import com.example.brokerfi.xc.agent.model.AgentManager;
-import com.example.brokerfi.xc.StorageUtil;
 
 import java.math.BigInteger;
 

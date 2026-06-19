@@ -21,10 +21,10 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.example.brokerfi.R;
+import com.example.brokerfi.xc.agent.ai.AgentManager;
+import com.example.brokerfi.xc.agent.ai.DeepSeekClient;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldAdvisoryManager;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketResearchPromptBuilder;
-import com.example.brokerfi.xc.agent.model.AgentManager;
-import com.example.brokerfi.xc.agent.model.DeepSeekClient;
 
 import io.noties.markwon.Markwon;
 

@@ -23,10 +23,10 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.example.brokerfi.R;
+import com.example.brokerfi.xc.agent.ai.DeepSeekClient;
 import com.example.brokerfi.xc.agent.gold.model.data.GoldMarketRepository;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldAdvisoryManager;
 import com.example.brokerfi.xc.agent.gold.viewmodel.GoldMarketViewModel;
-import com.example.brokerfi.xc.agent.model.DeepSeekClient;
 
 import java.math.BigInteger;
 import java.util.ArrayList;

@@ -15,9 +15,9 @@ import androidx.viewpager2.widget.ViewPager2;
 
 import com.example.brokerfi.R;
 import com.example.brokerfi.xc.StorageUtil;
+import com.example.brokerfi.xc.agent.ai.DeepSeekClient;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldAdvisoryManager;
 import com.example.brokerfi.xc.agent.gold.viewmodel.GoldNoteMarketViewModel;
-import com.example.brokerfi.xc.agent.model.DeepSeekClient;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 
