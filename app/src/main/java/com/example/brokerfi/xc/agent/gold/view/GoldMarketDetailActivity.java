@@ -17,8 +17,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import io.noties.markwon.Markwon;
 import com.example.brokerfi.R;
-import com.example.brokerfi.xc.AIAssistantActivity;
 import com.example.brokerfi.xc.agent.gold.model.data.GoldMarketRepository;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldAdvisoryManager;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldGameJudge;
@@ -36,10 +36,12 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
 
     private TextView tvMarketDesc, tvMarketCondition;
     private TextView tvUpPct, tvDownPct, tvPool, tvCountdown, tvHoldings;
-    private TextView tvMarketAiStatus, tvMarketAiSummary;
-    private View barUp, barDown, btnClaimReward, btnAdminResolve, cardMarketAi;
+    private TextView tvMarketAiStatus, tvMarketAiSummary, tvMarketAiFull;
+    private View barUp, barDown, btnClaimReward, btnAdminResolve, cardMarketAi, layoutAiDetails;
     private SwipeRefreshLayout swipeRefresh;
 
+    private Markwon markwon;
+    private boolean aiExpanded = false;
     private String marketAiSummary = "";
     private String marketAiUnavailableMessage = "";
     private boolean destroyed = false;
@@ -59,6 +61,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         destroyed = false;
         gameId = getIntent().getIntExtra("GAME_ID", 1);
         viewModel = new ViewModelProvider(this).get(GoldMarketDetailViewModel.class);
+        markwon = Markwon.create(this);
         initViews();
         observeViewModel();
         viewModel.loadGameInfo(gameId);
@@ -104,9 +107,11 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         tvHoldings = findViewById(R.id.tv_holdings);
         tvMarketAiStatus = findViewById(R.id.tv_market_ai_status);
         tvMarketAiSummary = findViewById(R.id.tv_market_ai_summary);
+        tvMarketAiFull = findViewById(R.id.tv_market_ai_full);
         barUp = findViewById(R.id.bar_up);
         barDown = findViewById(R.id.bar_down);
         cardMarketAi = findViewById(R.id.card_market_ai);
+        layoutAiDetails = findViewById(R.id.layout_ai_details);
         btnClaimReward = findViewById(R.id.btn_claim_reward);
         btnAdminResolve = findViewById(R.id.btn_admin_resolve);
 
@@ -115,18 +120,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
 
         findViewById(R.id.btn_buy_up).setOnClickListener(v -> showBuyDialog(0, "YES"));
         findViewById(R.id.btn_buy_down).setOnClickListener(v -> showBuyDialog(1, "NO"));
-        cardMarketAi.setOnClickListener(v -> {
-            String context = viewModel.getMarketAiContext();
-            if (!context.isEmpty() && !marketAiSummary.isEmpty()) {
-                Intent intent = new Intent(this, AIAssistantActivity.class);
-                intent.putExtra(AIAssistantActivity.EXTRA_MARKET_CONTEXT, context);
-                intent.putExtra(AIAssistantActivity.EXTRA_INITIAL_AI_SUMMARY, marketAiSummary);
-                startActivity(intent);
-                return;
-            }
-            String msg = marketAiUnavailableMessage.isEmpty() ? MARKET_AI_LOADING_MESSAGE : marketAiUnavailableMessage;
-            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
-        });
+        cardMarketAi.setOnClickListener(v -> toggleAiDetails());
         btnClaimReward.setOnClickListener(v -> claimReward());
         btnAdminResolve.setOnClickListener(v -> performAdminResolve());
     }
@@ -184,8 +178,21 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
             showMarketAiUnavailable("暂不可用", "AI 分析暂时不可用");
             return;
         }
-        tvMarketAiStatus.setText("DeepSeek ›");
+        tvMarketAiStatus.setText("展开详情 ˅");
         tvMarketAiSummary.setText(answer);
+        markwon.setMarkdown(tvMarketAiFull, answer);
+    }
+
+    private void toggleAiDetails() {
+        if (marketAiSummary == null || marketAiSummary.isEmpty()) {
+            String msg = marketAiUnavailableMessage.isEmpty() ? MARKET_AI_LOADING_MESSAGE : marketAiUnavailableMessage;
+            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        aiExpanded = !aiExpanded;
+        layoutAiDetails.setVisibility(aiExpanded ? View.VISIBLE : View.GONE);
+        tvMarketAiSummary.setVisibility(aiExpanded ? View.GONE : View.VISIBLE);
+        tvMarketAiStatus.setText(aiExpanded ? "收起报告 ˄" : "展开详情 ˅");
     }
 
     private void showMarketAiUnavailable(String status, String message) {
@@ -240,13 +247,13 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
 
     private void claimReward() {
         if (currentGame == null) return;
-        int opt = -1;
-        if (currentGame.isResolved) opt = currentGame.winningOption;
+        int optIndex = -1;
+        if (currentGame.isResolved) optIndex = currentGame.winningOption;
         else if (currentGame.isRefunded) {
             for (int i=0; i<currentGame.myShares.size(); i++) {
-                if (currentGame.myShares.get(i).compareTo(BigInteger.ZERO) > 0) { opt = i; break; }
+                if (currentGame.myShares.get(i).compareTo(BigInteger.ZERO) > 0) { optIndex = i; break; }
             }
         }
-        if (opt != -1) viewModel.claimReward(gameId, opt);
+        if (optIndex != -1) viewModel.claimReward(gameId, optIndex);
     }
 }
