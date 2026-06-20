@@ -1,7 +1,6 @@
 package com.example.brokerfi.xc.agent.gold.view;
 
 import android.app.AlertDialog;
-import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -25,9 +24,17 @@ import com.example.brokerfi.xc.agent.gold.model.logic.GoldAdvisoryManager;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldGameJudge;
 import com.example.brokerfi.xc.agent.gold.viewmodel.GoldMarketDetailViewModel;
 import com.bumptech.glide.Glide;
+import com.github.mikephil.charting.charts.LineChart;
+import com.github.mikephil.charting.components.XAxis;
+import com.github.mikephil.charting.data.Entry;
+import com.github.mikephil.charting.data.LineData;
+import com.github.mikephil.charting.data.LineDataSet;
+import com.github.mikephil.charting.formatter.ValueFormatter;
 
 import android.widget.ImageView;
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 public class GoldMarketDetailActivity extends AppCompatActivity {
@@ -41,7 +48,8 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
     private TextView tvUpPct, tvDownPct, tvPool, tvCountdown, tvHoldings;
     private TextView tvMarketAiStatus, tvMarketAiSummary, tvMarketAiFull;
     private ImageView ivMarketIcon;
-    private View barUp, barDown, btnClaimReward, btnAdminResolve, cardMarketAi, layoutAiDetails;
+    private View barUp, barDown, btnClaimReward, btnAdminResolve, cardMarketAi, layoutAiDetails, layoutChartContainer;
+    private LineChart lineChart;
     private androidx.appcompat.widget.SwitchCompat switchAiManaged;
     private SwipeRefreshLayout swipeRefresh;
 
@@ -80,9 +88,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
             currentGame = game;
             updateUI();
         });
-        viewModel.getMarketAiSummary().observe(this, summary -> {
-            showMarketAiSummary(summary);
-        });
+        viewModel.getMarketAiSummary().observe(this, this::showMarketAiSummary);
         viewModel.getIsLoading().observe(this, loading -> swipeRefresh.setRefreshing(loading));
         viewModel.getTxStatus().observe(this, status -> {
             if (status != null) Toast.makeText(this, status, Toast.LENGTH_SHORT).show();
@@ -122,6 +128,8 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         barDown = findViewById(R.id.bar_down);
         cardMarketAi = findViewById(R.id.card_market_ai);
         layoutAiDetails = findViewById(R.id.layout_ai_details);
+        layoutChartContainer = findViewById(R.id.layout_chart_container);
+        lineChart = findViewById(R.id.line_chart);
         btnClaimReward = findViewById(R.id.btn_claim_reward);
         btnAdminResolve = findViewById(R.id.btn_admin_resolve);
 
@@ -193,7 +201,100 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
             }
         }
         tvHoldings.setText(holdings.length() == 0 ? "暂无持仓" : holdings.toString());
+        setupHistoryChart();
         updateCountdown();
+    }
+
+    private void setupHistoryChart() {
+        if (currentGame == null || currentGame.history == null || currentGame.history.isEmpty()) {
+            layoutChartContainer.setVisibility(View.GONE);
+            return;
+        }
+        layoutChartContainer.setVisibility(View.VISIBLE);
+
+        List<Entry> yesEntries = new ArrayList<>();
+        List<Entry> noEntries = new ArrayList<>();
+        for (int i = 0; i < currentGame.history.size(); i++) {
+            GoldMarketRepository.HistoryPoint p = currentGame.history.get(i);
+            yesEntries.add(new Entry(i, p.yesPrice));
+            noEntries.add(new Entry(i, p.noPrice));
+        }
+
+        // YES 曲线 (深绿色)
+        LineDataSet setYes = new LineDataSet(yesEntries, "YES (看多 %)");
+        setYes.setColor(0xFF059669);
+        setYes.setCircleColor(0xFF059669);
+        setYes.setLineWidth(2.5f);
+        setYes.setCircleRadius(3f);
+        setYes.setDrawCircleHole(false);
+        setYes.setDrawValues(false);
+        setYes.setMode(LineDataSet.Mode.CUBIC_BEZIER); // 平滑曲线
+        setYes.setDrawFilled(true);
+        setYes.setFillColor(0xFF059669);
+        setYes.setFillAlpha(40);
+
+        // NO 曲线 (红色)
+        LineDataSet setNo = new LineDataSet(noEntries, "NO (看空 %)");
+        setNo.setColor(0xFFE11D48);
+        setNo.setCircleColor(0xFFE11D48);
+        setNo.setLineWidth(2.5f);
+        setNo.setCircleRadius(3f);
+        setNo.setDrawCircleHole(false);
+        setNo.setDrawValues(false);
+        setNo.setMode(LineDataSet.Mode.CUBIC_BEZIER);
+        setNo.setDrawFilled(true);
+        setNo.setFillColor(0xFFE11D48);
+        setNo.setFillAlpha(40);
+
+        LineData data = new LineData(setYes, setNo);
+        lineChart.setData(data);
+
+        // 全局交互设置
+        lineChart.getDescription().setEnabled(false);
+        lineChart.setDrawGridBackground(false);
+        lineChart.setTouchEnabled(true);
+        lineChart.setScaleEnabled(false);
+        lineChart.setPinchZoom(false);
+        lineChart.setExtraOffsets(0, 10, 0, 10);
+        
+        // 图例美化
+        com.github.mikephil.charting.components.Legend legend = lineChart.getLegend();
+        legend.setTextColor(0xFF475569);
+        legend.setForm(com.github.mikephil.charting.components.Legend.LegendForm.CIRCLE);
+        legend.setHorizontalAlignment(com.github.mikephil.charting.components.Legend.LegendHorizontalAlignment.CENTER);
+
+        // X 轴
+        XAxis xAxis = lineChart.getXAxis();
+        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
+        xAxis.setDrawGridLines(false);
+        xAxis.setDrawAxisLine(true);
+        xAxis.setAxisLineColor(0xFFE2E8F0);
+        xAxis.setTextColor(0xFF94A3B8);
+        xAxis.setLabelCount(Math.min(5, currentGame.history.size()));
+        xAxis.setValueFormatter(new ValueFormatter() {
+            @Override
+            public String getFormattedValue(float value) {
+                int idx = (int) value;
+                if (idx >= 0 && idx < currentGame.history.size()) {
+                    long t = currentGame.history.get(idx).time;
+                    java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("MM-dd", Locale.getDefault());
+                    return sdf.format(new java.util.Date(t * 1000));
+                }
+                return "";
+            }
+        });
+
+        // Y 轴
+        lineChart.getAxisRight().setEnabled(false);
+        lineChart.getAxisLeft().setDrawGridLines(true);
+        lineChart.getAxisLeft().setGridColor(0xFFF1F5F9);
+        lineChart.getAxisLeft().setTextColor(0xFF94A3B8);
+        lineChart.getAxisLeft().setAxisMaximum(100f);
+        lineChart.getAxisLeft().setAxisMinimum(0f);
+        lineChart.getAxisLeft().setLabelCount(5);
+
+        lineChart.animateX(1200);
+        lineChart.invalidate();
     }
 
     private void toggleAiDetails() {

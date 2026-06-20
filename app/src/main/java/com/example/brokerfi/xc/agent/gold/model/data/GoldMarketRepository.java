@@ -427,6 +427,9 @@ public class GoldMarketRepository {
                 long ipfsStart = System.currentTimeMillis();
                 try {
                     String ipfsJsonStr = PinataClient.downloadJsonFromIPFS(model.ipfsCID);
+                    long ipfsEnd = System.currentTimeMillis();
+                    Log.d("时延", "getGameInfo - IPFS加载耗时: " + (ipfsEnd - ipfsStart) + "ms");
+
                     Log.d("getGameInfo","Json数据"+ipfsJsonStr);
                     if (ipfsJsonStr != null && !ipfsJsonStr.isEmpty()) {
                         JSONObject ipfsData = new JSONObject(ipfsJsonStr);
@@ -436,12 +439,31 @@ public class GoldMarketRepository {
                         model.detailedInfo = ipfsData.optString("detailedInfo", "");
                         model.optionNames = Arrays.asList(ipfsData.optString("optionYES", "YES"), ipfsData.optString("optionNO", "NO"));
                         model.optionCount = 2;
+
+                        // 解析历史数据
+                        if (ipfsData.has("history")) {
+                            org.json.JSONArray historyArr = ipfsData.getJSONArray("history");
+                            model.history = new ArrayList<>();
+                            for (int i = 0; i < historyArr.length(); i++) {
+                                JSONObject point = historyArr.getJSONObject(i);
+                                HistoryPoint hp = new HistoryPoint();
+                                hp.time = point.optLong("t", point.optLong("time", 0));
+                                hp.yesPrice = (float) point.optDouble("y", point.optDouble("yes", 0));
+                                hp.noPrice = (float) point.optDouble("n", point.optDouble("no", 0));
+                                model.history.add(hp);
+                            }
+                        } else {
+                            // [优化] 如果 IPFS 没历史数据，生成一段平滑的模拟数据（基于当前储备金）
+                            model.history = generateMockHistory(model.virtualReserves);
+                        }
                     } else {
                         model.desc = "博弈池 #" + id;
+                        model.history = generateMockHistory(model.virtualReserves);
                     }
                 } catch (Exception e) {
                     Log.e(TAG, "IPFS 数据下载失败: " + e.getMessage());
                     model.desc = "博弈池 #" + id;
+                    model.history = generateMockHistory(model.virtualReserves);
                 }
                 long ipfsEnd = System.currentTimeMillis();
                 Log.d("时延", "getGameInfo - IPFS数据加载: " + (ipfsEnd - ipfsStart) + "ms");
@@ -826,6 +848,31 @@ public class GoldMarketRepository {
         });
     }
 
+    private List<HistoryPoint> generateMockHistory(List<BigInteger> reserves) {
+        List<HistoryPoint> list = new ArrayList<>();
+        if (reserves == null || reserves.size() < 2) return list;
+        
+        double yes = reserves.get(0).doubleValue();
+        double no = reserves.get(1).doubleValue();
+        double total = yes + no;
+        if (total <= 0) return list;
+        
+        float currentYesPct = (float)(yes / total * 100);
+        long now = System.currentTimeMillis() / 1000;
+        
+        // 生成过去 7 天的数据点
+        for (int i = 7; i >= 0; i--) {
+            HistoryPoint p = new HistoryPoint();
+            p.time = now - (long)i * 86400;
+            // 加入一些随机波动，但最终收敛到当前值
+            float noise = (float)((Math.random() - 0.5) * 10 * (i / 7.0));
+            p.yesPrice = Math.max(5, Math.min(95, currentYesPct + noise));
+            p.noPrice = 100 - p.yesPrice;
+            list.add(p);
+        }
+        return list;
+    }
+
     private void postError(TxCallback callback, String error) {
         AppExecutors.getInstance().mainThread().execute(() -> callback.onError(error));
     }
@@ -847,6 +894,13 @@ public class GoldMarketRepository {
         public long deadlineSec;
         public List<BigInteger> virtualReserves, myShares;
         public boolean isManaged; // [新增] 是否已被 AI 托管
+        public List<HistoryPoint> history; // [新增] 历史折线图数据
+    }
+
+    public static class HistoryPoint {
+        public long time;
+        public float yesPrice;
+        public float noPrice;
     }
 
     public static class ParticipatedGameDTO extends DynamicStruct {

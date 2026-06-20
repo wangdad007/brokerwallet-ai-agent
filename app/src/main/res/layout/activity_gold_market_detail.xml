@@ -181,6 +181,33 @@
                     </LinearLayout>
                 </LinearLayout>
 
+                <!-- [新增] 历史折线图 -->
+                <LinearLayout
+                    android:id="@+id/layout_chart_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:background="@drawable/bg_gold_market_panel"
+                    android:elevation="2dp"
+                    android:orientation="vertical"
+                    android:padding="16dp"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="赔率/概率历史走势"
+                        android:textColor="#000000"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                    <com.github.mikephil.charting.charts.LineChart
+                        android:id="@+id/line_chart"
+                        android:layout_width="match_parent"
+                        android:layout_height="200dp"
+                        android:layout_marginTop="12dp" />
+                </LinearLayout>
+
                 <!-- AI Section -->
                 <LinearLayout
                     android:id="@+id/card_market_ai"
