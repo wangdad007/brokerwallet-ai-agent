@@ -1,117 +1,139 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginBottom="16dp"
-    android:orientation="vertical"
-    android:padding="16dp"
     android:background="@drawable/bg_gold_market_panel"
-    android:elevation="2dp"
     android:clickable="true"
+    android:elevation="2dp"
     android:focusable="true"
-    android:foreground="?attr/selectableItemBackground">
+    android:foreground="?attr/selectableItemBackground"
+    android:padding="16dp">
 
-    <!-- Header: Title and Status -->
-    <RelativeLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+    <!-- Card Icon -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/cv_icon_container"
+        android:layout_width="52dp"
+        android:layout_height="52dp"
+        app:cardCornerRadius="26dp"
+        app:cardElevation="0dp"
+        app:cardBackgroundColor="#F8FAFC"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
 
-        <TextView
-            android:id="@+id/tv_market_title"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentStart="true"
-            android:layout_toStartOf="@id/tv_market_status"
-            android:layout_marginEnd="8dp"
-            android:text="博弈池名称"
-            android:textColor="#000000"
-            android:textSize="17sp"
-            android:textStyle="bold" />
+        <ImageView
+            android:id="@+id/iv_market_icon"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:src="@drawable/apartment_icon" />
+    </androidx.cardview.widget.CardView>
 
-        <TextView
-            android:id="@+id/tv_market_status"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentEnd="true"
-            android:text="进行中"
-            android:textColor="#047857"
-            android:textSize="12sp"
-            android:textStyle="bold" />
-    </RelativeLayout>
-
-    <!-- Mid: Pool and Deadline -->
-    <LinearLayout
-        android:layout_width="match_parent"
+    <!-- Market Title -->
+    <TextView
+        android:id="@+id/tv_market_title"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:orientation="horizontal">
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="8dp"
+        android:ellipsize="end"
+        android:maxLines="2"
+        android:text="博弈池名称"
+        android:textColor="#1A1A1A"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toStartOf="@+id/tv_market_status"
+        app:layout_constraintStart_toEndOf="@+id/cv_icon_container"
+        app:layout_constraintTop_toTopOf="@+id/cv_icon_container" />
 
-        <TextView
-            android:id="@+id/tv_total_pool"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="0.00 BKC"
-            android:textColor="#333333"
-            android:textSize="14sp" />
+    <!-- Market Status -->
+    <TextView
+        android:id="@+id/tv_market_status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_ai_analysis_content"
+        android:paddingHorizontal="8dp"
+        android:paddingVertical="2dp"
+        android:text="进行中"
+        android:textColor="#047857"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
-        <TextView
-            android:id="@+id/tv_deadline"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="截止日期: --"
-            android:textColor="#888888"
-            android:textSize="12sp" />
-    </LinearLayout>
+    <!-- Pool and Deadline Row -->
+    <TextView
+        android:id="@+id/tv_total_pool"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="0.00 BKC"
+        android:textColor="#475569"
+        android:textSize="13sp"
+        app:layout_constraintStart_toStartOf="@+id/tv_market_title"
+        app:layout_constraintTop_toBottomOf="@+id/tv_market_title" />
 
-    <!-- Bottom: YES/NO Ratio Bar -->
+    <TextView
+        android:id="@+id/tv_deadline"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="截止日期: --"
+        android:textColor="#94A3B8"
+        android:textSize="11sp"
+        app:layout_constraintBottom_toBottomOf="@+id/tv_total_pool"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/tv_total_pool" />
+
+    <!-- Progress Bar -->
     <LinearLayout
+        android:id="@+id/ll_progress"
         android:layout_width="match_parent"
-        android:layout_height="10dp"
+        android:layout_height="8dp"
         android:layout_marginTop="16dp"
+        android:background="#F1F5F9"
         android:orientation="horizontal"
-        android:background="#F0F0F0"
-        android:weightSum="100">
+        android:weightSum="100"
+        app:layout_constraintTop_toBottomOf="@+id/tv_total_pool">
 
         <View
             android:id="@+id/bar_yes"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="50"
-            android:background="#047857" />
+            android:background="#059669" />
 
         <View
             android:id="@+id/bar_no"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="50"
-            android:background="#FF0000" />
+            android:background="#E11D48" />
     </LinearLayout>
 
-    <LinearLayout
-        android:layout_width="match_parent"
+    <!-- Percentage Labels -->
+    <TextView
+        android:id="@+id/tv_yes_pct"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:orientation="horizontal">
+        android:layout_marginTop="6dp"
+        android:text="YES 50%"
+        android:textColor="#059669"
+        android:textSize="10sp"
+        android:textStyle="bold"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/ll_progress" />
 
-        <TextView
-            android:id="@+id/tv_yes_pct"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="YES 50%"
-            android:textColor="#047857"
-            android:textSize="10sp"
-            android:textStyle="bold" />
+    <TextView
+        android:id="@+id/tv_no_pct"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text="50% NO"
+        android:textColor="#E11D48"
+        android:textSize="10sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/ll_progress" />
 
-        <TextView
-            android:id="@+id/tv_no_pct"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="50% NO"
-            android:textColor="#FF0000"
-            android:textSize="10sp"
-            android:textStyle="bold" />
-    </LinearLayout>
-
-</LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -42,14 +42,65 @@ public class GoldMarketDetailViewModel extends AndroidViewModel {
         repository.getGameInfo(gameId, new GoldMarketRepository.DataCallback<GoldMarketRepository.GameModel>() {
             @Override
             public void onSuccess(GoldMarketRepository.GameModel model) {
-                isLoading.postValue(false);
-                currentGame.postValue(model);
-                requestAiSummary(model);
+                // 加载博弈池后，查询 AI 托管状态
+                repository.getAiManagedStatus(gameId, new GoldMarketRepository.DataCallback<Boolean>() {
+                    @Override
+                    public void onSuccess(Boolean managed) {
+                        model.isManaged = managed;
+                        isLoading.postValue(false);
+                        currentGame.postValue(model);
+                        // [优化] 移除自动请求 AI 摘要，改为手动触发
+                    }
+                    @Override
+                    public void onError(String err) {
+                        isLoading.postValue(false);
+                        currentGame.postValue(model);
+                    }
+                });
             }
             @Override
             public void onError(String err) {
                 isLoading.postValue(false);
                 error.postValue(err);
+            }
+        });
+    }
+
+    public void startAiAnalysis() {
+        GoldMarketRepository.GameModel model = currentGame.getValue();
+        if (model == null) return;
+        
+        isLoading.setValue(true);
+        GoldAdvisoryManager.fetchPrice(new GoldAdvisoryManager.AdvisoryCallback() {
+            @Override
+            public void onSuccess(GoldAdvisoryManager.Advisory quote) {
+                marketAiContext = GoldMarketResearchPromptBuilder.buildContext(model, System.currentTimeMillis(), quote);
+                fetchAiSummary();
+            }
+            @Override
+            public void onError(String err) {
+                marketAiContext = GoldMarketResearchPromptBuilder.buildContext(model, System.currentTimeMillis(), null);
+                fetchAiSummary();
+            }
+        });
+    }
+
+    public void toggleAiManaged(int gameId, boolean enabled) {
+        repository.toggleAiManaged(gameId, enabled, new GoldMarketRepository.DataCallback<Boolean>() {
+            @Override
+            public void onSuccess(Boolean result) {
+                GoldMarketRepository.GameModel model = currentGame.getValue();
+                if (model != null && model.id == gameId) {
+                    model.isManaged = result;
+                    currentGame.postValue(model);
+                }
+            }
+            @Override
+            public void onError(String err) {
+                error.postValue(err);
+                // 恢复 UI 状态
+                GoldMarketRepository.GameModel model = currentGame.getValue();
+                if (model != null) currentGame.postValue(model);
             }
         });
     }
@@ -73,9 +124,18 @@ public class GoldMarketDetailViewModel extends AndroidViewModel {
         AgentManager.getInstance().askGoldResearch(
                 GoldMarketResearchPromptBuilder.buildSummaryPrompt(marketAiContext),
                 new AgentManager.AnalysisCallback() {
-                    @Override public void onBrokerReport(AgentManager.BrokerReport report) { marketAiSummary.postValue(report != null ? report.rawAnalysis : ""); }
-                    @Override public void onGeneralAdvice(String question, String answer) { marketAiSummary.postValue(answer); }
-                    @Override public void onError(String err) { error.postValue("AI error: " + err); }
+                    @Override public void onBrokerReport(AgentManager.BrokerReport report) { 
+                        isLoading.postValue(false);
+                        marketAiSummary.postValue(report != null ? report.rawAnalysis : ""); 
+                    }
+                    @Override public void onGeneralAdvice(String question, String answer) { 
+                        isLoading.postValue(false);
+                        marketAiSummary.postValue(answer); 
+                    }
+                    @Override public void onError(String err) { 
+                        isLoading.postValue(false);
+                        error.postValue("AI error: " + err); 
+                    }
                 });
     }
 

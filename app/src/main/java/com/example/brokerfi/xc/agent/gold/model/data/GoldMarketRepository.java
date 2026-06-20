@@ -25,6 +25,7 @@ import org.web3j.protocol.http.HttpService;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -43,6 +44,7 @@ public class GoldMarketRepository {
     private static final BigInteger LOCAL_RPC_CALL_GAS_PRICE = BigInteger.ZERO;
     private static final BigInteger LOCAL_RPC_CALL_VALUE = BigInteger.ZERO;
     public static final int GOLD_GAME_ID = 1;
+    private static final String BACKEND_BASE_URL = "http://10.0.2.2:8081"; // Goland Backend
 
     private static List<String> cachedAddresses;
 
@@ -680,24 +682,35 @@ public class GoldMarketRepository {
         sendTransaction(BigInteger.ZERO, f, "卖出成功", callback);
     }
 
-    public void createGame(String desc, String condition, String avatarUrl,
+    public void createGame(String desc, String condition, byte[] imageData,
                            String detailedInfo, List<String> optionNamesList,
                            long duration, BigInteger initialLiquidityWei, TxCallback callback) {
         
         AppExecutors.getInstance().networkIO().execute(() -> {
             try {
-                // 1. 先将元数据上传到 IPFS
+                // 1. 如果有图片数据，先上传图片到 IPFS
+                String finalAvatarUrl = "";
+                if (imageData != null && imageData.length > 0) {
+                    try {
+                        finalAvatarUrl = PinataClient.uploadFileToIPFS(imageData, "avatar.png", "image/png");
+                        Log.d(TAG, "图片上传成功, CID: " + finalAvatarUrl);
+                    } catch (Exception e) {
+                        Log.e(TAG, "图片上传失败: " + e.getMessage());
+                    }
+                }
+
+                // 2. 先将元数据上传到 IPFS
                 JSONObject metadata = new JSONObject();
                 metadata.put("desc", desc);
                 metadata.put("condition", condition);
-                metadata.put("avatarUrl", avatarUrl);
+                metadata.put("avatarUrl", finalAvatarUrl);
                 metadata.put("detailedInfo", detailedInfo);
                 // 存储选项名称，虽然目前固定是 YES/NO
                 metadata.put("optionYES", optionNamesList.get(0));
                 metadata.put("optionNO", optionNamesList.get(1));
 
                 String cid = PinataClient.uploadJsonToIPFS(metadata);
-                Log.d(TAG, "成功上传 IPFS, CID: " + cid);
+                Log.d(TAG, "元数据上传成功, CID: " + cid);
 
                 // 核心修复：根据环境自动调整时间单位
                 // 关键判断：如果不是本地 RPC (即 BrokerChain)，且传入的 duration 看起来像秒级 (小于 10^10)，
@@ -751,6 +764,68 @@ public class GoldMarketRepository {
         sendTransaction(BigInteger.ZERO, f, "开奖成功", callback);
     }
 
+    /**
+     * 通知 Goland 后端 AI 托管状态变更
+     */
+    public void toggleAiManaged(int gameId, boolean enabled, DataCallback<Boolean> callback) {
+        AppExecutors.getInstance().networkIO().execute(() -> {
+            try {
+                JSONObject json = new JSONObject();
+                json.put("game_id", gameId);
+                json.put("user_address", getWalletAddress());
+                json.put("enabled", enabled);
+                json.put("contract_address", contractAddress);
+                json.put("private_key", privateKey); // 后端轮询下单需要私钥 (注意：生产环境应使用授权代理)
+
+                URL url = new URL(BACKEND_BASE_URL + "/api/gold/ai-managed");
+                java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setDoOutput(true);
+
+                try (java.io.OutputStream os = conn.getOutputStream()) {
+                    os.write(json.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                }
+
+                int code = conn.getResponseCode();
+                if (code == 200) {
+                    AppExecutors.getInstance().mainThread().execute(() -> callback.onSuccess(enabled));
+                } else {
+                    postError(callback, "后端响应错误: " + code);
+                }
+            } catch (Exception e) {
+                postError(callback, "通知后端失败: " + e.getMessage());
+            }
+        });
+    }
+
+    /**
+     * 查询后端 AI 托管状态
+     */
+    public void getAiManagedStatus(int gameId, DataCallback<Boolean> callback) {
+        AppExecutors.getInstance().networkIO().execute(() -> {
+            try {
+                String path = String.format("/api/gold/ai-managed?game_id=%d&user_address=%s", gameId, getWalletAddress());
+                URL url = new URL(BACKEND_BASE_URL + path);
+                java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+
+                if (conn.getResponseCode() == 200) {
+                    try (java.util.Scanner s = new java.util.Scanner(conn.getInputStream())) {
+                        String resp = s.useDelimiter("\\A").hasNext() ? s.next() : "{}";
+                        JSONObject obj = new JSONObject(resp);
+                        boolean enabled = obj.optBoolean("enabled", false);
+                        AppExecutors.getInstance().mainThread().execute(() -> callback.onSuccess(enabled));
+                    }
+                } else {
+                    AppExecutors.getInstance().mainThread().execute(() -> callback.onSuccess(false));
+                }
+            } catch (Exception e) {
+                AppExecutors.getInstance().mainThread().execute(() -> callback.onSuccess(false));
+            }
+        });
+    }
+
     private void postError(TxCallback callback, String error) {
         AppExecutors.getInstance().mainThread().execute(() -> callback.onError(error));
     }
@@ -771,6 +846,7 @@ public class GoldMarketRepository {
         public int winningOption;
         public long deadlineSec;
         public List<BigInteger> virtualReserves, myShares;
+        public boolean isManaged; // [新增] 是否已被 AI 托管
     }
 
     public static class ParticipatedGameDTO extends DynamicStruct {

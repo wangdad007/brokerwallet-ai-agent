@@ -20,10 +20,13 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import io.noties.markwon.Markwon;
 import com.example.brokerfi.R;
 import com.example.brokerfi.xc.agent.gold.model.data.GoldMarketRepository;
+import com.example.brokerfi.xc.agent.gold.model.data.PinataClient;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldAdvisoryManager;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldGameJudge;
 import com.example.brokerfi.xc.agent.gold.viewmodel.GoldMarketDetailViewModel;
+import com.bumptech.glide.Glide;
 
+import android.widget.ImageView;
 import java.math.BigInteger;
 import java.util.Locale;
 
@@ -37,7 +40,9 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
     private TextView tvMarketDesc, tvMarketCondition;
     private TextView tvUpPct, tvDownPct, tvPool, tvCountdown, tvHoldings;
     private TextView tvMarketAiStatus, tvMarketAiSummary, tvMarketAiFull;
+    private ImageView ivMarketIcon;
     private View barUp, barDown, btnClaimReward, btnAdminResolve, cardMarketAi, layoutAiDetails;
+    private androidx.appcompat.widget.SwitchCompat switchAiManaged;
     private SwipeRefreshLayout swipeRefresh;
 
     private Markwon markwon;
@@ -45,6 +50,8 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
     private String marketAiSummary = "";
     private String marketAiUnavailableMessage = "";
     private boolean destroyed = false;
+    private boolean requestInFlight = false;
+
     private final Handler timerHandler = new Handler(Looper.getMainLooper());
     private final Runnable countdownRunnable = new Runnable() {
         @Override public void run() {
@@ -74,7 +81,6 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
             updateUI();
         });
         viewModel.getMarketAiSummary().observe(this, summary -> {
-            marketAiSummary = summary;
             showMarketAiSummary(summary);
         });
         viewModel.getIsLoading().observe(this, loading -> swipeRefresh.setRefreshing(loading));
@@ -106,8 +112,12 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         tvCountdown = findViewById(R.id.tv_countdown);
         tvHoldings = findViewById(R.id.tv_holdings);
         tvMarketAiStatus = findViewById(R.id.tv_market_ai_status);
+        tvMarketAiStatus.setText("待启动 ›");
         tvMarketAiSummary = findViewById(R.id.tv_market_ai_summary);
+        tvMarketAiSummary.setText("点击卡片启动 AI 专属深度投研分析");
         tvMarketAiFull = findViewById(R.id.tv_market_ai_full);
+        ivMarketIcon = findViewById(R.id.iv_market_detail_icon);
+        switchAiManaged = findViewById(R.id.switch_ai_managed);
         barUp = findViewById(R.id.bar_up);
         barDown = findViewById(R.id.bar_down);
         cardMarketAi = findViewById(R.id.card_market_ai);
@@ -121,6 +131,11 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         findViewById(R.id.btn_buy_up).setOnClickListener(v -> showBuyDialog(0, "YES"));
         findViewById(R.id.btn_buy_down).setOnClickListener(v -> showBuyDialog(1, "NO"));
         cardMarketAi.setOnClickListener(v -> toggleAiDetails());
+        switchAiManaged.setOnCheckedChangeListener((btn, isChecked) -> {
+            if (currentGame != null && currentGame.isManaged != isChecked) {
+                viewModel.toggleAiManaged(gameId, isChecked);
+            }
+        });
         btnClaimReward.setOnClickListener(v -> claimReward());
         btnAdminResolve.setOnClickListener(v -> performAdminResolve());
     }
@@ -129,6 +144,15 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         if (currentGame == null) return;
         tvMarketDesc.setText(currentGame.desc != null && !currentGame.desc.isEmpty() ? currentGame.desc : "博弈池 #" + currentGame.id);
         tvMarketCondition.setText("判定逻辑: " + (currentGame.condition != null ? currentGame.condition : "暂无"));
+        
+        if (currentGame.avatarUrl != null && !currentGame.avatarUrl.isEmpty()) {
+            Glide.with(this).load(PinataClient.IPFS_GATEWAY + currentGame.avatarUrl).placeholder(R.drawable.apartment_icon).into(ivMarketIcon);
+        } else {
+            ivMarketIcon.setImageResource(R.drawable.apartment_icon);
+        }
+
+        switchAiManaged.setChecked(currentGame.isManaged);
+
         long rem = GoldNoteMarketActivity.remainingSecondsUntilDeadline(currentGame.deadlineSec, System.currentTimeMillis());
         if (rem <= 0 && !currentGame.isResolved && !currentGame.isRefunded) {
             GoldAdvisoryManager.fetchPrice(new GoldAdvisoryManager.AdvisoryCallback() {
@@ -172,21 +196,14 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         updateCountdown();
     }
 
-    private void showMarketAiSummary(String answer) {
-        if (destroyed) return;
-        if (answer == null || answer.trim().isEmpty()) {
-            showMarketAiUnavailable("暂不可用", "AI 分析暂时不可用");
-            return;
-        }
-        tvMarketAiStatus.setText("展开详情 ˅");
-        tvMarketAiSummary.setText(answer);
-        markwon.setMarkdown(tvMarketAiFull, answer);
-    }
-
     private void toggleAiDetails() {
         if (marketAiSummary == null || marketAiSummary.isEmpty()) {
-            String msg = marketAiUnavailableMessage.isEmpty() ? MARKET_AI_LOADING_MESSAGE : marketAiUnavailableMessage;
-            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+            if (!requestInFlight) {
+                tvMarketAiStatus.setText("分析中...");
+                tvMarketAiSummary.setText("DeepSeek 正在全力解析市场数据，请稍后...");
+                requestInFlight = true;
+                viewModel.startAiAnalysis();
+            }
             return;
         }
         aiExpanded = !aiExpanded;
@@ -195,7 +212,21 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         tvMarketAiStatus.setText(aiExpanded ? "收起报告 ˄" : "展开详情 ˅");
     }
 
+    private void showMarketAiSummary(String answer) {
+        requestInFlight = false;
+        if (destroyed) return;
+        if (answer == null || answer.trim().isEmpty()) {
+            showMarketAiUnavailable("暂不可用", "AI 分析暂时不可用");
+            return;
+        }
+        marketAiSummary = answer;
+        tvMarketAiStatus.setText("展开详情 ˅");
+        tvMarketAiSummary.setText(answer);
+        markwon.setMarkdown(tvMarketAiFull, answer);
+    }
+
     private void showMarketAiUnavailable(String status, String message) {
+        requestInFlight = false;
         if (destroyed) return;
         marketAiUnavailableMessage = message;
         tvMarketAiStatus.setText(status);
@@ -238,7 +269,6 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
                 int winner = GoldGameJudge.evaluateGameWinner(currentGame, quote);
                 String name = (currentGame.optionNames != null && winner < currentGame.optionNames.size()) ? currentGame.optionNames.get(winner) : (winner == 0 ? "YES" : "NO");
                 new AlertDialog.Builder(GoldMarketDetailActivity.this).setTitle("管理员开奖确认").setMessage("判定结果: " + name + "\n确定要执行链上结算吗？").setPositiveButton("立即结算", (d, w) -> {
-                    // Admin resolve in Repo for now
                 }).setNegativeButton("取消", null).show();
             }
             @Override public void onError(String e) { Toast.makeText(GoldMarketDetailActivity.this, "获取失败", Toast.LENGTH_SHORT).show(); }
