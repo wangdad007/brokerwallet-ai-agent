@@ -20,8 +20,6 @@ import io.noties.markwon.Markwon;
 import com.example.brokerfi.R;
 import com.example.brokerfi.xc.agent.gold.model.data.GoldMarketRepository;
 import com.example.brokerfi.xc.agent.gold.model.data.PinataClient;
-import com.example.brokerfi.xc.agent.gold.model.logic.GoldAdvisoryManager;
-import com.example.brokerfi.xc.agent.gold.model.logic.GoldGameJudge;
 import com.example.brokerfi.xc.agent.gold.viewmodel.GoldMarketDetailViewModel;
 import com.bumptech.glide.Glide;
 import com.github.mikephil.charting.charts.LineChart;
@@ -50,7 +48,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
     private View cardHoldingYes, cardHoldingNo;
     private TextView tvMarketAiStatus, tvMarketAiSummary, tvMarketAiFull;
     private ImageView ivMarketIcon;
-    private View barUp, barDown, btnClaimReward, btnAdminResolve, cardMarketAi, layoutAiDetails, layoutChartContainer;
+    private View barUp, barDown, btnClaimReward, cardMarketAi, layoutAiDetails, layoutChartContainer;
     private LineChart lineChart;
     private androidx.appcompat.widget.SwitchCompat switchAiManaged;
     private SwipeRefreshLayout swipeRefresh;
@@ -146,7 +144,6 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         layoutChartContainer = findViewById(R.id.layout_chart_container);
         lineChart = findViewById(R.id.line_chart);
         btnClaimReward = findViewById(R.id.btn_claim_reward);
-        btnAdminResolve = findViewById(R.id.btn_admin_resolve);
 
         swipeRefresh = findViewById(R.id.swipe_refresh);
         swipeRefresh.setOnRefreshListener(() -> viewModel.loadGameInfo(gameId));
@@ -160,7 +157,6 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
             }
         });
         btnClaimReward.setOnClickListener(v -> claimReward());
-        btnAdminResolve.setOnClickListener(v -> performAdminResolve());
     }
 
     private void updateUI() {
@@ -176,19 +172,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
 
         switchAiManaged.setChecked(currentGame.isManaged);
 
-        long rem = GoldNoteMarketActivity.remainingSecondsUntilDeadline(currentGame.deadlineSec, System.currentTimeMillis());
-        if (rem <= 0 && !currentGame.isResolved && !currentGame.isRefunded) {
-            GoldAdvisoryManager.fetchPrice(new GoldAdvisoryManager.AdvisoryCallback() {
-                @Override public void onSuccess(GoldAdvisoryManager.Advisory quote) {
-                    int winner = GoldGameJudge.evaluateGameWinner(currentGame, quote);
-                    String name = (currentGame.optionNames != null && winner < currentGame.optionNames.size()) ? currentGame.optionNames.get(winner) : (winner == 0 ? "YES" : "NO");
-                    tvMarketCondition.setText("判定逻辑: " + currentGame.condition + "\n系统判定胜出: " + name);
-                }
-                @Override public void onError(String error) {}
-            });
-        }
         btnClaimReward.setVisibility(currentGame.isResolved || currentGame.isRefunded ? View.VISIBLE : View.GONE);
-        btnAdminResolve.setVisibility(rem <= 0 && !currentGame.isResolved && !currentGame.isRefunded ? View.VISIBLE : View.GONE);
         if (currentGame.virtualReserves != null && currentGame.virtualReserves.size() >= 2) {
             BigInteger res0 = currentGame.virtualReserves.get(0);
             BigInteger res1 = currentGame.virtualReserves.get(1);
@@ -412,20 +396,6 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         });
         v.findViewById(R.id.btn_buy_cancel).setOnClickListener(view -> dialog.dismiss());
         dialog.show();
-    }
-
-    private void performAdminResolve() {
-        if (currentGame == null) return;
-        Toast.makeText(this, "获取行情中...", Toast.LENGTH_SHORT).show();
-        GoldAdvisoryManager.fetchPrice(new GoldAdvisoryManager.AdvisoryCallback() {
-            @Override public void onSuccess(GoldAdvisoryManager.Advisory quote) {
-                int winner = GoldGameJudge.evaluateGameWinner(currentGame, quote);
-                String name = (currentGame.optionNames != null && winner < currentGame.optionNames.size()) ? currentGame.optionNames.get(winner) : (winner == 0 ? "YES" : "NO");
-                new AlertDialog.Builder(GoldMarketDetailActivity.this).setTitle("管理员开奖确认").setMessage("判定结果: " + name + "\n确定要执行链上结算吗？").setPositiveButton("立即结算", (d, w) -> {
-                }).setNegativeButton("取消", null).show();
-            }
-            @Override public void onError(String e) { Toast.makeText(GoldMarketDetailActivity.this, "获取失败", Toast.LENGTH_SHORT).show(); }
-        });
     }
 
     private void claimReward() {

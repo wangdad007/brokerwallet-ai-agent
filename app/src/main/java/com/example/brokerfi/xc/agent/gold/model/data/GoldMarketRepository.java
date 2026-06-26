@@ -1333,14 +1333,10 @@ public class GoldMarketRepository {
                 Log.d(TAG, "元数据上传到IPFS成功, CID: " + metadataCid);
 
                 // ---- 步骤 3: 发送 createGame 链上交易 ----
-                long finalDuration = duration;
-                if (!useLocalRpc && duration < 10_000_000_000L) {
-                    finalDuration = duration * 1000L;
-                }
-
+                // duration 已经是秒（由上层 (end - now) / 1000 计算），合约 createGame 的 _durationSec 参数期望秒
                 org.web3j.abi.datatypes.Function f = new org.web3j.abi.datatypes.Function(
                     "createGame",
-                    Arrays.asList(new Utf8String(metadataCid), new Uint256(finalDuration)),
+                    Arrays.asList(new Utf8String(metadataCid), new Uint256(duration)),
                     Collections.emptyList());
 
                 String data = FunctionEncoder.encode(f);

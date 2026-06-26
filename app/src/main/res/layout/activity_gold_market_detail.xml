@@ -476,19 +476,6 @@
                     android:textStyle="bold"
                     android:visibility="gone" />
 
-                <androidx.appcompat.widget.AppCompatButton
-                    android:id="@+id/btn_admin_resolve"
-                    android:layout_width="match_parent"
-                    android:layout_height="60dp"
-                    android:layout_marginTop="12dp"
-                    android:background="@drawable/custom_button_background"
-                    android:text="管理员判定结算"
-                    android:textAllCaps="false"
-                    android:textColor="#FFFFFF"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:visibility="gone" />
-
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="60dp" />
