@@ -41,11 +41,13 @@ import java.util.Optional;
  *   1. 优先从 Go 后端 DB 读取元数据和缓存的链上状态（低延迟）
  *   2. 后端不可用时，回退到链上 eth_call + IPFS 直读（高延迟但可靠）
  *
- * 【写操作】同步写入：IPFS → 链上交易 → 后端 DB
+ * 【写操作】同步写入：IPFS → 链上交易 → 查询真实状态 → 后端 DB（onConfirmed 前完成）
  *   1. 上传图片/元数据到 IPFS（去中心化存储）
- *   2. 发送交易到链上（不可篡改的状态变更）
- *   3. 同步元数据/状态到后端 DB（加速后续读取）
- *   注意：步骤 3 失败不阻塞主流程（非关键路径），仅记录日志
+ *   2. 发送交易到链上，等待确认（不可篡改的状态变更）
+ *   3. 通过 eth_call 查询交易后的链上真实状态（资金池、储备金、持仓）
+ *   4. 将真实状态同步写入后端 DB（加速后续读取，确保缓存一致性）
+ *   5. 后端 DB 写入完成后，回调 onConfirmed 通知 UI
+ *   注意：步骤 4 失败不阻塞主流程（非关键路径），每项同步独立 try-catch
  *
  * ==================== 三层职责划分 ====================
  * - IPFS：存储图片、元数据 JSON（去中心化、不可篡改的内容寻址存储）
@@ -252,23 +254,62 @@ public class GoldMarketRepository {
     }
 
     /**
-     * 发送链上交易，并在确认后异步同步到后端 DB
+     * 发送链上交易，交易确认后【先同步后端 DB，再通知 UI】
+     *
+     * 完整流程（三步串行）：
+     * 1. 发送交易并等待链上确认（本地 RPC 等待 receipt，BrokerChain 等待固定延迟）
+     * 2. 通过 eth_call 查询交易后的链上真实状态（资金池、储备金、持仓、结算状态）
+     * 3. 将三项数据同步写入后端 DB（交易记录 + 历史价格点 + 链上状态缓存）
+     * 4. 后端 DB 写入完成后，回调 onConfirmed 通知 UI
+     *
+     * 设计意图：确保 onConfirmed 回调时，后端 DB 已包含最新的交易数据，
+     * UI 可以立即从后端 DB 拉取到正确的状态，无需额外等待。
      */
     private void sendTransaction(BigInteger value, org.web3j.abi.datatypes.Function function,
                                  String successMsg, TxCallback callback, TradeSyncInfo tradeInfo) {
         AppExecutors.getInstance().networkIO().execute(() -> {
             try {
                 String data = FunctionEncoder.encode(function);
-                String txHash;
                 if (useLocalRpc) {
-                    txHash = standardSendTxInternal(value, data, successMsg, callback);
-                } else {
-                    txHash = brokerChainSendTxInternal(value, data, successMsg, callback);
-                }
+                    // ── Local RPC 模式 ──
+                    String txHash = sendLocalRpcAndWait(value, data, callback);
+                    if (txHash == null) return; // 错误已在 sendLocalRpcAndWait 中回调
+                    AppExecutors.getInstance().mainThread().execute(() -> callback.onTxSent(txHash));
 
-                // ---- 交易确认后，异步同步到后端 DB（非阻塞） ----
-                if (tradeInfo != null && txHash != null && !txHash.isEmpty()) {
-                    syncTradeToBackend(tradeInfo, txHash);
+                    // 查询交易后的链上真实状态
+                    PostTxState postState = (tradeInfo != null) ? queryPostTxState(tradeInfo.gameId) : null;
+
+                    // 同步到后端 DB（在 onConfirmed 之前，确保数据一致性）
+                    if (tradeInfo != null) {
+                        syncAllToBackend(tradeInfo, txHash, postState);
+                    }
+
+                    AppExecutors.getInstance().mainThread().execute(() -> callback.onConfirmed(successMsg));
+
+                } else {
+                    // ── BrokerChain 模式 ──
+                    String response = sendBrokerChainTx(value, data, callback);
+                    if (response == null) return; // 错误已在 sendBrokerChainTx 中回调
+                    AppExecutors.getInstance().mainThread().execute(() -> callback.onTxSent("Transaction Sent"));
+
+                    // 等待链上确认（BrokerChain 出块时间 ~3 秒，留余量等待 8 秒）
+                    Thread.sleep(8000);
+                    try {
+                        BrokerChainClient.ReturnAccountState state = BrokerChainClient.getAddrAndBalance(privateKey);
+                        Log.d(TAG, "BrokerChain 确认后余额: " + (state != null ? state.getBalance() : "null"));
+                    } catch (Exception balanceErr) {
+                        Log.w(TAG, "BrokerChain 余额查询异常: " + balanceErr.getMessage());
+                    }
+
+                    // 查询交易后的链上真实状态
+                    PostTxState postState = (tradeInfo != null) ? queryPostTxState(tradeInfo.gameId) : null;
+
+                    // 同步到后端 DB（在 onConfirmed 之前）
+                    if (tradeInfo != null) {
+                        syncAllToBackend(tradeInfo, response, postState);
+                    }
+
+                    AppExecutors.getInstance().mainThread().execute(() -> callback.onConfirmed(successMsg));
                 }
             } catch (Exception e) {
                 postError(callback, "交易异常: " + e.getMessage());
@@ -276,7 +317,11 @@ public class GoldMarketRepository {
         });
     }
 
-    private String standardSendTxInternal(BigInteger value, String data, String successMsg, TxCallback callback) throws Exception {
+    /**
+     * Local RPC 模式：发送交易并等待链上确认（receipt）
+     * @return txHash，失败时回调 onError 并返回 null
+     */
+    private String sendLocalRpcAndWait(BigInteger value, String data, TxCallback callback) throws Exception {
         Transaction txn = buildLocalWriteTransaction(walletAddress, contractAddress, data, value);
         Log.d(TAG, "standard eth_sendTransaction to=" + contractAddress
                 + " value=" + txn.getValue()
@@ -288,22 +333,18 @@ public class GoldMarketRepository {
         } else if (resp.getTransactionHash() == null || resp.getTransactionHash().isEmpty()) {
             postError(callback, "本地 RPC 未返回交易哈希，交易未确认提交");
             return null;
-        } else {
-            String txHash = resp.getTransactionHash();
-            Log.d(TAG, "standard eth_sendTransaction hash=" + txHash);
-            AppExecutors.getInstance().mainThread().execute(() -> callback.onTxSent(txHash));
-            waitForLocalReceipt(txHash);
-            AppExecutors.getInstance().mainThread().execute(() -> callback.onConfirmed(successMsg));
-            return txHash;
         }
+        String txHash = resp.getTransactionHash();
+        Log.d(TAG, "standard eth_sendTransaction hash=" + txHash);
+        waitForLocalReceipt(txHash);
+        return txHash;
     }
 
     /**
      * BrokerChain 模式：发送交易到远程服务器
-     * 注意：此模式下服务器返回的是提交回执，不是链上确认。
-     * onTxSent 在提交成功后立即回调；onConfirmed 延迟 3 秒后回调（给链留出打包时间）。
+     * @return 服务器返回的响应字符串，失败时回调 onError 并返回 null
      */
-    private String brokerChainSendTxInternal(BigInteger value, String data, String successMsg, TxCallback callback) throws Exception {
+    private String sendBrokerChainTx(BigInteger value, String data, TxCallback callback) throws Exception {
         String valueHex = value.compareTo(BigInteger.ZERO) > 0 ? value.toString(16) : "0x0";
         Log.d(TAG, "brokerChainSendTx: to=" + contractAddress
                 + " value=" + valueHex
@@ -314,78 +355,191 @@ public class GoldMarketRepository {
         if (response == null || response.toLowerCase().contains("error") || response.toLowerCase().contains("failed")) {
             postError(callback, "交易失败: " + response);
             return null;
-        } else {
-            // 1. 立即通知 UI 交易已提交
-            AppExecutors.getInstance().mainThread().execute(() -> callback.onTxSent("Transaction Sent"));
-
-            // 2. 等待链上确认（BrokerChain 没有 receipt 接口，用轮询 account nonce 或固定延迟）
-            AppExecutors.getInstance().networkIO().execute(() -> {
-                try {
-                    // 等待 8 秒让交易上链（BrokerChain 出块时间 ~3 秒，留余量）
-                    Thread.sleep(8000);
-                    // 再查一次余额确认交易已生效
-                    BrokerChainClient.ReturnAccountState state = BrokerChainClient.getAddrAndBalance(privateKey);
-                    Log.d(TAG, "brokerChainSendTx 确认后余额: " + (state != null ? state.getBalance() : "null"));
-                } catch (Exception e) {
-                    Log.w(TAG, "brokerChainSendTx 确认等待异常: " + e.getMessage());
-                }
-                AppExecutors.getInstance().mainThread().execute(() -> callback.onConfirmed(successMsg));
-            });
-            return response;
         }
+        return response;
+    }
+
+    // ── 交易后链上状态查询 ──
+
+    /**
+     * 交易后的链上真实状态快照（用于同步到后端 DB）
+     */
+    private static class PostTxState {
+        String totalPool;
+        boolean isResolved;
+        boolean isRefunded;
+        int winningOption;
+        String reserveYES;
+        String reserveNO;
+        String mySharesYES;
+        String mySharesNO;
     }
 
     /**
-     * 同步交易信息到后端 DB（异步执行，失败不影响主流程）
+     * 查询交易后的链上真实状态
+     * 通过 eth_call 调用 getGameInfo + getGameExtraData 合约方法，
+     * 获取资金池、储备金、用户持仓、结算状态等真实值。
      *
-     * 写入策略（三步同步）：
+     * @param gameId 博弈池 ID
+     * @return PostTxState，查询失败返回 null
+     */
+    private PostTxState queryPostTxState(int gameId) {
+        try {
+            org.web3j.abi.datatypes.Function fInfo = new org.web3j.abi.datatypes.Function(
+                "getGameInfo", Collections.singletonList(new Uint256(BigInteger.valueOf(gameId))),
+                Arrays.asList(
+                    new TypeReference<Utf8String>() {},   // ipfsCID
+                    new TypeReference<Uint256>() {},      // totalPool
+                    new TypeReference<Bool>() {},         // isResolved
+                    new TypeReference<Uint8>() {},        // winningOption
+                    new TypeReference<Uint256>() {},      // deadlineSec
+                    new TypeReference<Bool>() {}          // isRefunded
+                ));
+
+            String addr = getWalletAddress();
+            if (addr == null || addr.isEmpty()) addr = "0x0000000000000000000000000000000000000000";
+            org.web3j.abi.datatypes.Function fExtra = new org.web3j.abi.datatypes.Function(
+                "getGameExtraData",
+                Arrays.asList(new Uint256(BigInteger.valueOf(gameId)), new Address(addr)),
+                Arrays.asList(
+                    new TypeReference<DynamicArray<Uint256>>() {},
+                    new TypeReference<DynamicArray<Uint256>>() {}
+                ));
+
+            String hexInfo = ethCall(fInfo);
+            String hexExtra = ethCall(fExtra);
+
+            if (hexInfo == null || hexInfo.equals("0x")) {
+                Log.w(TAG, "queryPostTxState: getGameInfo 返回空, gameId=" + gameId);
+                return null;
+            }
+
+            List<Type> res = FunctionReturnDecoder.decode(hexInfo, fInfo.getOutputParameters());
+            if (res.size() < 6) return null;
+
+            PostTxState state = new PostTxState();
+            state.totalPool = ((Uint256) res.get(1)).getValue().toString();
+            state.isResolved = ((Bool) res.get(2)).getValue();
+            state.winningOption = ((Uint8) res.get(3)).getValue().intValue();
+            state.isRefunded = ((Bool) res.get(5)).getValue();
+
+            if (hexExtra != null && !hexExtra.equals("0x")) {
+                try {
+                    List<Type> extraRes = FunctionReturnDecoder.decode(hexExtra, fExtra.getOutputParameters());
+                    if (extraRes.size() >= 2) {
+                        List<Uint256> reservesArray = ((DynamicArray<Uint256>) extraRes.get(0)).getValue();
+                        List<Uint256> sharesArray = ((DynamicArray<Uint256>) extraRes.get(1)).getValue();
+                        // 合约返回顺序: [reserveNO, reserveYES], [mySharesYES, mySharesNO]
+                        if (reservesArray.size() >= 2) {
+                            state.reserveYES = reservesArray.get(1).getValue().toString();
+                            state.reserveNO = reservesArray.get(0).getValue().toString();
+                        }
+                        if (sharesArray.size() >= 2) {
+                            state.mySharesYES = sharesArray.get(0).getValue().toString();
+                            state.mySharesNO = sharesArray.get(1).getValue().toString();
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "queryPostTxState: getGameExtraData 解析失败 - " + e.getMessage());
+                }
+            }
+
+            Log.d(TAG, "queryPostTxState 成功: gameId=" + gameId
+                    + " totalPool=" + state.totalPool
+                    + " isResolved=" + state.isResolved
+                    + " mySharesYES=" + state.mySharesYES);
+            return state;
+        } catch (Exception e) {
+            Log.w(TAG, "queryPostTxState 异常: gameId=" + gameId + " - " + e.getMessage());
+            return null;
+        }
+    }
+
+    // ── 后端 DB 同步（同步执行，在 onConfirmed 之前调用） ──
+
+    /**
+     * 将交易数据同步写入后端 DB（同步执行，在 onConfirmed 之前调用）
+     *
+     * 写入策略（三项同步，每项独立 try-catch）：
      * 1. 同步交易记录 → POST /api/v1/gold/trades/sync
      * 2. 添加历史价格点 → POST /api/v1/gold/games/{gameId}/history
      * 3. 同步链上状态缓存 → POST /api/v1/gold/games/{gameId}/chain-state/sync
      *
-     * 步骤 3 确保后端 DB 缓存的链上状态与链上实际状态保持一致，
-     * 后续读取操作可优先命中后端 DB 缓存，避免直接 eth_call 的延迟。
+     * 优先使用 postState（链上查询的真实值），
+     * postState 为 null 时回退使用 tradeInfo 中的值。
+     * 每项同步失败独立处理，不阻塞其他同步。
      */
-    private void syncTradeToBackend(TradeSyncInfo tradeInfo, String txHash) {
-        AppExecutors.getInstance().networkIO().execute(() -> {
-            try {
-                // 1. 同步交易记录
-                BackendApiClient.TradeSyncReq tradeReq = new BackendApiClient.TradeSyncReq();
-                tradeReq.gameId = tradeInfo.gameId;
-                tradeReq.contractAddress = contractAddress;
-                tradeReq.userAddress = walletAddress;
-                tradeReq.tradeType = tradeInfo.tradeType;
-                tradeReq.optionId = tradeInfo.optionId;
-                tradeReq.amountWei = tradeInfo.amountWei;
-                tradeReq.txHash = txHash;
-                tradeReq.isSuccess = true;
+    private void syncAllToBackend(TradeSyncInfo tradeInfo, String txHash, PostTxState postState) {
+        final int gameId = tradeInfo.gameId;
+
+        // ── 1. 同步交易记录 ──
+        try {
+            BackendApiClient.TradeSyncReq tradeReq = new BackendApiClient.TradeSyncReq();
+            tradeReq.gameId = gameId;
+            tradeReq.contractAddress = contractAddress;
+            tradeReq.userAddress = walletAddress;
+            tradeReq.tradeType = tradeInfo.tradeType;
+            tradeReq.optionId = tradeInfo.optionId;
+            tradeReq.amountWei = tradeInfo.amountWei;
+            tradeReq.txHash = txHash;
+            tradeReq.isSuccess = true;
+            if (postState != null) {
+                tradeReq.totalPoolAfter = postState.totalPool;
+                tradeReq.reserveYESAfter = postState.reserveYES;
+                tradeReq.reserveNOAfter = postState.reserveNO;
+                tradeReq.mySharesYESAfter = postState.mySharesYES;
+                tradeReq.mySharesNOAfter = postState.mySharesNO;
+            } else {
                 tradeReq.totalPoolAfter = tradeInfo.totalPoolAfter;
                 tradeReq.reserveYESAfter = tradeInfo.reserveYESAfter;
                 tradeReq.reserveNOAfter = tradeInfo.reserveNOAfter;
                 tradeReq.mySharesYESAfter = tradeInfo.mySharesYESAfter;
                 tradeReq.mySharesNOAfter = tradeInfo.mySharesNOAfter;
-                BackendApiClient.syncTrade(tradeReq);
-                Log.d(TAG, "后端交易同步成功: gameId=" + tradeInfo.gameId + " type=" + tradeInfo.tradeType);
+            }
+            BackendApiClient.syncTrade(tradeReq);
+            Log.d(TAG, "✅ 后端交易同步成功: gameId=" + gameId + " type=" + tradeInfo.tradeType);
+        } catch (Exception e) {
+            Log.w(TAG, "❌ 后端交易同步失败（非关键）: gameId=" + gameId + " - " + e.getMessage());
+        }
 
-                // 2. 添加历史价格点
-                if (tradeInfo.reserveYESAfter != null && tradeInfo.reserveNOAfter != null) {
-                    BackendApiClient.HistoryPointDTO point = new BackendApiClient.HistoryPointDTO();
-                    point.gameId = tradeInfo.gameId;
-                    point.timestampSec = System.currentTimeMillis() / 1000;
-                    BigInteger yesRes = new BigInteger(tradeInfo.reserveYESAfter);
-                    BigInteger noRes = new BigInteger(tradeInfo.reserveNOAfter);
-                    BigInteger total = yesRes.add(noRes);
-                    if (total.compareTo(BigInteger.ZERO) > 0) {
-                        point.yesPrice = (float) (yesRes.doubleValue() / total.doubleValue() * 100);
-                        point.noPrice = 100 - point.yesPrice;
-                    }
-                    point.totalPool = tradeInfo.totalPoolAfter;
-                    BackendApiClient.addHistoryPoint(tradeInfo.gameId, point);
-                    Log.d(TAG, "后端历史数据同步成功: gameId=" + tradeInfo.gameId);
+        // ── 2. 添加历史价格点 ──
+        try {
+            String reserveYES = (postState != null) ? postState.reserveYES : tradeInfo.reserveYESAfter;
+            String reserveNO = (postState != null) ? postState.reserveNO : tradeInfo.reserveNOAfter;
+            String totalPool = (postState != null) ? postState.totalPool : tradeInfo.totalPoolAfter;
+
+            if (reserveYES != null && reserveNO != null) {
+                BackendApiClient.HistoryPointDTO point = new BackendApiClient.HistoryPointDTO();
+                point.gameId = gameId;
+                point.timestampSec = System.currentTimeMillis() / 1000;
+                BigInteger yesRes = new BigInteger(reserveYES);
+                BigInteger noRes = new BigInteger(reserveNO);
+                BigInteger total = yesRes.add(noRes);
+                if (total.compareTo(BigInteger.ZERO) > 0) {
+                    point.yesPrice = (float) (yesRes.doubleValue() / total.doubleValue() * 100);
+                    point.noPrice = 100 - point.yesPrice;
                 }
+                point.totalPool = totalPool;
+                BackendApiClient.addHistoryPoint(gameId, point);
+                Log.d(TAG, "✅ 后端历史数据同步成功: gameId=" + gameId);
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "❌ 后端历史数据同步失败（非关键）: gameId=" + gameId + " - " + e.getMessage());
+        }
 
-                // 3. 同步链上状态缓存到后端 DB（确保缓存与链上一致）
-                BackendApiClient.ChainStateSyncReq chainReq = new BackendApiClient.ChainStateSyncReq();
+        // ── 3. 同步链上状态缓存 ──
+        try {
+            BackendApiClient.ChainStateSyncReq chainReq = new BackendApiClient.ChainStateSyncReq();
+            if (postState != null) {
+                chainReq.totalPool = postState.totalPool;
+                chainReq.isResolved = postState.isResolved;
+                chainReq.isRefunded = postState.isRefunded;
+                chainReq.winningOption = postState.winningOption;
+                chainReq.reserveYES = postState.reserveYES;
+                chainReq.reserveNO = postState.reserveNO;
+                chainReq.mySharesYES = postState.mySharesYES;
+                chainReq.mySharesNO = postState.mySharesNO;
+            } else {
                 chainReq.totalPool = tradeInfo.totalPoolAfter;
                 chainReq.isResolved = tradeInfo.isResolved;
                 chainReq.isRefunded = tradeInfo.isRefunded;
@@ -394,15 +548,14 @@ public class GoldMarketRepository {
                 chainReq.reserveNO = tradeInfo.reserveNOAfter;
                 chainReq.mySharesYES = tradeInfo.mySharesYESAfter;
                 chainReq.mySharesNO = tradeInfo.mySharesNOAfter;
-                BackendApiClient.syncChainState(tradeInfo.gameId, chainReq);
-                Log.d(TAG, "后端链上状态同步成功: gameId=" + tradeInfo.gameId
-                        + " totalPool=" + tradeInfo.totalPoolAfter
-                        + " isResolved=" + tradeInfo.isResolved);
-            } catch (Exception e) {
-                // 非关键路径：后端同步失败不影响主流程
-                Log.w(TAG, "后端同步失败（非关键）: " + e.getMessage());
             }
-        });
+            BackendApiClient.syncChainState(gameId, chainReq);
+            Log.d(TAG, "✅ 后端链上状态同步成功: gameId=" + gameId
+                    + " totalPool=" + chainReq.totalPool
+                    + " isResolved=" + chainReq.isResolved);
+        } catch (Exception e) {
+            Log.w(TAG, "❌ 后端链上状态同步失败（非关键）: gameId=" + gameId + " - " + e.getMessage());
+        }
     }
 
     private void waitForLocalReceipt(String txHash) throws Exception {
@@ -1070,7 +1223,9 @@ public class GoldMarketRepository {
     }
 
     // ========================================================================
-    //  合约方法 - 写入操作（IPFS → 链上 → 后端 DB 同步写入）
+    //  合约方法 - 写入操作
+    //  流程：IPFS 上传 → 链上交易 → 等待确认 → eth_call 查询真实状态 → 后端 DB 同步写入 → 通知 UI
+    //  设计原则：onConfirmed 回调时，后端 DB 已包含最新数据，UI 无需额外等待
     // ========================================================================
 
     public void buyShares(int gameId, int optionId, BigInteger amountWei, TxCallback callback) {
@@ -1079,18 +1234,12 @@ public class GoldMarketRepository {
             Arrays.asList(new Uint256(BigInteger.valueOf(gameId)), new Uint8(BigInteger.valueOf(optionId))),
             Collections.emptyList());
 
-        // 构建交易同步信息
+        // 构建交易同步信息（链上状态由 sendTransaction 在交易确认后通过 eth_call 查询真实值）
         TradeSyncInfo tradeInfo = new TradeSyncInfo();
         tradeInfo.gameId = gameId;
         tradeInfo.tradeType = "BUY";
         tradeInfo.optionId = optionId;
         tradeInfo.amountWei = amountWei.toString();
-        // 注：买后状态需在交易确认后重新查询；此处传空，后端可自行从链上刷新
-        tradeInfo.totalPoolAfter = null;
-        tradeInfo.reserveYESAfter = null;
-        tradeInfo.reserveNOAfter = null;
-        tradeInfo.mySharesYESAfter = null;
-        tradeInfo.mySharesNOAfter = null;
 
         sendTransaction(amountWei, f, "买入成功", callback, tradeInfo);
     }
@@ -1099,6 +1248,7 @@ public class GoldMarketRepository {
         org.web3j.abi.datatypes.Function f = new org.web3j.abi.datatypes.Function(
             "sellShares", Arrays.asList(new Uint256(gameId), new Uint8(optionId), new Uint256(shareAmount)), Collections.emptyList());
 
+        // 构建交易同步信息（链上状态由 sendTransaction 在交易确认后通过 eth_call 查询真实值）
         TradeSyncInfo tradeInfo = new TradeSyncInfo();
         tradeInfo.gameId = gameId;
         tradeInfo.tradeType = "SELL";
@@ -1111,10 +1261,11 @@ public class GoldMarketRepository {
     /**
      * 创建博弈池
      *
-     * 写入流程（三步同步）：
-     * 1. 上传图片到 IPFS（如有）→ 2. 上传元数据 JSON 到 IPFS
-     * 3. 带 IPFS CID 发送 createGame 链上交易
-     * 4. 交易确认后，同步元数据到后端 DB
+     * 写入流程（四步串行）：
+     * 1. 上传图片到 IPFS（如有）
+     * 2. 上传元数据 JSON 到 IPFS
+     * 3. 带 IPFS CID 发送 createGame 链上交易，等待确认
+     * 4. 交易确认后 → 查询链上状态 → 同步元数据 + 链上状态到后端 DB → 通知 UI
      */
     public void createGame(String desc, String condition, byte[] imageData,
                            String detailedInfo, List<String> optionNamesList,
@@ -1123,6 +1274,7 @@ public class GoldMarketRepository {
         AppExecutors.getInstance().networkIO().execute(() -> {
             String avatarCid = "";
             String metadataCid = "";
+            int newGameId = 0;
             try {
                 // ---- 步骤 1: 上传图片到 IPFS ----
                 if (imageData != null && imageData.length > 0) {
@@ -1131,7 +1283,6 @@ public class GoldMarketRepository {
                         Log.d(TAG, "图片上传到IPFS成功, CID: " + avatarCid);
                     } catch (Exception e) {
                         Log.e(TAG, "图片上传到IPFS失败: " + e.getMessage());
-                        // 图片上传失败不阻塞流程
                     }
                 }
 
@@ -1147,7 +1298,7 @@ public class GoldMarketRepository {
                 metadataCid = PinataClient.uploadJsonToIPFS(metadata);
                 Log.d(TAG, "元数据上传到IPFS成功, CID: " + metadataCid);
 
-                // ---- 步骤 3: 带 IPFS CID 发送链上交易 ----
+                // ---- 步骤 3: 发送 createGame 链上交易 ----
                 long finalDuration = duration;
                 if (!useLocalRpc && duration < 10_000_000_000L) {
                     finalDuration = duration * 1000L;
@@ -1158,58 +1309,98 @@ public class GoldMarketRepository {
                     Arrays.asList(new Utf8String(metadataCid), new Uint256(finalDuration)),
                     Collections.emptyList());
 
-                // 构建同步信息（交易确认后使用）
+                String data = FunctionEncoder.encode(f);
+                String txHash;
+                if (useLocalRpc) {
+                    txHash = sendLocalRpcAndWait(initialLiquidityWei, data, callback);
+                    if (txHash == null) return;
+                    AppExecutors.getInstance().mainThread().execute(() -> callback.onTxSent(txHash));
+                } else {
+                    txHash = sendBrokerChainTx(initialLiquidityWei, data, callback);
+                    if (txHash == null) return;
+                    AppExecutors.getInstance().mainThread().execute(() -> callback.onTxSent("Transaction Sent"));
+                    Thread.sleep(8000); // 等待链上确认
+                }
+
+                // ---- 步骤 4: 同步到后端 DB（在 onConfirmed 之前） ----
                 final String finalAvatarCid = avatarCid;
                 final String finalMetadataCid = metadataCid;
+                final String finalTxHash = txHash;
 
-                // 包装 callback 以在交易确认后同步到后端 DB
-                TxCallback wrappedCallback = new TxCallback() {
-                    @Override
-                    public void onTxSent(String txHash) {
-                        AppExecutors.getInstance().mainThread().execute(() -> callback.onTxSent(txHash));
+                // 4a. 获取新创建博弈池的 gameId（通过 gameCount 推算）
+                try {
+                    org.web3j.abi.datatypes.Function fCount = buildGameCountFunction();
+                    String hex = ethCall(fCount);
+                    List<Type> result = FunctionReturnDecoder.decode(hex, fCount.getOutputParameters());
+                    if (!result.isEmpty()) {
+                        newGameId = ((Uint256) result.get(0)).getValue().intValue();
                     }
-
-                    @Override
-                    public void onConfirmed(String message) {
-                        // ---- 步骤 4: 同步元数据到后端 DB（异步，非阻塞） ----
-                        AppExecutors.getInstance().networkIO().execute(() -> {
-                            try {
-                                BackendApiClient.GameMetaSyncReq syncReq = new BackendApiClient.GameMetaSyncReq();
-                                syncReq.gameId = 0; // 由后端分配实际 gameId（链上 event 解析）
-                                syncReq.contractAddress = contractAddress;
-                                syncReq.ipfsCid = finalMetadataCid;
-                                syncReq.desc = desc;
-                                syncReq.condition = condition;
-                                syncReq.avatarUrl = finalAvatarCid;
-                                syncReq.detailedInfo = detailedInfo;
-                                syncReq.optionYES = optionNamesList.get(0);
-                                syncReq.optionNO = optionNamesList.get(1);
-                                syncReq.creatorAddress = walletAddress;
-                                syncReq.durationSec = duration;
-                                syncReq.initialLiquidityWei = initialLiquidityWei.toString();
-                                BackendApiClient.syncGameMetadata(syncReq);
-                                Log.d(TAG, "创建博弈池 - 后端DB同步成功");
-                            } catch (Exception e) {
-                                Log.w(TAG, "创建博弈池 - 后端DB同步失败（非关键）: " + e.getMessage());
-                            }
-                        });
-
-                        AppExecutors.getInstance().mainThread().execute(() -> callback.onConfirmed(message));
-                    }
-
-                    @Override
-                    public void onError(String error) {
-                        AppExecutors.getInstance().mainThread().execute(() -> callback.onError(error));
-                    }
-                };
-
-                // 发送链上交易
-                String data = FunctionEncoder.encode(f);
-                if (useLocalRpc) {
-                    standardSendTxInternal(initialLiquidityWei, data, "博弈池部署成功", wrappedCallback);
-                } else {
-                    brokerChainSendTxInternal(initialLiquidityWei, data, "博弈池部署成功", wrappedCallback);
+                } catch (Exception e) {
+                    Log.w(TAG, "获取 gameCount 失败，gameId 传 0 由后端自行解析");
                 }
+
+                // 4b. 同步游戏元数据
+                try {
+                    BackendApiClient.GameMetaSyncReq syncReq = new BackendApiClient.GameMetaSyncReq();
+                    syncReq.gameId = newGameId;
+                    syncReq.contractAddress = contractAddress;
+                    syncReq.ipfsCid = finalMetadataCid;
+                    syncReq.desc = desc;
+                    syncReq.condition = condition;
+                    syncReq.avatarUrl = finalAvatarCid;
+                    syncReq.detailedInfo = detailedInfo;
+                    syncReq.optionYES = optionNamesList.get(0);
+                    syncReq.optionNO = optionNamesList.get(1);
+                    syncReq.creatorAddress = walletAddress;
+                    syncReq.durationSec = duration;
+                    syncReq.initialLiquidityWei = initialLiquidityWei.toString();
+                    BackendApiClient.syncGameMetadata(syncReq);
+                    Log.d(TAG, "✅ 创建博弈池 - 后端元数据同步成功: gameId=" + newGameId);
+                } catch (Exception e) {
+                    Log.w(TAG, "❌ 创建博弈池 - 后端元数据同步失败（非关键）: " + e.getMessage());
+                }
+
+                // 4c. 查询初始链上状态并同步到后端 DB
+                if (newGameId > 0) {
+                    try {
+                        // 短暂延迟确保链上状态已更新
+                        Thread.sleep(2000);
+                        PostTxState postState = queryPostTxState(newGameId);
+                        if (postState != null) {
+                            BackendApiClient.ChainStateSyncReq chainReq = new BackendApiClient.ChainStateSyncReq();
+                            chainReq.totalPool = postState.totalPool;
+                            chainReq.isResolved = false;
+                            chainReq.isRefunded = false;
+                            chainReq.winningOption = 0;
+                            chainReq.reserveYES = postState.reserveYES;
+                            chainReq.reserveNO = postState.reserveNO;
+                            chainReq.mySharesYES = "0";
+                            chainReq.mySharesNO = "0";
+                            BackendApiClient.syncChainState(newGameId, chainReq);
+                            Log.d(TAG, "✅ 创建博弈池 - 后端初始链上状态同步成功: gameId=" + newGameId);
+                        }
+                    } catch (Exception e) {
+                        Log.w(TAG, "❌ 创建博弈池 - 后端链上状态同步失败（非关键）: " + e.getMessage());
+                    }
+
+                    // 4d. 添加初始历史价格点
+                    try {
+                        BackendApiClient.HistoryPointDTO point = new BackendApiClient.HistoryPointDTO();
+                        point.gameId = newGameId;
+                        point.timestampSec = System.currentTimeMillis() / 1000;
+                        point.yesPrice = 50f;
+                        point.noPrice = 50f;
+                        point.totalPool = initialLiquidityWei.toString();
+                        BackendApiClient.addHistoryPoint(newGameId, point);
+                        Log.d(TAG, "✅ 创建博弈池 - 初始历史价格点同步成功: gameId=" + newGameId);
+                    } catch (Exception e) {
+                        Log.w(TAG, "❌ 创建博弈池 - 初始历史价格点同步失败（非关键）: " + e.getMessage());
+                    }
+                }
+
+                // ---- 通知 UI 完成（后端 DB 已更新） ----
+                final int finalGameId = newGameId;
+                AppExecutors.getInstance().mainThread().execute(() -> callback.onConfirmed("博弈池部署成功 (ID=" + finalGameId + ")"));
 
             } catch (Exception e) {
                 e.printStackTrace();

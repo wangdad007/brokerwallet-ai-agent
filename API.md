@@ -1086,7 +1086,13 @@ Response: { "enabled": true/false }
 ```
 POST /api/v1/gold/games/sync
 ```
-**调用时机：** 创建博弈池完成后（IPFS 已上传 + 链上交易已确认）
+**调用时机：** 创建博弈池交易确认后。
+
+**完整同步流程（createGame）：**
+1. 通过 `gameCount()` eth_call 获取新博弈池的 gameId
+2. 调用 `/games/sync` 同步元数据（标题、条件、IPFS CID 等）
+3. 调用 `/games/{gameId}/chain-state/sync` 同步初始链上状态（资金池、储备金）
+4. 调用 `/games/{gameId}/history` 添加初始历史价格点（YES=50%, NO=50%）
 
 **Request Body (GameMetaSyncReq):**
 ```json
@@ -1118,7 +1124,9 @@ POST /api/v1/gold/games/sync
 ```
 POST /api/v1/gold/games/{gameId}/chain-state/sync
 ```
-**调用时机：** 每次链上交易确认后（buyShares / sellShares / claimReward / resolveGame），同步最新的链上状态到后端 DB 缓存。确保后续读取操作优先命中 DB 缓存，避免直接 eth_call 的延迟。
+**调用时机：** 每次链上交易确认后（buyShares / sellShares / claimReward / resolveGame / createGame），通过 eth_call 查询交易后的真实链上状态，同步写入后端 DB 缓存。确保后续读取操作优先命中 DB 缓存，避免直接 eth_call 的延迟。
+
+**数据来源：** 交易确认后通过 `getGameInfo()` + `getGameExtraData()` eth_call 查询链上真实值，非空占位符。
 
 **Request Body (ChainStateSyncReq):**
 ```json
@@ -1143,10 +1151,11 @@ POST /api/v1/gold/games/{gameId}/chain-state/sync
 **覆盖的写操作：**
 | 操作 | 触发方法 | tradeType | 备注 |
 |------|----------|-----------|------|
-| 买入份额 | `buyShares()` | BUY | 同步资金池、储备金、用户持仓变化 |
+| 买入份额 | `buyShares()` | BUY | 同步资金池、储备金、用户持仓变化（eth_call 真实值） |
 | 卖出份额 | `sellShares()` | SELL | 同上 |
 | 领取奖励 | `claimReward()` | CLAIM | 同步用户持仓归零 |
 | 结算博弈池 | `resolveGame()` | RESOLVE | 同步 isResolved=true 和 winningOption |
+| 创建博弈池 | `createGame()` | — | 同步初始资金池和储备金状态 |
 
 ---
 
@@ -1253,28 +1262,38 @@ ViewModel (GoldMarketDetailViewModel / GoldCreatePoolViewModel)
   ▼
 GoldMarketRepository
   │
-  ├─ 1. IPFS 上传图片/元数据 (createGame 专属)
-  │     └─ PinataClient.uploadFileToIPFS() → 返回 IPFS CID
+  ├─ 1. IPFS 上传 (createGame 专属)
+  │     ├─ PinataClient.uploadFileToIPFS() → 图片 CID
+  │     └─ PinataClient.uploadJsonToIPFS() → 元数据 CID
   │
   ├─ 2. 发送链上交易
-  │     ├─ LocalRPC 模式: web3j.ethSendTransaction()
-  │     └─ BrokerChain 模式: BrokerChainClient.sendEthTx()
+  │     ├─ LocalRPC 模式: sendLocalRpcAndWait() → web3j.ethSendTransaction()
+  │     └─ BrokerChain 模式: sendBrokerChainTx() → BrokerChainClient.sendEthTx()
   │
   ├─ 3. 等待链上确认
-  │     ├─ LocalRPC 模式: 轮询 ethGetTransactionReceipt (最多30秒)
-  │     └─ BrokerChain 模式: 等待 8 秒让交易上链
+  │     ├─ LocalRPC 模式: waitForLocalReceipt() 轮询 ethGetTransactionReceipt (最多30秒)
+  │     └─ BrokerChain 模式: Thread.sleep(8000) 等待链上打包
   │
-  └─ 4. 同步到后端 DB (异步，非阻塞) ← ← ← 【本次新增】
-        ├─ POST /api/v1/gold/trades/sync          (同步交易记录)
-        ├─ POST /api/v1/gold/games/{id}/history    (添加历史价格点)
-        ├─ POST /api/v1/gold/games/{id}/chain-state/sync  (同步链上状态缓存)
-        └─ POST /api/v1/gold/games/sync            (createGame 专属: 同步元数据)
+  ├─ 4. 查询交易后链上真实状态  ← ← ← 【新增】
+  │     └─ queryPostTxState(gameId)
+  │         ├─ eth_call getGameInfo → totalPool, isResolved, winningOption...
+  │         └─ eth_call getGameExtraData → reserveYES, reserveNO, mySharesYES, mySharesNO
+  │
+  ├─ 5. 同步到后端 DB（在 onConfirmed 之前） ← ← ← 【重构】
+  │     ├─ POST /api/v1/gold/trades/sync             (同步交易记录，含真实链上数据)
+  │     ├─ POST /api/v1/gold/games/{id}/history       (添加历史价格点)
+  │     ├─ POST /api/v1/gold/games/{id}/chain-state/sync (同步链上状态缓存)
+  │     └─ POST /api/v1/gold/games/sync               (createGame 专属: 同步元数据)
+  │
+  └─ 6. 回调 onConfirmed 通知 UI ← ← ← 此时后端 DB 已包含最新数据
 ```
 
-**注意：**
-- 步骤 4 失败**不会阻塞主流程**，仅记录日志（`Log.w`）
-- 步骤 4 中三项同步**串行执行**，任一失败不影响其他同步
-- 链上状态缓存的同步确保后续**读操作优先命中后端 DB**，减少 eth_call 延迟
+**设计原则（重要变更）：**
+- ✅ **onConfirmed 回调时，后端 DB 已写入完成**——UI 无需额外等待，可立即从后端 DB 拉取最新状态
+- ✅ **使用链上真实状态**——通过 eth_call 查询交易后的实际链上数据，而非传空值
+- ✅ **每项同步独立 try-catch**——交易记录、历史价格、链上状态任一项失败不影响其他项
+- ✅ **后端同步失败不阻塞主流程**——仅记录日志（`Log.w`），仍会正常回调 onConfirmed
+- ✅ **后续读取优先命中后端 DB 缓存**——避免直接 eth_call 的延迟
 
 ---
 
