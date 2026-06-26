@@ -298,18 +298,40 @@ public class GoldMarketRepository {
         }
     }
 
+    /**
+     * BrokerChain 模式：发送交易到远程服务器
+     * 注意：此模式下服务器返回的是提交回执，不是链上确认。
+     * onTxSent 在提交成功后立即回调；onConfirmed 延迟 3 秒后回调（给链留出打包时间）。
+     */
     private String brokerChainSendTxInternal(BigInteger value, String data, String successMsg, TxCallback callback) throws Exception {
         String valueHex = value.compareTo(BigInteger.ZERO) > 0 ? value.toString(16) : "0x0";
+        Log.d(TAG, "brokerChainSendTx: to=" + contractAddress
+                + " value=" + valueHex
+                + " data=" + data.substring(0, Math.min(66, data.length())) + "...");
         String response = BrokerChainClient.sendEthTx(privateKey, contractAddress, data, valueHex);
+        Log.d(TAG, "brokerChainSendTx response: " + (response != null ? response.substring(0, Math.min(200, response.length())) : "null"));
+
         if (response == null || response.toLowerCase().contains("error") || response.toLowerCase().contains("failed")) {
             postError(callback, "交易失败: " + response);
             return null;
         } else {
-            AppExecutors.getInstance().mainThread().execute(() -> {
-                callback.onTxSent("Transaction Sent");
-                callback.onConfirmed(successMsg);
+            // 1. 立即通知 UI 交易已提交
+            AppExecutors.getInstance().mainThread().execute(() -> callback.onTxSent("Transaction Sent"));
+
+            // 2. 等待链上确认（BrokerChain 没有 receipt 接口，用轮询 account nonce 或固定延迟）
+            AppExecutors.getInstance().networkIO().execute(() -> {
+                try {
+                    // 等待 8 秒让交易上链（BrokerChain 出块时间 ~3 秒，留余量）
+                    Thread.sleep(8000);
+                    // 再查一次余额确认交易已生效
+                    BrokerChainClient.ReturnAccountState state = BrokerChainClient.getAddrAndBalance(privateKey);
+                    Log.d(TAG, "brokerChainSendTx 确认后余额: " + (state != null ? state.getBalance() : "null"));
+                } catch (Exception e) {
+                    Log.w(TAG, "brokerChainSendTx 确认等待异常: " + e.getMessage());
+                }
+                AppExecutors.getInstance().mainThread().execute(() -> callback.onConfirmed(successMsg));
             });
-            return response; // BrokerChain 返回的 txHash
+            return response;
         }
     }
 
