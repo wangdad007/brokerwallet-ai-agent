@@ -45,7 +45,9 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
     private int gameId;
 
     private TextView tvMarketDesc, tvMarketCondition;
-    private TextView tvUpPct, tvDownPct, tvPool, tvCountdown, tvHoldings;
+    private TextView tvUpPct, tvDownPct, tvPool, tvCountdown;
+    private TextView tvHoldingsEmpty, tvHoldingYesLabel, tvHoldingYesAmount, tvHoldingNoLabel, tvHoldingNoAmount;
+    private View cardHoldingYes, cardHoldingNo;
     private TextView tvMarketAiStatus, tvMarketAiSummary, tvMarketAiFull;
     private ImageView ivMarketIcon;
     private View barUp, barDown, btnClaimReward, btnAdminResolve, cardMarketAi, layoutAiDetails, layoutChartContainer;
@@ -122,7 +124,14 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         tvDownPct = findViewById(R.id.tv_down_pct);
         tvPool = findViewById(R.id.tv_pool);
         tvCountdown = findViewById(R.id.tv_countdown);
-        tvHoldings = findViewById(R.id.tv_holdings);
+        tvHoldingsEmpty = findViewById(R.id.tv_holdings_empty);
+        tvHoldingYesLabel = findViewById(R.id.tv_holding_yes_label);
+        tvHoldingYesAmount = findViewById(R.id.tv_holding_yes_amount);
+        tvHoldingNoLabel = findViewById(R.id.tv_holding_no_label);
+        tvHoldingNoAmount = findViewById(R.id.tv_holding_no_amount);
+        cardHoldingYes = findViewById(R.id.card_holding_yes);
+        cardHoldingNo = findViewById(R.id.card_holding_no);
+
         tvMarketAiStatus = findViewById(R.id.tv_market_ai_status);
         tvMarketAiStatus.setText("待启动 ›");
         tvMarketAiSummary = findViewById(R.id.tv_market_ai_summary);
@@ -196,19 +205,49 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
             }
         }
         tvPool.setText("总池子: " + GoldNoteMarketActivity.formatBkc(currentGame.totalPool) + " BKC");
-        StringBuilder holdings = new StringBuilder();
-        if (currentGame.myShares != null) {
-            for (int i = 0; i < currentGame.myShares.size(); i++) {
-                BigInteger s = currentGame.myShares.get(i);
-                if (s == null || s.signum() <= 0) continue;
-                if (holdings.length() > 0) holdings.append('\n');
-                String name = (currentGame.optionNames != null && i < currentGame.optionNames.size()) ? currentGame.optionNames.get(i) : (i == 0 ? "YES" : "NO");
-                holdings.append(name).append(": ").append(GoldNoteMarketActivity.formatShareAmount(s)).append(" 份额");
-            }
-        }
-        tvHoldings.setText(holdings.length() == 0 ? "暂无持仓" : holdings.toString());
+        updateHoldingsUI();
         setupHistoryChart();
         updateCountdown();
+    }
+
+    private void updateHoldingsUI() {
+        if (currentGame.myShares == null || currentGame.myShares.size() < 2) {
+            tvHoldingsEmpty.setVisibility(View.VISIBLE);
+            cardHoldingYes.setVisibility(View.GONE);
+            cardHoldingNo.setVisibility(View.GONE);
+            return;
+        }
+
+        BigInteger sYes = currentGame.myShares.get(0);
+        BigInteger sNo = currentGame.myShares.get(1);
+        boolean hasYes = sYes != null && sYes.signum() > 0;
+        boolean hasNo = sNo != null && sNo.signum() > 0;
+
+        if (!hasYes && !hasNo) {
+            tvHoldingsEmpty.setVisibility(View.VISIBLE);
+            cardHoldingYes.setVisibility(View.GONE);
+            cardHoldingNo.setVisibility(View.GONE);
+        } else {
+            tvHoldingsEmpty.setVisibility(View.GONE);
+            
+            if (hasYes) {
+                cardHoldingYes.setVisibility(View.VISIBLE);
+                String name = (currentGame.optionNames != null && !currentGame.optionNames.isEmpty()) ? currentGame.optionNames.get(0) : "YES";
+                tvHoldingYesLabel.setText(name);
+                tvHoldingYesAmount.setText(GoldNoteMarketActivity.formatShareAmount(sYes) + " 份额");
+            } else {
+                cardHoldingYes.setVisibility(View.GONE);
+            }
+
+            if (hasNo) {
+                cardHoldingNo.setVisibility(View.VISIBLE);
+                String name = (currentGame.optionNames != null && currentGame.optionNames.size() > 1) ? currentGame.optionNames.get(1) : "NO";
+                tvHoldingNoLabel.setText(name);
+                tvHoldingNoAmount.setText(GoldNoteMarketActivity.formatShareAmount(sNo) + " 份额");
+            } else {
+                cardHoldingNo.setVisibility(View.GONE);
+            }
+        }
     }
 
     private void setupHistoryChart() {
