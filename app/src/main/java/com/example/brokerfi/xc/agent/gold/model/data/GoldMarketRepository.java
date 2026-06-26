@@ -204,10 +204,10 @@ public class GoldMarketRepository {
      * 构建 claimReward 合约调用（optionId 使用 UI 约定 0=YES, 1=NO，内部转换为合约约定）
      */
     public static org.web3j.abi.datatypes.Function buildClaimRewardFunction(int gameId, int uiOptionId) {
-        int contractOption = 1 - uiOptionId; // UI (0=YES,1=NO) → 合约 (0=NO,1=YES)
+        // UI (0=YES, 1=NO) 与合约约定一致 (0=YES, 1=NO)
         return new org.web3j.abi.datatypes.Function(
             "claimReward",
-            Arrays.asList(new Uint256(BigInteger.valueOf(gameId)), new Uint8(BigInteger.valueOf(contractOption))),
+            Arrays.asList(new Uint256(BigInteger.valueOf(gameId)), new Uint8(BigInteger.valueOf(uiOptionId))),
             Collections.emptyList());
     }
 
@@ -424,7 +424,7 @@ public class GoldMarketRepository {
             PostTxState state = new PostTxState();
             state.totalPool = ((Uint256) res.get(1)).getValue().toString();
             state.isResolved = ((Bool) res.get(2)).getValue();
-            // 保持合约约定 (0=NO, 1=YES)，与后端 DB 存储一致；模型构建时统一转换为 UI 约定
+            // 合约约定与 UI 一致 (0=YES, 1=NO)
             state.winningOption = ((Uint8) res.get(3)).getValue().intValue();
             state.isRefunded = ((Bool) res.get(5)).getValue();
 
@@ -620,15 +620,16 @@ public class GoldMarketRepository {
             m.totalPool = parseBigInteger(state.totalPool);
             m.isResolved = state.isResolved;
             m.isRefunded = state.isRefunded;
-            // 后端 DB 存储合约约定 (0=NO, 1=YES)，转换为 UI 约定 (0=YES, 1=NO)
+            // 合约约定与 UI 一致 (0=YES, 1=NO)
             m.winningOption = toUiOption(state.winningOption);
             m.deadlineSec = state.deadlineSec;
             BigInteger resYES = parseBigInteger(state.reserveYES);
             BigInteger resNO = parseBigInteger(state.reserveNO);
-            m.virtualReserves = Arrays.asList(resYES, resNO);
+            // 核心修复：Java 索引 0 必须为 reserveNO，以匹配 UI 概率计算 (res0 / total)
+            m.virtualReserves = Arrays.asList(resNO, resYES);
             BigInteger myYES = parseBigInteger(state.mySharesYES);
-            BigInteger myNO = parseBigInteger(state.mySharesNO);
-            m.myShares = Arrays.asList(myYES, myNO);
+            BigInteger myNo = parseBigInteger(state.mySharesNO);
+            m.myShares = Arrays.asList(myYES, myNo);
         } else {
             m.totalPool = BigInteger.ZERO;
             m.virtualReserves = Arrays.asList(BigInteger.ZERO, BigInteger.ZERO);
@@ -843,9 +844,11 @@ public class GoldMarketRepository {
                             List<Uint256> reservesArray = ((DynamicArray<Uint256>) extraRes.get(0)).getValue();
                             List<Uint256> sharesArray = ((DynamicArray<Uint256>) extraRes.get(1)).getValue();
                             if (reservesArray.size() >= 2) {
-                                model.virtualReserves = Arrays.asList(reservesArray.get(1).getValue(), reservesArray.get(0).getValue());
+                                // 核心修复：合约返回 [reserveNO, reserveYES]。Java 索引 0 存放 reserveNO 供 UI 计算 YES 概率
+                                model.virtualReserves = Arrays.asList(reservesArray.get(0).getValue(), reservesArray.get(1).getValue());
                             }
                             if (sharesArray.size() >= 2) {
+                                // 合约返回 [mySharesYES, mySharesNO]。Java 索引 0 存放 YES 份额
                                 model.myShares = Arrays.asList(sharesArray.get(0).getValue(), sharesArray.get(1).getValue());
                             }
                         }
@@ -1005,7 +1008,8 @@ public class GoldMarketRepository {
                     m.optionNames = Arrays.asList("YES", "NO");
 
                     if (resNO != null && i < resNO.size()) {
-                        m.virtualReserves = Arrays.asList(resYES.get(i).getValue(), resNO.get(i).getValue());
+                        // 核心修复：Java 索引 0 作为 YES 概率分子，需对应合约的 reserveNO
+                        m.virtualReserves = Arrays.asList(resNO.get(i).getValue(), resYES.get(i).getValue());
                         m.myShares = Arrays.asList(myYES.get(i).getValue(), myNO.get(i).getValue());
                     } else {
                         m.virtualReserves = Arrays.asList(BigInteger.ZERO, BigInteger.ZERO);
@@ -1178,7 +1182,8 @@ public class GoldMarketRepository {
                     // 合约返回 winningOption: 0=NO, 1=YES → 转换为 UI 约定 0=YES, 1=NO
                     m.winningOption = toUiOption(dto.winningOption.intValue());
                     m.optionNames = Arrays.asList("YES", "NO");
-                    m.virtualReserves = Arrays.asList(dto.reserveYES, dto.reserveNO);
+                    // 核心修复：Java 索引 0 对应 YES 概率源 (reserveNO) 和 YES 持仓 (mySharesYES)
+                    m.virtualReserves = Arrays.asList(dto.reserveNO, dto.reserveYES);
                     m.myShares = Arrays.asList(dto.mySharesYES, dto.mySharesNO);
                     models.add(m);
                 }
@@ -1243,14 +1248,14 @@ public class GoldMarketRepository {
     //  所有合约调用前通过 toContractOption() 转换，所有合约返回值通过 toUiOption() 转换
     // ========================================================================
 
-    /** UI → 合约：将 UI 层 optionId (0=YES, 1=NO) 转换为合约 optionId (0=NO, 1=YES) */
+    /** UI → 合约：保持映射一致 (0=YES, 1=NO) */
     private static int toContractOption(int uiOption) {
-        return 1 - uiOption; // swap 0↔1
+        return uiOption;
     }
 
-    /** 合约 → UI：将合约 optionId (0=NO, 1=YES) 转换为 UI 层 optionId (0=YES, 1=NO) */
+    /** 合约 → UI：保持映射一致 (0=YES, 1=NO) */
     private static int toUiOption(int contractOption) {
-        return 1 - contractOption; // swap 0↔1 (same operation, self-inverse)
+        return contractOption;
     }
 
     public void buyShares(int gameId, int optionId, BigInteger amountWei, TxCallback callback) {
