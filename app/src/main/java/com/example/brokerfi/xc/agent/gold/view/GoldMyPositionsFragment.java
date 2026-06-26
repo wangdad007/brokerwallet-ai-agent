@@ -83,6 +83,12 @@ public class GoldMyPositionsFragment extends Fragment {
         viewModel.getError().observe(getViewLifecycleOwner(), err -> {
             if (err != null) Toast.makeText(requireContext(), "Error: " + err, Toast.LENGTH_SHORT).show();
         });
+
+        viewModel.getDebugToast().observe(getViewLifecycleOwner(), msg -> {
+            if (msg != null && !msg.isEmpty()) {
+                Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void renderPositions() {

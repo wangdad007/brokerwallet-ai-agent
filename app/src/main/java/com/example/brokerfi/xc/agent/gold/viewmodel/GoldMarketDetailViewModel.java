@@ -21,6 +21,7 @@ public class GoldMarketDetailViewModel extends AndroidViewModel {
     private final MutableLiveData<String> error = new MutableLiveData<>();
     private final MutableLiveData<Boolean> isLoading = new MutableLiveData<>(false);
     private final MutableLiveData<String> txStatus = new MutableLiveData<>();
+    private final MutableLiveData<String> debugToast = new MutableLiveData<>();
 
     private String marketAiContext = "";
 
@@ -35,6 +36,7 @@ public class GoldMarketDetailViewModel extends AndroidViewModel {
     public LiveData<String> getError() { return error; }
     public LiveData<Boolean> getIsLoading() { return isLoading; }
     public LiveData<String> getTxStatus() { return txStatus; }
+    public LiveData<String> getDebugToast() { return debugToast; }
     public String getMarketAiContext() { return marketAiContext; }
 
     public void loadGameInfo(int gameId) {
@@ -42,14 +44,12 @@ public class GoldMarketDetailViewModel extends AndroidViewModel {
         repository.getGameInfo(gameId, new GoldMarketRepository.DataCallback<GoldMarketRepository.GameModel>() {
             @Override
             public void onSuccess(GoldMarketRepository.GameModel model) {
-                // 加载博弈池后，查询 AI 托管状态
                 repository.getAiManagedStatus(gameId, new GoldMarketRepository.DataCallback<Boolean>() {
                     @Override
                     public void onSuccess(Boolean managed) {
                         model.isManaged = managed;
                         isLoading.postValue(false);
                         currentGame.postValue(model);
-                        // [优化] 移除自动请求 AI 摘要，改为手动触发
                     }
                     @Override
                     public void onError(String err) {
@@ -62,6 +62,12 @@ public class GoldMarketDetailViewModel extends AndroidViewModel {
             public void onError(String err) {
                 isLoading.postValue(false);
                 error.postValue(err);
+            }
+            @Override
+            public void onTiming(String source, long durationMs, boolean isFallback) {
+                String msg = source + " | " + String.format(java.util.Locale.getDefault(), "%.2f秒", durationMs / 1000.0);
+                if (isFallback) msg = "🔄 " + msg;
+                debugToast.postValue(msg);
             }
         });
     }

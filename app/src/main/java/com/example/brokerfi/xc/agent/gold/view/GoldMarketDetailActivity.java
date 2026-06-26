@@ -99,6 +99,12 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
                 showMarketAiUnavailable("Error", err);
             }
         });
+
+        viewModel.getDebugToast().observe(this, msg -> {
+            if (msg != null && !msg.isEmpty()) {
+                Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     @Override
