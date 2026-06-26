@@ -336,7 +336,15 @@ public class GoldMarketRepository {
     }
 
     /**
-     * 异步同步交易信息到后端 DB（失败不影响主流程）
+     * 同步交易信息到后端 DB（异步执行，失败不影响主流程）
+     *
+     * 写入策略（三步同步）：
+     * 1. 同步交易记录 → POST /api/v1/gold/trades/sync
+     * 2. 添加历史价格点 → POST /api/v1/gold/games/{gameId}/history
+     * 3. 同步链上状态缓存 → POST /api/v1/gold/games/{gameId}/chain-state/sync
+     *
+     * 步骤 3 确保后端 DB 缓存的链上状态与链上实际状态保持一致，
+     * 后续读取操作可优先命中后端 DB 缓存，避免直接 eth_call 的延迟。
      */
     private void syncTradeToBackend(TradeSyncInfo tradeInfo, String txHash) {
         AppExecutors.getInstance().networkIO().execute(() -> {
@@ -375,6 +383,21 @@ public class GoldMarketRepository {
                     BackendApiClient.addHistoryPoint(tradeInfo.gameId, point);
                     Log.d(TAG, "后端历史数据同步成功: gameId=" + tradeInfo.gameId);
                 }
+
+                // 3. 同步链上状态缓存到后端 DB（确保缓存与链上一致）
+                BackendApiClient.ChainStateSyncReq chainReq = new BackendApiClient.ChainStateSyncReq();
+                chainReq.totalPool = tradeInfo.totalPoolAfter;
+                chainReq.isResolved = tradeInfo.isResolved;
+                chainReq.isRefunded = tradeInfo.isRefunded;
+                chainReq.winningOption = tradeInfo.winningOption;
+                chainReq.reserveYES = tradeInfo.reserveYESAfter;
+                chainReq.reserveNO = tradeInfo.reserveNOAfter;
+                chainReq.mySharesYES = tradeInfo.mySharesYESAfter;
+                chainReq.mySharesNO = tradeInfo.mySharesNOAfter;
+                BackendApiClient.syncChainState(tradeInfo.gameId, chainReq);
+                Log.d(TAG, "后端链上状态同步成功: gameId=" + tradeInfo.gameId
+                        + " totalPool=" + tradeInfo.totalPoolAfter
+                        + " isResolved=" + tradeInfo.isResolved);
             } catch (Exception e) {
                 // 非关键路径：后端同步失败不影响主流程
                 Log.w(TAG, "后端同步失败（非关键）: " + e.getMessage());
@@ -1225,6 +1248,9 @@ public class GoldMarketRepository {
         tradeInfo.tradeType = "RESOLVE";
         tradeInfo.optionId = winningOption;
         tradeInfo.amountWei = "0";
+        // 结算操作：同步 isResolved 和 winningOption 到后端 DB
+        tradeInfo.isResolved = true;
+        tradeInfo.winningOption = winningOption;
 
         sendTransaction(BigInteger.ZERO, f, "开奖成功", callback, tradeInfo);
     }
@@ -1378,6 +1404,10 @@ public class GoldMarketRepository {
         String reserveNOAfter;
         String mySharesYESAfter;
         String mySharesNOAfter;
+        // 结算状态（用于同步链上状态缓存到后端 DB）
+        boolean isResolved;
+        boolean isRefunded;
+        int winningOption;
     }
 
     public static class ParticipatedGameDTO extends DynamicStruct {

@@ -1021,6 +1021,263 @@ adb reverse --list
 
 ---
 
+## 🌐 Gold 预测市场 API 文档（Agent 模块）
+
+以下 API 由 `agent/gold/` 模块调用，用于前端与 Go 后端 PostgreSQL 数据库之间的数据同步。
+
+**API 基础路径：** `{BASE_URL}/api/v1/gold`
+
+**BASE_URL 自动切换规则：**
+- Debug 构建：`http://10.0.2.2:8081`（Android 模拟器 → 宿主机 localhost）
+- Release 构建：`https://dash.broker-chain.com:440`（生产服务器）
+
+---
+
+### 📖 读取 API（GET）
+
+#### 1. 获取所有游戏元数据
+```
+GET /api/v1/gold/games
+Response: { "games": [ GameMetaDTO, ... ] }
+```
+从后端 DB 批量获取所有游戏的标题、条件、图片等元数据。比从 IPFS 逐个下载快。
+
+#### 2. 获取单个游戏元数据
+```
+GET /api/v1/gold/games/{gameId}
+Response: GameMetaDTO
+```
+
+#### 3. 获取缓存的链上状态
+```
+GET /api/v1/gold/games/{gameId}/chain-state?user_address=0x...
+Response: ChainStateDTO
+```
+从后端 DB 获取缓存的链上状态（避免直接 eth_call 的延迟）。
+
+#### 4. 批量获取所有游戏的链上缓存状态
+```
+GET /api/v1/gold/games/chain-states?user_address=0x...
+Response: { "states": [ ChainStateDTO, ... ] }
+```
+
+#### 5. 获取历史价格数据
+```
+GET /api/v1/gold/games/{gameId}/history
+Response: { "history": [ HistoryPointDTO, ... ] }
+```
+
+#### 6. 查询 AI 托管状态
+```
+GET /api/v1/gold/ai-managed?game_id=X&user_address=Y&contract_address=Z
+Response: { "enabled": true/false }
+```
+
+---
+
+### ✍️ 写入 API（POST）— 链上交易后同步到后端 DB
+
+以下 API 在**前端向链上写入数据后同步调用**，确保后端 DB 缓存与链上状态保持一致。
+写入流程：**IPFS 上传 → 链上交易 → 后端 DB 同步（异步，失败不阻塞主流程）**
+
+---
+
+#### 1. 同步游戏元数据
+```
+POST /api/v1/gold/games/sync
+```
+**调用时机：** 创建博弈池完成后（IPFS 已上传 + 链上交易已确认）
+
+**Request Body (GameMetaSyncReq):**
+```json
+{
+  "game_id": 0,
+  "contract_address": "0x...",
+  "ipfs_cid": "Qm...",
+  "desc": "博弈池描述",
+  "condition": "判定条件",
+  "avatar_url": "Qm... (IPFS CID of avatar image)",
+  "detailed_info": "详细信息",
+  "option_yes": "YES 选项名",
+  "option_no": "NO 选项名",
+  "creator_address": "0x...",
+  "duration_sec": 86400,
+  "initial_liquidity_wei": "1000000000000000000"
+}
+```
+**Response:**
+```json
+{ "success": true, "game_id": 123 }
+```
+
+**对应 Java 方法：** `BackendApiClient.syncGameMetadata(GameMetaSyncReq req)`
+
+---
+
+#### 2. 同步链上状态缓存
+```
+POST /api/v1/gold/games/{gameId}/chain-state/sync
+```
+**调用时机：** 每次链上交易确认后（buyShares / sellShares / claimReward / resolveGame），同步最新的链上状态到后端 DB 缓存。确保后续读取操作优先命中 DB 缓存，避免直接 eth_call 的延迟。
+
+**Request Body (ChainStateSyncReq):**
+```json
+{
+  "total_pool": "5000000000000000000",
+  "is_resolved": false,
+  "is_refunded": false,
+  "winning_option": 0,
+  "reserve_yes": "3000000000000000000",
+  "reserve_no": "2000000000000000000",
+  "my_shares_yes": "1500000000000000000",
+  "my_shares_no": "0"
+}
+```
+**Response:**
+```json
+{ "success": true }
+```
+
+**对应 Java 方法：** `BackendApiClient.syncChainState(int gameId, ChainStateSyncReq req)`
+
+**覆盖的写操作：**
+| 操作 | 触发方法 | tradeType | 备注 |
+|------|----------|-----------|------|
+| 买入份额 | `buyShares()` | BUY | 同步资金池、储备金、用户持仓变化 |
+| 卖出份额 | `sellShares()` | SELL | 同上 |
+| 领取奖励 | `claimReward()` | CLAIM | 同步用户持仓归零 |
+| 结算博弈池 | `resolveGame()` | RESOLVE | 同步 isResolved=true 和 winningOption |
+
+---
+
+#### 3. 添加历史价格点
+```
+POST /api/v1/gold/games/{gameId}/history
+```
+**调用时机：** 每次交易确认后，记录当前 YES/NO 价格快照，用于绘制折线图。
+
+**Request Body (HistoryPointDTO):**
+```json
+{
+  "game_id": 123,
+  "timestamp_sec": 1719100000,
+  "yes_price": 60.5,
+  "no_price": 39.5,
+  "total_pool": "5000000000000000000"
+}
+```
+**Response:**
+```json
+{ "success": true }
+```
+
+**对应 Java 方法：** `BackendApiClient.addHistoryPoint(int gameId, HistoryPointDTO point)`
+
+---
+
+#### 4. 同步交易记录
+```
+POST /api/v1/gold/trades/sync
+```
+**调用时机：** 每次链上交易确认后，记录交易详情到后端 DB。
+
+**Request Body (TradeSyncReq):**
+```json
+{
+  "game_id": 123,
+  "contract_address": "0x...",
+  "user_address": "0x...",
+  "trade_type": "BUY",
+  "option_id": 0,
+  "amount_wei": "1000000000000000000",
+  "tx_hash": "0x...",
+  "is_success": true,
+  "total_pool_after": "5000000000000000000",
+  "reserve_yes_after": "3000000000000000000",
+  "reserve_no_after": "2000000000000000000",
+  "my_shares_yes_after": "1500000000000000000",
+  "my_shares_no_after": "0"
+}
+```
+
+**trade_type 枚举值：**
+| 值 | 含义 |
+|----|------|
+| `BUY` | 买入份额 |
+| `SELL` | 卖出份额 |
+| `CLAIM` | 领取奖励 |
+| `RESOLVE` | 结算博弈池 |
+
+**Response:**
+```json
+{ "success": true }
+```
+
+**对应 Java 方法：** `BackendApiClient.syncTrade(TradeSyncReq req)`
+
+---
+
+#### 5. 设置 AI 托管状态
+```
+POST /api/v1/gold/ai-managed
+```
+**调用时机：** 用户切换 AI 托管开关时。
+
+**Request Body:**
+```json
+{
+  "game_id": 123,
+  "user_address": "0x...",
+  "enabled": true,
+  "contract_address": "0x...",
+  "private_key": "0x..."
+}
+```
+**Response:**
+```json
+{ "success": true }
+```
+
+**对应 Java 方法：** `BackendApiClient.setAiManagedStatus(...)`
+
+---
+
+### 🔄 写入数据流（完整时序）
+
+```
+用户操作 (UI)
+  │
+  ▼
+ViewModel (GoldMarketDetailViewModel / GoldCreatePoolViewModel)
+  │
+  ▼
+GoldMarketRepository
+  │
+  ├─ 1. IPFS 上传图片/元数据 (createGame 专属)
+  │     └─ PinataClient.uploadFileToIPFS() → 返回 IPFS CID
+  │
+  ├─ 2. 发送链上交易
+  │     ├─ LocalRPC 模式: web3j.ethSendTransaction()
+  │     └─ BrokerChain 模式: BrokerChainClient.sendEthTx()
+  │
+  ├─ 3. 等待链上确认
+  │     ├─ LocalRPC 模式: 轮询 ethGetTransactionReceipt (最多30秒)
+  │     └─ BrokerChain 模式: 等待 8 秒让交易上链
+  │
+  └─ 4. 同步到后端 DB (异步，非阻塞) ← ← ← 【本次新增】
+        ├─ POST /api/v1/gold/trades/sync          (同步交易记录)
+        ├─ POST /api/v1/gold/games/{id}/history    (添加历史价格点)
+        ├─ POST /api/v1/gold/games/{id}/chain-state/sync  (同步链上状态缓存)
+        └─ POST /api/v1/gold/games/sync            (createGame 专属: 同步元数据)
+```
+
+**注意：**
+- 步骤 4 失败**不会阻塞主流程**，仅记录日志（`Log.w`）
+- 步骤 4 中三项同步**串行执行**，任一失败不影响其他同步
+- 链上状态缓存的同步确保后续**读操作优先命中后端 DB**，减少 eth_call 延迟
+
+---
+
 ## 📚 相关文档
 
 - **项目总览：** `../../PROJECT_STRUCTURE.md`
@@ -1030,5 +1287,5 @@ adb reverse --list
 
 ---
 
-**最后更新：** 2025年10月10日
+**最后更新：** 2026年6月26日
 
