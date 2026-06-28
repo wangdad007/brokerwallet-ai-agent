@@ -47,38 +47,30 @@
                 android:id="@+id/tv_template_name"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
                 android:text="模版名称"
                 android:textColor="#000000"
-                android:textSize="24sp"
+                android:textSize="22sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/tv_template_detail"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
+                android:layout_marginTop="8dp"
                 android:text="模版详细说明文字加载中..."
                 android:textColor="#666666"
                 android:textSize="14sp"
                 android:lineSpacingExtra="4dp" />
 
+            <!-- Visual Config -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
-                android:text="博弈池视觉配置"
+                android:text="视觉展示配置"
                 android:textColor="#1A1A1A"
-                android:textSize="17sp"
+                android:textSize="16sp"
                 android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="上传一张封面图，让你的博弈池在市场中脱颖而出"
-                android:textColor="#94A3B8"
-                android:textSize="12sp"
-                android:layout_marginTop="4dp" />
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -88,47 +80,31 @@
                 android:orientation="horizontal">
 
                 <androidx.cardview.widget.CardView
-                    android:layout_width="88dp"
-                    android:layout_height="88dp"
-                    app:cardCornerRadius="12dp"
+                    android:layout_width="80dp"
+                    android:layout_height="80dp"
+                    app:cardCornerRadius="10dp"
                     app:cardElevation="2dp"
                     app:cardBackgroundColor="#F1F5F9">
-
                     <ImageView
                         android:id="@+id/iv_pool_icon"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
                         android:scaleType="centerCrop"
-                        android:src="@drawable/apartment_icon"
-                        android:padding="0dp" />
+                        android:src="@drawable/apartment_icon" />
                 </androidx.cardview.widget.CardView>
 
-                <LinearLayout
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btn_select_image"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="20dp"
-                    android:orientation="vertical">
-
-                    <androidx.appcompat.widget.AppCompatButton
-                        android:id="@+id/btn_select_image"
-                        android:layout_width="wrap_content"
-                        android:layout_height="44dp"
-                        android:background="@drawable/custom_button_bg_white"
-                        android:paddingHorizontal="20dp"
-                        android:text="更改封面"
-                        android:textAllCaps="false"
-                        android:textColor="#3B82F6"
-                        android:textSize="14sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="推荐尺寸: 800x450px"
-                        android:textColor="#CBD5E1"
-                        android:textSize="11sp" />
-                </LinearLayout>
+                    android:layout_height="44dp"
+                    android:layout_marginStart="16dp"
+                    android:background="@drawable/custom_button_bg_white"
+                    android:paddingHorizontal="20dp"
+                    android:text="上传封面"
+                    android:textAllCaps="false"
+                    android:textColor="#3B82F6"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
             </LinearLayout>
 
             <View
@@ -137,14 +113,14 @@
                 android:layout_marginTop="24dp"
                 android:background="#F1F5F9" />
 
-            <!-- Dynamic Input Section -->
+            <!-- Rules Config -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
-                android:text="核心规则定制"
-                android:textColor="#000000"
-                android:textSize="17sp"
+                android:text="判定规则设置"
+                android:textColor="#1A1A1A"
+                android:textSize="16sp"
                 android:textStyle="bold" />
 
             <!-- Direction Selection (for TYPE_PRICE) -->
@@ -218,13 +194,14 @@
                 android:inputType="text"
                 android:importantForAutofill="no" />
 
+            <!-- Time Config -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
-                android:text="时间周期设置"
-                android:textColor="#000000"
-                android:textSize="17sp"
+                android:text="结算周期"
+                android:textColor="#1A1A1A"
+                android:textSize="16sp"
                 android:textStyle="bold" />
 
             <Button
@@ -255,13 +232,14 @@
                 android:textColor="#000000"
                 android:textSize="15sp" />
 
+            <!-- Liquidity -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
-                android:text="初始配置"
-                android:textColor="#000000"
-                android:textSize="17sp"
+                android:text="初始流动性注入 (BKC)"
+                android:textColor="#1A1A1A"
+                android:textSize="16sp"
                 android:textStyle="bold" />
 
             <EditText
@@ -270,7 +248,7 @@
                 android:layout_height="56dp"
                 android:layout_marginTop="12dp"
                 android:background="@drawable/custom_edittext_background"
-                android:hint="初始流动性 (BKC, 默认 100)"
+                android:hint="建议 100 BKC 以上"
                 android:inputType="numberDecimal"
                 android:padding="16dp"
                 android:textSize="15sp"
@@ -280,7 +258,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:text="* 博弈判定将以系统获取的权威行情数据为准"
+                android:text="* 博弈判定将以 BrokerChain 系统获取的权威行情数据为准"
                 android:textColor="#999999"
                 android:textSize="12sp" />
 
@@ -293,7 +271,7 @@
         android:layout_height="56dp"
         android:layout_margin="20dp"
         android:background="@drawable/custom_button_background"
-        android:text="部署博弈池"
+        android:text="提交部署博弈池"
         android:textAllCaps="false"
         android:textColor="#FFFFFF"
         android:textSize="16sp"

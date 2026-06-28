@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/white"
@@ -9,23 +10,110 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:padding="20dp"
+        android:animateLayoutChanges="true">
 
+        <!-- Page Header -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="创建自定义博弈池"
-            android:textColor="#000000"
-            android:textSize="20sp"
+            android:textColor="#1A1A1A"
+            android:textSize="22sp"
             android:textStyle="bold" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="选择一个模版并设置你的参数"
-            android:textColor="#666666"
-            android:textSize="14sp" />
+            android:layout_marginTop="4dp"
+            android:text="选择 AI 智能驱动或手动配置模版"
+            android:textColor="#94A3B8"
+            android:textSize="13sp" />
+
+        <!-- AI Assistant Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:background="@drawable/bg_gold_market_panel"
+            android:orientation="vertical"
+            android:padding="20dp"
+            android:elevation="4dp">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:text="AI自动解析博弈池"
+                    android:textColor="@color/black"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="用任意语言描述您的博弈想法，AI将解析参数并匹配模版"
+                android:textColor="#64748B"
+                android:textSize="12sp"
+                android:lineSpacingExtra="2dp" />
+
+            <EditText
+                android:id="@+id/et_ai_input"
+                android:layout_width="match_parent"
+                android:layout_height="110dp"
+                android:layout_marginTop="16dp"
+                android:background="@drawable/custom_edittext_background"
+                android:gravity="top"
+                android:hint="例如：我想创建一个关于黄金在下周一能否涨到 2400 美金的博弈池..."
+                android:padding="14dp"
+                android:textSize="14sp"
+                android:textColor="#334155"
+                android:inputType="textMultiLine"
+                android:importantForAutofill="no" />
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btn_ai_analyze"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="16dp"
+                android:background="@drawable/custom_button_background_black"
+                android:text="智能解析并进入配置"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="32dp"
+            android:background="#F1F5F9" />
+
+        <!-- Manual Section Header -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:text="手动配置博弈池"
+            android:textColor="#1A1A1A"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="点击下方经典模版进入精细化规则定制"
+            android:textColor="#94A3B8"
+            android:textSize="13sp" />
 
         <GridLayout
             android:id="@+id/template_grid"
@@ -35,9 +123,12 @@
             android:columnCount="2"
             android:alignmentMode="alignMargins"
             android:columnOrderPreserved="false">
-
-            <!-- Templates will be added here or statically -->
+            <!-- Templates added dynamically -->
         </GridLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="40dp" />
 
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>
