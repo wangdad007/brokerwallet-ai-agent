@@ -1443,7 +1443,34 @@ public class GoldMarketRepository {
 
             } catch (Exception e) {
                 e.printStackTrace();
-                postError(callback, "IPFS 上传失败: " + e.getMessage());
+                String msg = e.getMessage();
+                String step;
+
+                // 按异常类型精确分类，给出可操作的错误提示
+                if (msg != null && (msg.contains("IPFS") || msg.contains("Pinata"))) {
+                    step = "IPFS 上传失败（本地 IPFS 节点不可达，请确认 IPFS daemon 已启动）";
+                } else if (msg != null && (msg.contains("Unable to resolve host")
+                        || msg.contains("UnknownHost")
+                        || msg.contains("resolve host"))) {
+                    step = "DNS 解析失败，无法连接服务器 dash.broker-chain.com。请检查设备网络/DNS 设置";
+                } else if (msg != null && (msg.contains("timeout")
+                        || msg.contains("TimedOut")
+                        || msg.contains("connect")
+                        || msg.contains("Connection")
+                        || msg.contains("Socket")
+                        || msg.contains("Network"))) {
+                    step = "网络连接失败，设备无法访问服务器，请检查网络状态";
+                } else if (msg != null && (msg.contains("revert")
+                        || msg.contains("gas")
+                        || msg.contains("nonce")
+                        || msg.contains("underpriced"))) {
+                    step = "链上交易被拒绝";
+                } else if (msg != null && msg.contains("insufficient funds")) {
+                    step = "账户余额不足，无法支付 Gas 费";
+                } else {
+                    step = "博弈池创建失败";
+                }
+                postError(callback, step + (msg != null ? ": " + msg : ""));
             }
         });
     }

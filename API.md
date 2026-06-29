@@ -1297,6 +1297,262 @@ GoldMarketRepository
 
 ---
 
+### 🆕 新增：获取用户交易历史（v1.1 个人持仓详情页）
+
+> **背景**：v1.1 新增了「个人持仓详情页」（`GoldPositionDetailActivity`），用户点击持仓卡片后可以查看每笔购买的详细记录、AI/手动标签和收益率。需要后端提供交易历史查询 API。
+
+---
+
+#### 6. 查询用户交易历史（新增）
+
+```
+GET /api/v1/gold/trades?game_id={gameId}&user_address={userAddress}
+```
+
+**调用时机：** 用户进入个人持仓详情页（`GoldPositionDetailActivity`）时。
+
+**查询参数：**
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `game_id` | int | ✅ | 博弈池 ID |
+| `user_address` | string | ✅ | 用户钱包地址（0x 开头） |
+
+**Response:**
+```json
+{
+  "trades": [
+    {
+      "trade_type": "BUY",
+      "option_id": 0,
+      "amount_wei": "1000000000000000000",
+      "share_amount_wei": "12500000000000000000",
+      "is_success": true,
+      "is_ai_managed": false,
+      "tx_hash": "0xabc123...",
+      "created_at": "2026-06-29 14:30:00"
+    },
+    {
+      "trade_type": "BUY",
+      "option_id": 1,
+      "amount_wei": "500000000000000000",
+      "share_amount_wei": "6200000000000000000",
+      "is_success": true,
+      "is_ai_managed": true,
+      "tx_hash": "0xdef456...",
+      "created_at": "2026-06-28 09:15:00"
+    }
+  ]
+}
+```
+
+**响应字段说明：**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `trade_type` | string | 交易类型：`BUY` / `SELL` / `CLAIM`。前端仅展示 `BUY` 类型 |
+| `option_id` | int | 0 = YES, 1 = NO |
+| `amount_wei` | string | 用户支付的 BKC 金额（wei 单位，18 位小数） |
+| `share_amount_wei` | string | 🆕 用户实际获得的份额数（wei 单位，18 位小数）。前端用于展示"XX 份额" |
+| `is_success` | bool | 交易是否成功 |
+| `is_ai_managed` | bool | 🆕 该笔交易是否由 AI 托管自动执行 |
+| `tx_hash` | string | 链上交易哈希 |
+| `created_at` | string | 交易时间（格式 `yyyy-MM-dd HH:mm:ss`） |
+
+**前端行为：**
+- 仅展示 `trade_type == "BUY"` 的记录（不展示 SELL/CLAIM）
+- `option_id == 0` → 绿色 YES 标签；`option_id == 1` → 红色 NO 标签
+- `is_ai_managed == true` → 显示紫色「AI托管」标签；`false` → 显示灰色「手动」标签
+- `share_amount_wei` 为空或为 0 → 显示「-- 份额」
+- 按 `created_at` 倒序排列展示
+- 后端不可用时静默降级，显示「暂无交易记录」
+
+**对应 Java 方法：** `BackendApiClient.fetchTradeHistory(int gameId, String userAddress)`
+
+---
+
+### ⚠️ 修改：交易同步接口新增字段
+
+> 现有 `POST /api/v1/gold/trades/sync` 需要新增两个字段来支持持仓详情页。
+
+#### 4（修订）. 同步交易记录
+
+**Request Body (TradeSyncReq) — 新增字段：**
+```json
+{
+  "game_id": 123,
+  "contract_address": "0x...",
+  "user_address": "0x...",
+  "trade_type": "BUY",
+  "option_id": 0,
+  "amount_wei": "1000000000000000000",
+  "tx_hash": "0x...",
+  "is_success": true,
+
+  "_comment_new_fields": "↓↓↓ 以下为 v1.1 新增字段 ↓↓↓",
+
+  "share_amount_wei": "12500000000000000000",
+  "is_ai_managed": false,
+
+  "_comment_existing_fields": "↓↓↓ 以下为现有字段（保持不变）↓↓↓",
+
+  "total_pool_after": "5000000000000000000",
+  "reserve_yes_after": "3000000000000000000",
+  "reserve_no_after": "2000000000000000000",
+  "my_shares_yes_after": "1500000000000000000",
+  "my_shares_no_after": "0"
+}
+```
+
+**新增字段说明：**
+
+| 字段 | 类型 | 说明 | 数据来源 |
+|------|------|------|---------|
+| `share_amount_wei` | string | 🆕 用户实际获得的份额数（wei）。从 buyShares 交易的 event logs 或 eth_call 获取 | 链上交易 receipt / event |
+| `is_ai_managed` | bool | 🆕 该笔交易是否由 AI 托管执行。buyShares 时传入，同步时回写 DB | 前端 `GoldMarketRepository.buyShares()` 传入 |
+
+---
+
+## 🔧 后端需要修改的内容
+
+### 一、数据库变更（`gold_trades` 表）
+
+```sql
+-- 1. 新增字段：是否 AI 托管执行
+ALTER TABLE gold_trades 
+ADD COLUMN is_ai_managed BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- 2. 新增字段：用户实际获得的份额数（wei）
+ALTER TABLE gold_trades 
+ADD COLUMN share_amount_wei VARCHAR(78) NOT NULL DEFAULT '0';
+
+-- 3. 为查询接口创建索引
+CREATE INDEX idx_gold_trades_game_user 
+ON gold_trades(game_id, user_address);
+```
+
+**字段说明：**
+
+| 列名 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `is_ai_managed` | `BOOLEAN` | `FALSE` | 该笔交易是否由 AI 托管自动执行。buyShares 时根据 AI 托管开关状态写入 |
+| `share_amount_wei` | `VARCHAR(78)` | `'0'` | 用户买入时实际获得的份额数（wei 单位）。从 buyShares 交易回执的 Transfer event 或 post-trade eth_call 的 myShares 差值计算 |
+
+### 二、新增 API 接口
+
+#### `GET /api/v1/gold/trades`
+
+**路由注册（Go 示例）：**
+```go
+// router.go
+goldGroup := router.Group("/api/v1/gold")
+goldGroup.GET("/trades", handler.GetTradeHistory)
+```
+
+**Handler 实现要点：**
+```go
+// GET /api/v1/gold/trades?game_id={gameId}&user_address={userAddress}
+func GetTradeHistory(c *gin.Context) {
+    gameID, _ := strconv.Atoi(c.Query("game_id"))
+    userAddress := c.Query("user_address")
+
+    if gameID <= 0 || userAddress == "" {
+        c.JSON(400, gin.H{"error": "game_id and user_address are required"})
+        return
+    }
+
+    // 从 gold_trades 表查询
+    rows, err := db.Query(`
+        SELECT trade_type, option_id, amount_wei, share_amount_wei,
+               is_success, is_ai_managed, tx_hash, created_at
+        FROM gold_trades
+        WHERE game_id = $1 AND user_address = $2
+        ORDER BY created_at DESC
+    `, gameID, userAddress)
+
+    // ... 扫描结果，返回 JSON
+    c.JSON(200, gin.H{"trades": trades})
+}
+```
+
+**返回格式：**
+```json
+{
+  "trades": [
+    {
+      "trade_type": "BUY",
+      "option_id": 0,
+      "amount_wei": "1000000000000000000",
+      "share_amount_wei": "12500000000000000000",
+      "is_success": true,
+      "is_ai_managed": false,
+      "tx_hash": "0x...",
+      "created_at": "2026-06-29T14:30:00Z"
+    }
+  ]
+}
+```
+
+### 三、修改现有 `POST /api/v1/gold/trades/sync` 接口
+
+在现有 `syncTrade` handler 中，需要额外处理两个新字段：
+
+```go
+type TradeSyncReq struct {
+    // ... 现有字段保持不变 ...
+
+    // 🆕 v1.1 新增
+    ShareAmountWei string `json:"share_amount_wei"` // 用户获得的份额数(wei)
+    IsAiManaged    bool   `json:"is_ai_managed"`     // 是否 AI 托管
+}
+```
+
+**插入 SQL 更新（Go 示例）：**
+```go
+_, err := db.Exec(`
+    INSERT INTO gold_trades (
+        game_id, contract_address, user_address, trade_type,
+        option_id, amount_wei, share_amount_wei, tx_hash,
+        is_success, is_ai_managed,
+        total_pool_after, reserve_yes_after, reserve_no_after,
+        my_shares_yes_after, my_shares_no_after
+    ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+        $11, $12, $13, $14, $15
+    )
+`,
+    req.GameID, req.ContractAddress, req.UserAddress, req.TradeType,
+    req.OptionID, req.AmountWei, req.ShareAmountWei, req.TxHash,
+    req.IsSuccess, req.IsAiManaged,
+    req.TotalPoolAfter, req.ReserveYESAfter, req.ReserveNOAfter,
+    req.MySharesYESAfter, req.MySharesNOAfter,
+)
+```
+
+### 四、前端对应变更汇总
+
+| 前端文件 | 变更 |
+|----------|------|
+| `BackendApiClient.java` | 新增 `fetchTradeHistory()` 方法 + `TradeDTO` 类（含 `share_amount_wei`, `is_ai_managed` 字段） |
+| `GoldPositionDetailActivity.java` | 新增整个页面：池信息 + 持仓估值 + 交易记录列表 + 收益率 |
+| `activity_gold_position_detail.xml` | 新布局：池信息卡片、持仓汇总、交易记录列表 |
+| `item_trade_history.xml` | 单条交易行：色条 + YES/NO 标签 + AI/手动标签 + 时间 + 金额 + 份额 |
+| `GoldMyPositionsFragment.java` | 点击持仓卡片跳转到 `GoldPositionDetailActivity`（原跳转到 `GoldMarketDetailActivity`） |
+| `GoldMarketDetailViewModel.java` | 新增 `getWalletAddress()` 方法 |
+| `AndroidManifest.xml` | 注册 `GoldPositionDetailActivity` |
+
+### 五、兼容性说明
+
+| 场景 | 前端行为 |
+|------|---------|
+| 后端尚未部署新接口 | `fetchTradeHistory()` 静默失败，显示「暂无交易记录」，池信息/持仓估值仍正常显示 |
+| `share_amount_wei` 为 `"0"` 或空 | 显示「-- 份额」 |
+| `is_ai_managed` 为 `false`（默认值） | 显示灰色「手动」标签 |
+| 仅有 SELL/CLAIM 记录 | 过滤后为空，显示「暂无交易记录」 |
+| 旧数据无 `is_ai_managed` 字段 | DB 默认值 `FALSE` → 显示「手动」 |
+
+---
+
 ## 📚 相关文档
 
 - **项目总览：** `../../PROJECT_STRUCTURE.md`
@@ -1306,5 +1562,5 @@ GoldMarketRepository
 
 ---
 
-**最后更新：** 2026年6月26日
+**最后更新：** 2026年6月29日（v1.1 新增交易历史 API + 个人持仓详情页）
 
