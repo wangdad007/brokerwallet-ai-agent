@@ -94,7 +94,13 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
             }
         });
         viewModel.getError().observe(this, err -> {
-            if (err != null) Toast.makeText(this, "部署失败: " + err, Toast.LENGTH_LONG).show();
+            if (err != null) {
+                new AlertDialog.Builder(this)
+                        .setTitle("博弈池创建失败")
+                        .setMessage(err)
+                        .setPositiveButton("知道了", null)
+                        .show();
+            }
         });
     }
 
@@ -183,7 +189,7 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
             spinnerDirection.setSelection(json.optInt("directionIdx", 0));
             spinnerIndicator.setSelection(json.optInt("indicatorIdx", 0));
             spinnerOperator.setSelection(json.optInt("operatorIdx", 0));
-            etInitialLiquidity.setText(json.optString("liquidity", "100"));
+            etInitialLiquidity.setText(json.optString("liquidity", "1"));
 
             int days = json.optInt("daysFromNow", 7);
             endCalendar = Calendar.getInstance();
@@ -250,10 +256,10 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
 
     private void showSummaryDialog(String title, String condition, long start, long end, long dur) {
         String liqStr = etInitialLiquidity.getText().toString().trim();
-        if (liqStr.isEmpty()) liqStr = "100";
+        if (liqStr.isEmpty()) liqStr = "1";
         final java.math.BigInteger liqWei = GoldMarketRepository.parseTokenAmountToWei(liqStr);
         if (liqWei == null) {
-            Toast.makeText(this, "初始流动性金额无效，请输入有效数字（如 100）", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "初始流动性金额无效，请输入有效数字（如 1）", Toast.LENGTH_SHORT).show();
             return;
         }
         

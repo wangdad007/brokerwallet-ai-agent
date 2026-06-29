@@ -550,6 +550,12 @@ public class BackendApiClient {
 
         @SerializedName("created_at")
         public String createdAt;
+
+        @SerializedName("my_shares_yes_after")
+        public String mySharesYESAfter;
+
+        @SerializedName("my_shares_no_after")
+        public String mySharesNOAfter;
     }
 
     /**
@@ -579,6 +585,12 @@ public class BackendApiClient {
 
         @SerializedName("is_success")
         public boolean isSuccess;
+
+        @SerializedName("share_amount_wei")
+        public String shareAmountWei;
+
+        @SerializedName("is_ai_managed")
+        public boolean isAiManaged;
 
         // 同步当前链上状态
         @SerializedName("total_pool_after")

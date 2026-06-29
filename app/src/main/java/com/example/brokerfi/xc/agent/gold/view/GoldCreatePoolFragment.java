@@ -79,10 +79,10 @@ public class GoldCreatePoolFragment extends Fragment {
                 "NOT FOR: Specific prices like $2500 → TYPE_TOUCH. Percentages → TYPE_VOLATILITY.\n" +
                 "REQUIRED: directionIdx (0=Up, 1=Down, 2=Flat). param1 = \"\" (empty).\n" +
                 "EXAMPLES:\n" +
-                "  「下周黄金会涨吗?」 → {\"type\":\"TYPE_PRICE\",\"param1\":\"\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":7,\"liquidity\":100,\"confidence\":0.95}\n" +
-                "  「我赌周五金价下跌」 → {\"type\":\"TYPE_PRICE\",\"param1\":\"\",\"directionIdx\":1,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":5,\"liquidity\":100,\"confidence\":0.95}\n" +
-                "  「Gold will drop by Friday」 → {\"type\":\"TYPE_PRICE\",\"param1\":\"\",\"directionIdx\":1,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":5,\"liquidity\":100,\"confidence\":0.95}\n" +
-                "  「下周横盘整理」 → {\"type\":\"TYPE_PRICE\",\"param1\":\"\",\"directionIdx\":2,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":7,\"liquidity\":100,\"confidence\":0.90}\n\n" +
+                "  「下周黄金会涨吗?」 → {\"type\":\"TYPE_PRICE\",\"param1\":\"\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":7,\"liquidity\":1,\"confidence\":0.95}\n" +
+                "  「我赌周五金价下跌」 → {\"type\":\"TYPE_PRICE\",\"param1\":\"\",\"directionIdx\":1,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":5,\"liquidity\":1,\"confidence\":0.95}\n" +
+                "  「Gold will drop by Friday」 → {\"type\":\"TYPE_PRICE\",\"param1\":\"\",\"directionIdx\":1,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":5,\"liquidity\":1,\"confidence\":0.95}\n" +
+                "  「下周横盘整理」 → {\"type\":\"TYPE_PRICE\",\"param1\":\"\",\"directionIdx\":2,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":7,\"liquidity\":1,\"confidence\":0.90}\n\n" +
 
                 "=== TEMPLATE 2: TYPE_VOLATILITY — Price fluctuation magnitude ===\n" +
                 "USE WHEN: User bets on whether price CHANGE MAGNITUDE exceeds a PERCENTAGE threshold. Focus is VOLATILITY/AMPLITUDE.\n" +
@@ -90,18 +90,18 @@ public class GoldCreatePoolFragment extends Fragment {
                 "NOT FOR: Direction-only (→ TYPE_PRICE). Specific price $X (→ TYPE_TOUCH).\n" +
                 "REQUIRED: param1 = volatility percentage (just the number, no % sign).\n" +
                 "EXAMPLES:\n" +
-                "  「下周金价波动会超过3%吗?」 → {\"type\":\"TYPE_VOLATILITY\",\"param1\":\"3\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":7,\"liquidity\":100,\"confidence\":0.95}\n" +
-                "  「本周行情很平稳，波动不超1%」 → {\"type\":\"TYPE_VOLATILITY\",\"param1\":\"1\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":7,\"liquidity\":100,\"confidence\":0.90}\n" +
-                "  「Will gold volatility exceed 5% this month?」 → {\"type\":\"TYPE_VOLATILITY\",\"param1\":\"5\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":30,\"liquidity\":100,\"confidence\":0.95}\n\n" +
+                "  「下周金价波动会超过3%吗?」 → {\"type\":\"TYPE_VOLATILITY\",\"param1\":\"3\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":7,\"liquidity\":1,\"confidence\":0.95}\n" +
+                "  「本周行情很平稳，波动不超1%」 → {\"type\":\"TYPE_VOLATILITY\",\"param1\":\"1\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":7,\"liquidity\":1,\"confidence\":0.90}\n" +
+                "  「Will gold volatility exceed 5% this month?」 → {\"type\":\"TYPE_VOLATILITY\",\"param1\":\"5\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":30,\"liquidity\":1,\"confidence\":0.95}\n\n" +
 
                 "=== TEMPLATE 3: TYPE_VOLUME — Trading volume prediction ===\n" +
                 "USE WHEN: User bets on whether trading VOLUME exceeds/falls below a threshold (tons) on a specific DAY.\n" +
                 "TRIGGERS: 成交量/volume/交易量/吨/tons + a numeric threshold.\n" +
                 "REQUIRED: param1 = volume in tons (number). operatorIdx: 0=Above/大于, 1=Below/小于, 2=Equal/等于.\n" +
                 "EXAMPLES:\n" +
-                "  「周五成交量会超过500吨吗?」 → {\"type\":\"TYPE_VOLUME\",\"param1\":\"500\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":5,\"liquidity\":100,\"confidence\":0.95}\n" +
-                "  「明天交易量低于300吨」 → {\"type\":\"TYPE_VOLUME\",\"param1\":\"300\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":1,\"daysFromNow\":1,\"liquidity\":100,\"confidence\":0.95}\n" +
-                "  「Will volume be above 800 tons this Friday?」 → {\"type\":\"TYPE_VOLUME\",\"param1\":\"800\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":5,\"liquidity\":100,\"confidence\":0.95}\n\n" +
+                "  「周五成交量会超过500吨吗?」 → {\"type\":\"TYPE_VOLUME\",\"param1\":\"500\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":5,\"liquidity\":1,\"confidence\":0.95}\n" +
+                "  「明天交易量低于300吨」 → {\"type\":\"TYPE_VOLUME\",\"param1\":\"300\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":1,\"daysFromNow\":1,\"liquidity\":1,\"confidence\":0.95}\n" +
+                "  「Will volume be above 800 tons this Friday?」 → {\"type\":\"TYPE_VOLUME\",\"param1\":\"800\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":5,\"liquidity\":1,\"confidence\":0.95}\n\n" +
 
                 "=== TEMPLATE 4: TYPE_TECHNICAL — Technical indicator condition ===\n" +
                 "USE WHEN: User bets on a TECHNICAL INDICATOR (RSI/MACD/KDJ/BOLL) reaching a condition.\n" +
@@ -110,11 +110,11 @@ public class GoldCreatePoolFragment extends Fragment {
                 "operatorIdx: 0=Above/大于, 1=Below/小于, 2=CrossUp/金叉, 3=CrossDown/死叉.\n" +
                 "REQUIRED: param1 = threshold value (0 for pure cross signals like 金叉/死叉). indicatorIdx must be correct.\n" +
                 "EXAMPLES:\n" +
-                "  「RSI会超过70进入超买区吗?」 → {\"type\":\"TYPE_TECHNICAL\",\"param1\":\"70\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":7,\"liquidity\":100,\"confidence\":0.95}\n" +
-                "  「MACD会形成金叉吗?」 → {\"type\":\"TYPE_TECHNICAL\",\"param1\":\"0\",\"directionIdx\":0,\"indicatorIdx\":1,\"operatorIdx\":2,\"daysFromNow\":7,\"liquidity\":100,\"confidence\":0.90}\n" +
-                "  「KDJ死叉」 → {\"type\":\"TYPE_TECHNICAL\",\"param1\":\"0\",\"directionIdx\":0,\"indicatorIdx\":2,\"operatorIdx\":3,\"daysFromNow\":7,\"liquidity\":100,\"confidence\":0.90}\n" +
-                "  「布林带下轨会被跌破吗?」 → {\"type\":\"TYPE_TECHNICAL\",\"param1\":\"0\",\"directionIdx\":0,\"indicatorIdx\":3,\"operatorIdx\":1,\"daysFromNow\":7,\"liquidity\":100,\"confidence\":0.85}\n" +
-                "  「Will MACD cross above signal line?」 → {\"type\":\"TYPE_TECHNICAL\",\"param1\":\"0\",\"directionIdx\":0,\"indicatorIdx\":1,\"operatorIdx\":2,\"daysFromNow\":7,\"liquidity\":100,\"confidence\":0.90}\n\n" +
+                "  「RSI会超过70进入超买区吗?」 → {\"type\":\"TYPE_TECHNICAL\",\"param1\":\"70\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":7,\"liquidity\":1,\"confidence\":0.95}\n" +
+                "  「MACD会形成金叉吗?」 → {\"type\":\"TYPE_TECHNICAL\",\"param1\":\"0\",\"directionIdx\":0,\"indicatorIdx\":1,\"operatorIdx\":2,\"daysFromNow\":7,\"liquidity\":1,\"confidence\":0.90}\n" +
+                "  「KDJ死叉」 → {\"type\":\"TYPE_TECHNICAL\",\"param1\":\"0\",\"directionIdx\":0,\"indicatorIdx\":2,\"operatorIdx\":3,\"daysFromNow\":7,\"liquidity\":1,\"confidence\":0.90}\n" +
+                "  「布林带下轨会被跌破吗?」 → {\"type\":\"TYPE_TECHNICAL\",\"param1\":\"0\",\"directionIdx\":0,\"indicatorIdx\":3,\"operatorIdx\":1,\"daysFromNow\":7,\"liquidity\":1,\"confidence\":0.85}\n" +
+                "  「Will MACD cross above signal line?」 → {\"type\":\"TYPE_TECHNICAL\",\"param1\":\"0\",\"directionIdx\":0,\"indicatorIdx\":1,\"operatorIdx\":2,\"daysFromNow\":7,\"liquidity\":1,\"confidence\":0.90}\n\n" +
 
                 "=== TEMPLATE 5: TYPE_TOUCH — Price level touch ===\n" +
                 "USE WHEN: User bets on whether gold will TOUCH/REACH/HIT a specific USD price level within a period.\n" +
@@ -123,18 +123,18 @@ public class GoldCreatePoolFragment extends Fragment {
                 "NOT FOR: Direction without a price (→ TYPE_PRICE). Percentages (→ TYPE_VOLATILITY).\n" +
                 "REQUIRED: param1 = target price in USD (number only, no $ sign).\n" +
                 "EXAMPLES:\n" +
-                "  「金价本周会触及2500美元吗?」 → {\"type\":\"TYPE_TOUCH\",\"param1\":\"2500\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":7,\"liquidity\":100,\"confidence\":0.95}\n" +
-                "  「黄金能突破3000吗?」 → {\"type\":\"TYPE_TOUCH\",\"param1\":\"3000\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":7,\"liquidity\":100,\"confidence\":0.90}\n" +
-                "  「Will gold touch $2800 by end of month?」 → {\"type\":\"TYPE_TOUCH\",\"param1\":\"2800\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":30,\"liquidity\":100,\"confidence\":0.95}\n\n" +
+                "  「金价本周会触及2500美元吗?」 → {\"type\":\"TYPE_TOUCH\",\"param1\":\"2500\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":7,\"liquidity\":1,\"confidence\":0.95}\n" +
+                "  「黄金能突破3000吗?」 → {\"type\":\"TYPE_TOUCH\",\"param1\":\"3000\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":7,\"liquidity\":1,\"confidence\":0.90}\n" +
+                "  「Will gold touch $2800 by end of month?」 → {\"type\":\"TYPE_TOUCH\",\"param1\":\"2800\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":30,\"liquidity\":1,\"confidence\":0.95}\n\n" +
 
                 "=== TEMPLATE 6: TYPE_RELATIVE — Gold vs other assets ===\n" +
                 "USE WHEN: User compares gold's RETURN/PERFORMANCE against another asset (BTC, stocks, silver, etc.).\n" +
                 "TRIGGERS: 跑赢/outperform/vs/对比/相比 + another asset name (BTC/比特币/股票/白银/S&P).\n" +
                 "REQUIRED: param1 = comparison asset name (e.g. \"BTC\", \"S&P 500\", \"白银\").\n" +
                 "EXAMPLES:\n" +
-                "  「黄金能跑赢BTC吗?」 → {\"type\":\"TYPE_RELATIVE\",\"param1\":\"BTC\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":7,\"liquidity\":100,\"confidence\":0.95}\n" +
-                "  「黄金vs比特币谁更强?」 → {\"type\":\"TYPE_RELATIVE\",\"param1\":\"BTC\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":7,\"liquidity\":100,\"confidence\":0.90}\n" +
-                "  「Will gold outperform the S&P 500 this quarter?」 → {\"type\":\"TYPE_RELATIVE\",\"param1\":\"S&P 500\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":90,\"liquidity\":100,\"confidence\":0.95}\n\n" +
+                "  「黄金能跑赢BTC吗?」 → {\"type\":\"TYPE_RELATIVE\",\"param1\":\"BTC\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":7,\"liquidity\":1,\"confidence\":0.95}\n" +
+                "  「黄金vs比特币谁更强?」 → {\"type\":\"TYPE_RELATIVE\",\"param1\":\"BTC\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":7,\"liquidity\":1,\"confidence\":0.90}\n" +
+                "  「Will gold outperform the S&P 500 this quarter?」 → {\"type\":\"TYPE_RELATIVE\",\"param1\":\"S&P 500\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":90,\"liquidity\":1,\"confidence\":0.95}\n\n" +
 
                 "=== TEMPLATE 7: TYPE_PRICE_THRESHOLD — Price above/below/equal to threshold at deadline ===\n" +
                 "USE WHEN: User bets on whether gold price will be ABOVE/BELOW/EQUAL to a specific USD price AT THE DEADLINE (not during the period).\n" +
@@ -143,10 +143,10 @@ public class GoldCreatePoolFragment extends Fragment {
                 "KEY DIFFERENCE vs TYPE_PRICE: TYPE_PRICE = pure direction (up/down/flat) without a price number. TYPE_PRICE_THRESHOLD = compared to a specific USD price.\n" +
                 "REQUIRED: param1 = target price in USD (number only). operatorIdx: 0=Above/大于, 1=Below/小于, 2=Equal/等于.\n" +
                 "EXAMPLES:\n" +
-                "  「周五黄金收盘价会大于3000美元吗?」 → {\"type\":\"TYPE_PRICE_THRESHOLD\",\"param1\":\"3000\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":5,\"liquidity\":100,\"confidence\":0.95}\n" +
-                "  「月底金价会低于2800吗?」 → {\"type\":\"TYPE_PRICE_THRESHOLD\",\"param1\":\"2800\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":1,\"daysFromNow\":30,\"liquidity\":100,\"confidence\":0.95}\n" +
-                "  「下周金价能等于3200吗?」 → {\"type\":\"TYPE_PRICE_THRESHOLD\",\"param1\":\"3200\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":2,\"daysFromNow\":7,\"liquidity\":100,\"confidence\":0.85}\n" +
-                "  「Will gold close above $3100 by Friday?」 → {\"type\":\"TYPE_PRICE_THRESHOLD\",\"param1\":\"3100\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":5,\"liquidity\":100,\"confidence\":0.95}\n\n" +
+                "  「周五黄金收盘价会大于3000美元吗?」 → {\"type\":\"TYPE_PRICE_THRESHOLD\",\"param1\":\"3000\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":5,\"liquidity\":1,\"confidence\":0.95}\n" +
+                "  「月底金价会低于2800吗?」 → {\"type\":\"TYPE_PRICE_THRESHOLD\",\"param1\":\"2800\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":1,\"daysFromNow\":30,\"liquidity\":1,\"confidence\":0.95}\n" +
+                "  「下周金价能等于3200吗?」 → {\"type\":\"TYPE_PRICE_THRESHOLD\",\"param1\":\"3200\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":2,\"daysFromNow\":7,\"liquidity\":1,\"confidence\":0.85}\n" +
+                "  「Will gold close above $3100 by Friday?」 → {\"type\":\"TYPE_PRICE_THRESHOLD\",\"param1\":\"3100\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":5,\"liquidity\":1,\"confidence\":0.95}\n\n" +
 
                 "=== TEMPLATE 8: TYPE_EVENT — Event-driven prediction ===\n" +
                 "USE WHEN: User bets on whether a specific macro/financial event will OCCUR by a deadline. This is a YES/NO event prediction.\n" +
@@ -154,21 +154,21 @@ public class GoldCreatePoolFragment extends Fragment {
                 "NOT FOR: Price predictions with numbers (→ TYPE_PRICE_THRESHOLD/TYPE_TOUCH). Directional bets (→ TYPE_PRICE). Technical indicators (→ TYPE_TECHNICAL).\n" +
                 "REQUIRED: param1 = event description in Chinese or English (free text, keep concise under 30 chars).\n" +
                 "EXAMPLES:\n" +
-                "  「美联储本月会降息吗?」 → {\"type\":\"TYPE_EVENT\",\"param1\":\"美联储降息\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":30,\"liquidity\":100,\"confidence\":0.95}\n" +
-                "  「本周五非农数据会超预期吗?」 → {\"type\":\"TYPE_EVENT\",\"param1\":\"非农数据超预期\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":5,\"liquidity\":100,\"confidence\":0.90}\n" +
-                "  「11月CPI会高于前值吗?」 → {\"type\":\"TYPE_EVENT\",\"param1\":\"CPI高于前值\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":30,\"liquidity\":100,\"confidence\":0.90}\n" +
-                "  「Will the Fed cut rates this quarter?」 → {\"type\":\"TYPE_EVENT\",\"param1\":\"Fed cuts interest rate\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":90,\"liquidity\":100,\"confidence\":0.95}\n" +
-                "  「下周会有地缘冲突升级吗?」 → {\"type\":\"TYPE_EVENT\",\"param1\":\"地缘冲突升级\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":7,\"liquidity\":100,\"confidence\":0.80}\n\n" +
+                "  「美联储本月会降息吗?」 → {\"type\":\"TYPE_EVENT\",\"param1\":\"美联储降息\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":30,\"liquidity\":1,\"confidence\":0.95}\n" +
+                "  「本周五非农数据会超预期吗?」 → {\"type\":\"TYPE_EVENT\",\"param1\":\"非农数据超预期\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":5,\"liquidity\":1,\"confidence\":0.90}\n" +
+                "  「11月CPI会高于前值吗?」 → {\"type\":\"TYPE_EVENT\",\"param1\":\"CPI高于前值\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":30,\"liquidity\":1,\"confidence\":0.90}\n" +
+                "  「Will the Fed cut rates this quarter?」 → {\"type\":\"TYPE_EVENT\",\"param1\":\"Fed cuts interest rate\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":90,\"liquidity\":1,\"confidence\":0.95}\n" +
+                "  「下周会有地缘冲突升级吗?」 → {\"type\":\"TYPE_EVENT\",\"param1\":\"地缘冲突升级\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":7,\"liquidity\":1,\"confidence\":0.80}\n\n" +
 
                 "=== REJECTION — When NO template fits (confidence ≤ 0.3) ===\n" +
                 "Set confidence ≤ 0.3 for: NOT about gold/finance; research/analysis not a bet; too vague; impossible to map.\n" +
                 "REJECTION EXAMPLES:\n" +
-                "  「今天天气真好」 → {\"type\":\"TYPE_PRICE\",\"param1\":\"\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":7,\"liquidity\":100,\"confidence\":0.0}\n" +
-                "  「帮我分析一下最近的黄金行情」 → {\"type\":\"TYPE_PRICE\",\"param1\":\"\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":7,\"liquidity\":100,\"confidence\":0.2}\n" +
-                "  「我想赚钱」 → {\"type\":\"TYPE_PRICE\",\"param1\":\"\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":7,\"liquidity\":100,\"confidence\":0.1}\n\n" +
+                "  「今天天气真好」 → {\"type\":\"TYPE_PRICE\",\"param1\":\"\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":7,\"liquidity\":1,\"confidence\":0.0}\n" +
+                "  「帮我分析一下最近的黄金行情」 → {\"type\":\"TYPE_PRICE\",\"param1\":\"\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":7,\"liquidity\":1,\"confidence\":0.2}\n" +
+                "  「我想赚钱」 → {\"type\":\"TYPE_PRICE\",\"param1\":\"\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":7,\"liquidity\":1,\"confidence\":0.1}\n\n" +
 
                 "=== OUTPUT ===\n" +
-                "Output ONLY: {\"type\":\"TYPE_...\",\"param1\":\"...\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":7,\"liquidity\":100,\"confidence\":0.0}";
+                "Output ONLY: {\"type\":\"TYPE_...\",\"param1\":\"...\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":7,\"liquidity\":1,\"confidence\":0.0}";
 
         DeepSeekClient.chatForParsing(systemPrompt, input, new DeepSeekClient.ChatCallback() {
             @Override

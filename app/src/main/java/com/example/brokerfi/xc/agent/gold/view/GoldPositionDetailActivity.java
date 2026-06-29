@@ -23,11 +23,13 @@ import com.example.brokerfi.xc.agent.gold.viewmodel.GoldMarketDetailViewModel;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.TimeZone;
 
 public class GoldPositionDetailActivity extends AppCompatActivity {
     private int gameId;
@@ -117,7 +119,10 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
                 String userAddress = viewModel.getWalletAddress();
                 List<BackendApiClient.TradeDTO> trades = BackendApiClient.fetchTradeHistory(gameId, userAddress);
                 tradeHistory.clear();
-                if (trades != null) tradeHistory.addAll(trades);
+                if (trades != null) {
+                    tradeHistory.addAll(trades);
+                    normalizeTradeHistory(tradeHistory);
+                }
             } catch (Exception e) {
                 // 后端可能还没有这个接口，静默处理
                 tradeHistory.clear();
@@ -325,11 +330,7 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
             }
 
             // Time
-            try {
-                tvTradeTime.setText(trade.createdAt);
-            } catch (Exception e) {
-                tvTradeTime.setText("--");
-            }
+            tvTradeTime.setText(formatTradeTime(trade.createdAt));
 
             // Amount in BKC
             try {
@@ -343,21 +344,113 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
             }
 
             // Share amount
-            try {
-                if (trade.shareAmountWei != null && !trade.shareAmountWei.isEmpty()) {
-                    BigInteger shareWei = new BigInteger(trade.shareAmountWei);
-                    BigDecimal shares = new BigDecimal(shareWei).divide(
-                            new BigDecimal("1000000000000000000"), 2, RoundingMode.HALF_UP);
-                    tvTradeShares.setText(String.format(Locale.getDefault(), "%s 份额",
-                            shares.stripTrailingZeros().toPlainString()));
-                } else {
-                    tvTradeShares.setText("-- 份额");
-                }
-            } catch (NumberFormatException e) {
-                tvTradeShares.setText("-- 份额");
-            }
+            String shareAmountText = formatShareAmount(trade.shareAmountWei);
+            tvTradeShares.setText(shareAmountText != null ? shareAmountText : "份额待同步");
 
             tradeHistoryContainer.addView(row);
+        }
+    }
+
+    private void normalizeTradeHistory(List<BackendApiClient.TradeDTO> trades) {
+        trades.sort((a, b) -> Long.compare(parseTradeTimeMillis(b != null ? b.createdAt : null),
+                parseTradeTimeMillis(a != null ? a.createdAt : null)));
+
+        BigInteger previousYesShares = BigInteger.ZERO;
+        BigInteger previousNoShares = BigInteger.ZERO;
+        for (int i = trades.size() - 1; i >= 0; i--) {
+            BackendApiClient.TradeDTO trade = trades.get(i);
+            if (trade == null) continue;
+
+            BigInteger afterYes = parseNullableWei(trade.mySharesYESAfter);
+            BigInteger afterNo = parseNullableWei(trade.mySharesNOAfter);
+            int optionId = trade.optionId;
+
+            if ("BUY".equalsIgnoreCase(trade.tradeType)
+                    && isMissingShareAmount(trade.shareAmountWei)) {
+                BigInteger beforeShares = optionId == 0 ? previousYesShares : previousNoShares;
+                BigInteger afterShares = optionId == 0 ? afterYes : afterNo;
+                if (afterShares != null) {
+                    BigInteger delta = afterShares.subtract(beforeShares);
+                    if (delta.signum() > 0) {
+                        trade.shareAmountWei = delta.toString();
+                    }
+                }
+            }
+
+            if (afterYes != null) previousYesShares = afterYes;
+            if (afterNo != null) previousNoShares = afterNo;
+        }
+    }
+
+    private boolean isMissingShareAmount(String shareAmountWei) {
+        if (shareAmountWei == null || shareAmountWei.trim().isEmpty()) return true;
+        try {
+            return new BigInteger(shareAmountWei.trim()).compareTo(BigInteger.ZERO) <= 0;
+        } catch (NumberFormatException e) {
+            return true;
+        }
+    }
+
+    private String formatTradeTime(String rawTime) {
+        long millis = parseTradeTimeMillis(rawTime);
+        if (millis <= 0) {
+            return "时间待同步";
+        }
+        return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                .format(new Date(millis));
+    }
+
+    private long parseTradeTimeMillis(String rawTime) {
+        if (rawTime == null) return -1L;
+        String normalized = rawTime.trim();
+        if (normalized.isEmpty()
+                || normalized.startsWith("1970-01-01")
+                || "0001-01-01T00:00:00Z".equals(normalized)) {
+            return -1L;
+        }
+
+        String[] patterns = new String[] {
+                "yyyy-MM-dd HH:mm:ss",
+                "yyyy-MM-dd HH:mm",
+                "yyyy-MM-dd'T'HH:mm:ss'Z'",
+                "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+                "yyyy-MM-dd'T'HH:mm:ssXXX",
+                "yyyy-MM-dd'T'HH:mm:ss.SSSXXX"
+        };
+        for (String pattern : patterns) {
+            try {
+                SimpleDateFormat parser = new SimpleDateFormat(pattern, Locale.US);
+                if (pattern.contains("'Z'") || pattern.contains("XXX")) {
+                    parser.setTimeZone(TimeZone.getTimeZone("UTC"));
+                }
+                Date parsed = parser.parse(normalized);
+                if (parsed != null) return parsed.getTime();
+            } catch (ParseException ignored) {
+            }
+        }
+        return -1L;
+    }
+
+    private BigInteger parseNullableWei(String rawWei) {
+        if (rawWei == null || rawWei.trim().isEmpty()) return null;
+        try {
+            return new BigInteger(rawWei.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private String formatShareAmount(String shareAmountWei) {
+        if (shareAmountWei == null || shareAmountWei.trim().isEmpty()) return null;
+        try {
+            BigInteger shareWei = new BigInteger(shareAmountWei.trim());
+            if (shareWei.compareTo(BigInteger.ZERO) <= 0) return null;
+            BigDecimal shares = new BigDecimal(shareWei).divide(
+                    new BigDecimal("1000000000000000000"), 2, RoundingMode.HALF_UP);
+            return String.format(Locale.getDefault(), "%s 份额",
+                    shares.stripTrailingZeros().toPlainString());
+        } catch (NumberFormatException e) {
+            return null;
         }
     }
 }
