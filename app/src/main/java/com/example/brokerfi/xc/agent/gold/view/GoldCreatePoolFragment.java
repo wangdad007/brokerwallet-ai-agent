@@ -63,7 +63,7 @@ public class GoldCreatePoolFragment extends Fragment {
         String today = dateFormat.format(new Date());
         String systemPrompt =
                 "You are a precise configuration parser for a Gold Prediction Market. " +
-                "Your ONLY job: map a user's gold-price bet description to EXACTLY ONE of 6 templates below. " +
+                "Your ONLY job: map a user's gold-price bet description to EXACTLY ONE of 8 templates below. " +
                 "You MUST output pure JSON — no markdown, no explanations, no code fences.\n\n" +
 
                 "=== CRITICAL RULES ===\n" +
@@ -136,6 +136,30 @@ public class GoldCreatePoolFragment extends Fragment {
                 "  「黄金vs比特币谁更强?」 → {\"type\":\"TYPE_RELATIVE\",\"param1\":\"BTC\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":7,\"liquidity\":100,\"confidence\":0.90}\n" +
                 "  「Will gold outperform the S&P 500 this quarter?」 → {\"type\":\"TYPE_RELATIVE\",\"param1\":\"S&P 500\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":90,\"liquidity\":100,\"confidence\":0.95}\n\n" +
 
+                "=== TEMPLATE 7: TYPE_PRICE_THRESHOLD — Price above/below/equal to threshold at deadline ===\n" +
+                "USE WHEN: User bets on whether gold price will be ABOVE/BELOW/EQUAL to a specific USD price AT THE DEADLINE (not during the period).\n" +
+                "TRIGGERS: 大于/小于/等于/above/below/equal + a specific USD price number + a deadline point in time.\n" +
+                "KEY DIFFERENCE vs TYPE_TOUCH: TYPE_TOUCH = ever touches during period. TYPE_PRICE_THRESHOLD = price at exact deadline moment.\n" +
+                "KEY DIFFERENCE vs TYPE_PRICE: TYPE_PRICE = pure direction (up/down/flat) without a price number. TYPE_PRICE_THRESHOLD = compared to a specific USD price.\n" +
+                "REQUIRED: param1 = target price in USD (number only). operatorIdx: 0=Above/大于, 1=Below/小于, 2=Equal/等于.\n" +
+                "EXAMPLES:\n" +
+                "  「周五黄金收盘价会大于3000美元吗?」 → {\"type\":\"TYPE_PRICE_THRESHOLD\",\"param1\":\"3000\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":5,\"liquidity\":100,\"confidence\":0.95}\n" +
+                "  「月底金价会低于2800吗?」 → {\"type\":\"TYPE_PRICE_THRESHOLD\",\"param1\":\"2800\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":1,\"daysFromNow\":30,\"liquidity\":100,\"confidence\":0.95}\n" +
+                "  「下周金价能等于3200吗?」 → {\"type\":\"TYPE_PRICE_THRESHOLD\",\"param1\":\"3200\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":2,\"daysFromNow\":7,\"liquidity\":100,\"confidence\":0.85}\n" +
+                "  「Will gold close above $3100 by Friday?」 → {\"type\":\"TYPE_PRICE_THRESHOLD\",\"param1\":\"3100\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":5,\"liquidity\":100,\"confidence\":0.95}\n\n" +
+
+                "=== TEMPLATE 8: TYPE_EVENT — Event-driven prediction ===\n" +
+                "USE WHEN: User bets on whether a specific macro/financial event will OCCUR by a deadline. This is a YES/NO event prediction.\n" +
+                "TRIGGERS: 会不会/是否/will/加息/降息/决议/非农/CPI/FOMC/事件/公布/数据 + an event description. The input describes a BINARY EVENT that either happens or doesn't.\n" +
+                "NOT FOR: Price predictions with numbers (→ TYPE_PRICE_THRESHOLD/TYPE_TOUCH). Directional bets (→ TYPE_PRICE). Technical indicators (→ TYPE_TECHNICAL).\n" +
+                "REQUIRED: param1 = event description in Chinese or English (free text, keep concise under 30 chars).\n" +
+                "EXAMPLES:\n" +
+                "  「美联储本月会降息吗?」 → {\"type\":\"TYPE_EVENT\",\"param1\":\"美联储降息\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":30,\"liquidity\":100,\"confidence\":0.95}\n" +
+                "  「本周五非农数据会超预期吗?」 → {\"type\":\"TYPE_EVENT\",\"param1\":\"非农数据超预期\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":5,\"liquidity\":100,\"confidence\":0.90}\n" +
+                "  「11月CPI会高于前值吗?」 → {\"type\":\"TYPE_EVENT\",\"param1\":\"CPI高于前值\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":30,\"liquidity\":100,\"confidence\":0.90}\n" +
+                "  「Will the Fed cut rates this quarter?」 → {\"type\":\"TYPE_EVENT\",\"param1\":\"Fed cuts interest rate\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":90,\"liquidity\":100,\"confidence\":0.95}\n" +
+                "  「下周会有地缘冲突升级吗?」 → {\"type\":\"TYPE_EVENT\",\"param1\":\"地缘冲突升级\",\"directionIdx\":0,\"indicatorIdx\":0,\"operatorIdx\":0,\"daysFromNow\":7,\"liquidity\":100,\"confidence\":0.80}\n\n" +
+
                 "=== REJECTION — When NO template fits (confidence ≤ 0.3) ===\n" +
                 "Set confidence ≤ 0.3 for: NOT about gold/finance; research/analysis not a bet; too vague; impossible to map.\n" +
                 "REJECTION EXAMPLES:\n" +
@@ -171,7 +195,8 @@ public class GoldCreatePoolFragment extends Fragment {
 
     private static final Set<String> VALID_TYPES = new HashSet<>(Arrays.asList(
             "TYPE_PRICE", "TYPE_VOLATILITY", "TYPE_VOLUME",
-            "TYPE_TECHNICAL", "TYPE_TOUCH", "TYPE_RELATIVE"));
+            "TYPE_TECHNICAL", "TYPE_TOUCH", "TYPE_RELATIVE",
+            "TYPE_PRICE_THRESHOLD", "TYPE_EVENT"));
 
     private static final Map<String, String> TYPE_TITLE_MAP = new HashMap<>();
     static {
@@ -181,6 +206,8 @@ public class GoldCreatePoolFragment extends Fragment {
         TYPE_TITLE_MAP.put("TYPE_TECHNICAL", "技术指标博弈");
         TYPE_TITLE_MAP.put("TYPE_TOUCH", "极值触碰博弈");
         TYPE_TITLE_MAP.put("TYPE_RELATIVE", "跑赢率博弈");
+        TYPE_TITLE_MAP.put("TYPE_PRICE_THRESHOLD", "价格阈值博弈");
+        TYPE_TITLE_MAP.put("TYPE_EVENT", "事件驱动博弈");
     }
 
     private static final double CONFIDENCE_THRESHOLD = 0.7;
@@ -316,6 +343,24 @@ public class GoldCreatePoolFragment extends Fragment {
                 }
                 break;
             }
+            case "TYPE_PRICE_THRESHOLD": {
+                String p1 = json.optString("param1", "");
+                if (p1.isEmpty()) {
+                    return "AI 未提取目标价格，请输入具体价格后重试";
+                }
+                int op = json.optInt("operatorIdx", -1);
+                if (op < 0 || op > 2) {
+                    return "AI 未正确识别比较方式（大于/小于/等于）";
+                }
+                break;
+            }
+            case "TYPE_EVENT": {
+                String p1 = json.optString("param1", "");
+                if (p1.isEmpty()) {
+                    return "AI 未提取事件描述，请输入具体事件后重试";
+                }
+                break;
+            }
         }
         return null;
     }
@@ -327,6 +372,8 @@ public class GoldCreatePoolFragment extends Fragment {
         addTemplate(grid, "技术指标", "预测 RSI/MACD 形态", R.drawable.ic_template_technical, "TYPE_TECHNICAL");
         addTemplate(grid, "极值触碰", "预测金价是否触及目标", R.drawable.ic_template_touch, "TYPE_TOUCH");
         addTemplate(grid, "跑赢率", "黄金 vs BTC 收益率", R.drawable.ic_template_relative, "TYPE_RELATIVE");
+        addTemplate(grid, "价格阈值", "预测金价与目标价格关系", R.drawable.ic_template_price_threshold, "TYPE_PRICE_THRESHOLD");
+        addTemplate(grid, "事件驱动", "预测宏观事件是否发生", R.drawable.ic_template_event, "TYPE_EVENT");
     }
 
     private void addTemplate(GridLayout grid, String title, String desc, int iconRes, String type) {

@@ -162,6 +162,15 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
                 break;
             case "TYPE_TOUCH": tvTemplateDetail.setText("极值触碰博弈。"); etParam1.setHint("触碰价格 (USD)"); break;
             case "TYPE_RELATIVE": tvTemplateDetail.setText("博弈黄金相对于其他资产的收益率。"); etParam1.setHint("对比标的 (如: BTC)"); break;
+            case "TYPE_PRICE_THRESHOLD":
+                tvTemplateDetail.setText("博弈截止时刻金价大于/小于/等于指定价格。");
+                containerTechnical.setVisibility(View.VISIBLE); spinnerIndicator.setVisibility(View.GONE);
+                updateOperatorSpinner(true); etParam1.setHint("目标价格 (USD)");
+                break;
+            case "TYPE_EVENT":
+                tvTemplateDetail.setText("博弈指定宏观/财经事件在截止日期前是否发生。");
+                etParam1.setHint("事件描述 (如: 美联储降息)");
+                break;
         }
     }
 
@@ -272,6 +281,8 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
             case "TYPE_TOUCH": return String.format("周期内金价触及 %s USD", p1);
             case "TYPE_TECHNICAL": return String.format("指标 %s 触发 %s %s", spinnerIndicator.getSelectedItem(), spinnerOperator.getSelectedItem(), p1);
             case "TYPE_RELATIVE": return String.format("黄金收益率跑赢 %s", p1);
+            case "TYPE_PRICE_THRESHOLD": return String.format("截止 %s 金价 %s %s USD", endStr, spinnerOperator.getSelectedItem().toString().split(" ")[0], p1);
+            case "TYPE_EVENT": return String.format("「%s」是否发生", p1);
             default: return templateTitle;
         }
     }
@@ -285,6 +296,8 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
             case "TYPE_TECHNICAL": return String.format("指标 %s %s %s (%s)", spinnerIndicator.getSelectedItem(), spinnerOperator.getSelectedItem(), p1, period);
             case "TYPE_TOUCH": return String.format("金价曾触及 %s USD (%s)", p1, period);
             case "TYPE_RELATIVE": return String.format("黄金收益率跑赢 %s (%s)", p1, period);
+            case "TYPE_PRICE_THRESHOLD": return String.format("截至 %s 黄金价格 %s %s USD", dateFormat.format(endCalendar.getTime()), spinnerOperator.getSelectedItem().toString().split(" ")[0], p1);
+            case "TYPE_EVENT": return String.format("事件「%s」是否发生 (%s)", p1, period);
             default: return "自定义: " + p1;
         }
     }

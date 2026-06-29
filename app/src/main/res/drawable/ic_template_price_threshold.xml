@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Threshold line -->
+    <path
+        android:fillColor="#94A3B8"
+        android:pathData="M2,18h20v2H2z"/>
+    <!-- Gold bars rising above threshold -->
+    <path
+        android:fillColor="#D4AF37"
+        android:pathData="M7,18V9h3v9H7z M14,18V5h3v13h-3z"/>
+</vector>

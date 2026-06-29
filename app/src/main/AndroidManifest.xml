@@ -161,6 +161,9 @@
             android:name=".xc.agent.gold.view.GoldCreateCustomActivity"
             android:exported="false" />
         <activity
+            android:name=".xc.agent.gold.view.GoldPositionDetailActivity"
+            android:exported="false" />
+        <activity
             android:name=".xc.WelcomeActivity"
             android:exported="true">
             <intent-filter>
