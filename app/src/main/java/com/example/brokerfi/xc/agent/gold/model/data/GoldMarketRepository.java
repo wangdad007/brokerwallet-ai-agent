@@ -373,6 +373,7 @@ public class GoldMarketRepository {
         boolean isResolved;
         boolean isRefunded;
         int winningOption;
+        long deadlineSec;       // 链上绝对截止时间戳（秒），同步到后端 DB 避免显示"已截止"
         String reserveYES;
         String reserveNO;
         String mySharesYES;
@@ -426,6 +427,7 @@ public class GoldMarketRepository {
             state.isResolved = ((Bool) res.get(2)).getValue();
             // 合约约定与 UI 一致 (0=YES, 1=NO)
             state.winningOption = ((Uint8) res.get(3)).getValue().intValue();
+            state.deadlineSec = ((Uint256) res.get(4)).getValue().longValue();  // 链上绝对截止时间戳（秒）
             state.isRefunded = ((Bool) res.get(5)).getValue();
 
             if (hexExtra != null && !hexExtra.equals("0x")) {
@@ -452,6 +454,7 @@ public class GoldMarketRepository {
             Log.d(TAG, "queryPostTxState 成功: gameId=" + gameId
                     + " totalPool=" + state.totalPool
                     + " isResolved=" + state.isResolved
+                    + " deadlineSec=" + state.deadlineSec
                     + " mySharesYES=" + state.mySharesYES);
             return state;
         } catch (Exception e) {
@@ -540,6 +543,7 @@ public class GoldMarketRepository {
                 chainReq.isResolved = postState.isResolved;
                 chainReq.isRefunded = postState.isRefunded;
                 chainReq.winningOption = postState.winningOption;
+                chainReq.deadlineSec = postState.deadlineSec;
                 chainReq.reserveYES = postState.reserveYES;
                 chainReq.reserveNO = postState.reserveNO;
                 chainReq.mySharesYES = postState.mySharesYES;
@@ -549,6 +553,7 @@ public class GoldMarketRepository {
                 chainReq.isResolved = tradeInfo.isResolved;
                 chainReq.isRefunded = tradeInfo.isRefunded;
                 chainReq.winningOption = tradeInfo.winningOption;
+                chainReq.deadlineSec = tradeInfo.deadlineSec;
                 chainReq.reserveYES = tradeInfo.reserveYESAfter;
                 chainReq.reserveNO = tradeInfo.reserveNOAfter;
                 chainReq.mySharesYES = tradeInfo.mySharesYESAfter;
@@ -557,7 +562,8 @@ public class GoldMarketRepository {
             BackendApiClient.syncChainState(gameId, chainReq);
             Log.d(TAG, "✅ 后端链上状态同步成功: gameId=" + gameId
                     + " totalPool=" + chainReq.totalPool
-                    + " isResolved=" + chainReq.isResolved);
+                    + " isResolved=" + chainReq.isResolved
+                    + " deadlineSec=" + chainReq.deadlineSec);
         } catch (Exception e) {
             Log.w(TAG, "❌ 后端链上状态同步失败（非关键）: gameId=" + gameId + " - " + e.getMessage());
         }
@@ -1114,7 +1120,8 @@ public class GoldMarketRepository {
                         // 后端 DB 存储合约约定 (0=NO, 1=YES)，转换为 UI 约定 (0=YES, 1=NO)
                         m.winningOption = toUiOption(state.winningOption);
                         m.deadlineSec = state.deadlineSec;
-                        m.virtualReserves = Arrays.asList(parseBigInteger(state.reserveYES), parseBigInteger(state.reserveNO));
+                        // 核心修复：Java 索引 0 必须为 reserveNO，以匹配 UI 概率计算 (res0 / total)
+                        m.virtualReserves = Arrays.asList(parseBigInteger(state.reserveNO), parseBigInteger(state.reserveYES));
                         m.myShares = Arrays.asList(parseBigInteger(state.mySharesYES), parseBigInteger(state.mySharesNO));
                         m.optionNames = Arrays.asList("YES", "NO");
                         m.desc = "博弈池 #" + state.gameId;
@@ -1402,12 +1409,14 @@ public class GoldMarketRepository {
                             chainReq.isResolved = false;
                             chainReq.isRefunded = false;
                             chainReq.winningOption = 0;
+                            chainReq.deadlineSec = postState.deadlineSec;
                             chainReq.reserveYES = postState.reserveYES;
                             chainReq.reserveNO = postState.reserveNO;
                             chainReq.mySharesYES = "0";
                             chainReq.mySharesNO = "0";
                             BackendApiClient.syncChainState(newGameId, chainReq);
-                            Log.d(TAG, "✅ 创建博弈池 - 后端初始链上状态同步成功: gameId=" + newGameId);
+                            Log.d(TAG, "✅ 创建博弈池 - 后端初始链上状态同步成功: gameId=" + newGameId
+                                    + " deadlineSec=" + postState.deadlineSec);
                         }
                     } catch (Exception e) {
                         Log.w(TAG, "❌ 创建博弈池 - 后端链上状态同步失败（非关键）: " + e.getMessage());
@@ -1627,6 +1636,7 @@ public class GoldMarketRepository {
         String reserveNOAfter;
         String mySharesYESAfter;
         String mySharesNOAfter;
+        long deadlineSec;       // 链上绝对截止时间戳（秒），确保后端 DB 不丢失截止时间
         // 结算状态（用于同步链上状态缓存到后端 DB）
         boolean isResolved;
         boolean isRefunded;
