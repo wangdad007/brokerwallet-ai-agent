@@ -18,6 +18,7 @@ import org.web3j.protocol.Web3j;
 import org.web3j.protocol.core.DefaultBlockParameterName;
 import org.web3j.protocol.core.methods.request.Transaction;
 import org.web3j.protocol.core.methods.response.EthCall;
+import org.web3j.protocol.core.methods.response.EthBlock;
 import org.web3j.protocol.core.methods.response.EthGetTransactionReceipt;
 import org.web3j.protocol.core.methods.response.EthSendTransaction;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
@@ -32,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -71,6 +73,9 @@ public class GoldMarketRepository {
     private static final BigInteger LOCAL_RPC_CALL_GAS_LIMIT = new BigInteger("5000000");
     private static final BigInteger LOCAL_RPC_CALL_GAS_PRICE = BigInteger.ZERO;
     private static final BigInteger LOCAL_RPC_CALL_VALUE = BigInteger.ZERO;
+    private static final long MILLIS_TIMESTAMP_THRESHOLD = 10_000_000_000L;
+    private static final long RECEIPT_POLL_INTERVAL_MS = 750L;
+    private static final int RECEIPT_MAX_POLLS = 40;
     public static final int GOLD_GAME_ID = 1;
 
     private static List<String> cachedAddresses;
@@ -239,10 +244,14 @@ public class GoldMarketRepository {
     }
 
     private String ethCall(org.web3j.abi.datatypes.Function function) throws Exception {
+        return ethCall(contractAddress, function);
+    }
+
+    private String ethCall(String targetContractAddress, org.web3j.abi.datatypes.Function function) throws Exception {
         String data = FunctionEncoder.encode(function);
         if (useLocalRpc) {
-            Log.d(TAG, "standard ethCall to=" + contractAddress + " data=" + data.substring(0, Math.min(66, data.length())) + "...");
-            Transaction txn = buildLocalEthCallTransaction(walletAddress, contractAddress, data);
+            Log.d(TAG, "standard ethCall to=" + targetContractAddress + " data=" + data.substring(0, Math.min(66, data.length())) + "...");
+            Transaction txn = buildLocalEthCallTransaction(walletAddress, targetContractAddress, data);
             EthCall resp = web3j.ethCall(txn, DefaultBlockParameterName.LATEST).send();
             Log.d(TAG, "standard ethCall result: hasError=" + resp.hasError() + " value=" + resp.getValue());
             if (resp.hasError()) throw new Exception(resp.getError().getMessage());
@@ -252,7 +261,7 @@ public class GoldMarketRepository {
             }
             return value;
         } else {
-            String response = BrokerChainClient.sendEthCall(privateKey, contractAddress, data);
+            String response = BrokerChainClient.sendEthCall(privateKey, targetContractAddress, data);
             Log.d(TAG, "ethCall response: " + (response != null ? response.substring(0, Math.min(200, response.length())) : "null"));
             return extractHexResult(response);
         }
@@ -264,16 +273,13 @@ public class GoldMarketRepository {
     }
 
     /**
-     * 发送链上交易，交易确认后【先同步后端 DB，再通知 UI】
+     * 发送链上交易。交易记录完成快速同步后通知 UI，其余缓存写入后台补齐。
      *
      * 完整流程（三步串行）：
-     * 1. 发送交易并等待链上确认（本地 RPC 等待 receipt，BrokerChain 等待固定延迟）
+     * 1. 发送交易并轮询链上回执
      * 2. 通过 eth_call 查询交易后的链上真实状态（资金池、储备金、持仓、结算状态）
-     * 3. 将三项数据同步写入后端 DB（交易记录 + 历史价格点 + 链上状态缓存）
-     * 4. 后端 DB 写入完成后，回调 onConfirmed 通知 UI
-     *
-     * 设计意图：确保 onConfirmed 回调时，后端 DB 已包含最新的交易数据，
-     * UI 可以立即从后端 DB 拉取到正确的状态，无需额外等待。
+     * 3. 快速同步交易记录（该接口同时更新资金池和用户持仓缓存）
+     * 4. 回调 onConfirmed；历史点和完整链上状态在后台继续同步
      */
     private void sendTransaction(BigInteger value, org.web3j.abi.datatypes.Function function,
                                  String successMsg, TxCallback callback, TradeSyncInfo tradeInfo) {
@@ -281,17 +287,17 @@ public class GoldMarketRepository {
             try {
                 String data = FunctionEncoder.encode(function);
                 PostTxState preState = shouldCapturePreTradeState(tradeInfo)
-                        ? queryPostTxState(tradeInfo.gameId) : null;
+                        ? queryPreTradeShareState(tradeInfo.gameId) : null;
                 if (useLocalRpc) {
                     // ── Local RPC 模式 ──
-                    String txHash = sendLocalRpcAndWait(value, data, callback);
-                    if (txHash == null) return; // 错误已在 sendLocalRpcAndWait 中回调
+                    String txHash = sendLocalRpc(value, data, callback);
+                    if (txHash == null) return; // 错误已在 sendLocalRpc 中回调
                     AppExecutors.getInstance().mainThread().execute(() -> callback.onTxSent(txHash));
+                    waitForLocalReceipt(txHash);
 
                     // 查询交易后的链上真实状态
                     PostTxState postState = (tradeInfo != null) ? queryPostTxState(tradeInfo.gameId) : null;
 
-                    // 同步到后端 DB（在 onConfirmed 之前，确保数据一致性）
                     if (tradeInfo != null) {
                         syncAllToBackend(tradeInfo, txHash, preState, postState);
                     }
@@ -302,21 +308,12 @@ public class GoldMarketRepository {
                     // ── BrokerChain 模式 ──
                     String response = sendBrokerChainTx(value, data, callback);
                     if (response == null) return; // 错误已在 sendBrokerChainTx 中回调
-                    AppExecutors.getInstance().mainThread().execute(() -> callback.onTxSent("Transaction Sent"));
-
-                    // 等待链上确认（BrokerChain 出块时间 ~3 秒，留余量等待 8 秒）
-                    Thread.sleep(8000);
-                    try {
-                        BrokerChainClient.ReturnAccountState state = BrokerChainClient.getAddrAndBalance(privateKey);
-                        Log.d(TAG, "BrokerChain 确认后余额: " + (state != null ? state.getBalance() : "null"));
-                    } catch (Exception balanceErr) {
-                        Log.w(TAG, "BrokerChain 余额查询异常: " + balanceErr.getMessage());
-                    }
+                    AppExecutors.getInstance().mainThread().execute(() -> callback.onTxSent(response));
+                    waitForBrokerChainReceipt(response);
 
                     // 查询交易后的链上真实状态
                     PostTxState postState = (tradeInfo != null) ? queryPostTxState(tradeInfo.gameId) : null;
 
-                    // 同步到后端 DB（在 onConfirmed 之前）
                     if (tradeInfo != null) {
                         syncAllToBackend(tradeInfo, response, preState, postState);
                     }
@@ -324,7 +321,7 @@ public class GoldMarketRepository {
                     AppExecutors.getInstance().mainThread().execute(() -> callback.onConfirmed(successMsg));
                 }
             } catch (Exception e) {
-                postError(callback, "交易异常: " + e.getMessage());
+                postError(callback, describeTradeFailure("提交交易", e.getMessage()));
             }
         });
     }
@@ -333,14 +330,14 @@ public class GoldMarketRepository {
      * Local RPC 模式：发送交易并等待链上确认（receipt）
      * @return txHash，失败时回调 onError 并返回 null
      */
-    private String sendLocalRpcAndWait(BigInteger value, String data, TxCallback callback) throws Exception {
+    private String sendLocalRpc(BigInteger value, String data, TxCallback callback) throws Exception {
         Transaction txn = buildLocalWriteTransaction(walletAddress, contractAddress, data, value);
         Log.d(TAG, "standard eth_sendTransaction to=" + contractAddress
                 + " value=" + txn.getValue()
                 + " data=" + data.substring(0, Math.min(66, data.length())) + "...");
         EthSendTransaction resp = web3j.ethSendTransaction(txn).send();
         if (resp.hasError()) {
-            postError(callback, resp.getError().getMessage());
+            postError(callback, describeTradeFailure("提交交易", resp.getError().getMessage()));
             return null;
         } else if (resp.getTransactionHash() == null || resp.getTransactionHash().isEmpty()) {
             postError(callback, "本地 RPC 未返回交易哈希，交易未确认提交");
@@ -348,7 +345,6 @@ public class GoldMarketRepository {
         }
         String txHash = resp.getTransactionHash();
         Log.d(TAG, "standard eth_sendTransaction hash=" + txHash);
-        waitForLocalReceipt(txHash);
         return txHash;
     }
 
@@ -462,6 +458,43 @@ public class GoldMarketRepository {
         return "交易失败：" + (msg.isEmpty() ? rawResponse : msg);
     }
 
+    private String describeTradeFailure(String stage, String rawMessage) {
+        String msg = rawMessage == null ? "" : rawMessage.trim();
+        String lower = msg.toLowerCase(Locale.ROOT);
+
+        if (lower.contains("past deadline")) {
+            return stage + "失败：该博弈池已过截止时间，链上拒绝了本次购买。\n\n"
+                    + "可能原因：\n"
+                    + "1. 该池子确实已到期；\n"
+                    + "2. 链上 deadline 时间单位异常；\n"
+                    + "3. 后端缓存的市场状态还没同步到最新。\n\n"
+                    + "技术信息：Past deadline";
+        }
+        if (lower.contains("game already ended") || lower.contains("already ended")) {
+            return stage + "失败：该博弈池当前已结束或已退款，暂时不能继续购买。\n\n"
+                    + "技术信息：" + msg;
+        }
+        if (lower.contains("insufficient funds")) {
+            return stage + "失败：账户余额不足，无法完成本次下单或支付 Gas。\n\n"
+                    + "技术信息：" + msg;
+        }
+        if (lower.contains("nonce")) {
+            return stage + "失败：链上交易序号异常，可能有交易还在排队。\n\n"
+                    + "建议稍等几秒后再试一次。\n\n技术信息：" + msg;
+        }
+        if (lower.contains("replay attack") || lower.contains("invalid sign")) {
+            return stage + "失败：交易签名被判定为重复或失效。\n\n"
+                    + "建议不要连续重复点击，稍等几秒后重试。\n\n技术信息：" + msg;
+        }
+        if (lower.contains("execution reverted") || lower.contains("revert")) {
+            return stage + "失败：链上合约拒绝了这笔交易。\n\n技术信息：" + msg;
+        }
+        if (msg.isEmpty()) {
+            return stage + "失败：未收到明确的错误详情，请稍后重试。";
+        }
+        return stage + "失败：\n\n" + msg;
+    }
+
     private String formatBkc(BigInteger wei) {
         return new BigDecimal(wei)
                 .divide(WEI_PER_BKC, 6, RoundingMode.HALF_UP)
@@ -484,6 +517,42 @@ public class GoldMarketRepository {
         String reserveNO;
         String mySharesYES;
         String mySharesNO;
+    }
+
+    /**
+     * 交易前只读取持仓数组，用于计算本次成交份额。
+     * 无需同时查询 getGameInfo，可少一次远程 eth_call。
+     */
+    private PostTxState queryPreTradeShareState(int gameId) {
+        try {
+            String addr = getWalletAddress();
+            if (addr == null || addr.isEmpty()) {
+                addr = "0x0000000000000000000000000000000000000000";
+            }
+            org.web3j.abi.datatypes.Function fExtra = new org.web3j.abi.datatypes.Function(
+                    "getGameExtraData",
+                    Arrays.asList(new Uint256(BigInteger.valueOf(gameId)), new Address(addr)),
+                    Arrays.asList(
+                            new TypeReference<DynamicArray<Uint256>>() {},
+                            new TypeReference<DynamicArray<Uint256>>() {}));
+            String hexExtra = ethCall(fExtra);
+            if (hexExtra == null || hexExtra.equals("0x")) return null;
+
+            List<Type> extraRes = FunctionReturnDecoder.decode(hexExtra, fExtra.getOutputParameters());
+            if (extraRes.size() < 2) return null;
+            List<Uint256> sharesArray =
+                    ((DynamicArray<Uint256>) extraRes.get(1)).getValue();
+            if (sharesArray.size() < 2) return null;
+
+            PostTxState state = new PostTxState();
+            state.mySharesYES = sharesArray.get(0).getValue().toString();
+            state.mySharesNO = sharesArray.get(1).getValue().toString();
+            return state;
+        } catch (Exception e) {
+            Log.w(TAG, "queryPreTradeShareState 异常: gameId=" + gameId
+                    + " - " + e.getMessage());
+            return null;
+        }
     }
 
     /**
@@ -569,10 +638,10 @@ public class GoldMarketRepository {
         }
     }
 
-    // ── 后端 DB 同步（同步执行，在 onConfirmed 之前调用） ──
+    // ── 后端 DB 同步（核心交易缓存先写，其余缓存异步补齐） ──
 
     /**
-     * 将交易数据同步写入后端 DB（同步执行，在 onConfirmed 之前调用）
+     * 先同步交易记录及其级联的资金池/持仓缓存，再异步补齐历史和完整状态。
      *
      * 写入策略（三项同步，每项独立 try-catch）：
      * 1. 同步交易记录 → POST /api/v1/gold/trades/sync
@@ -618,6 +687,14 @@ public class GoldMarketRepository {
             Log.w(TAG, "❌ 后端交易同步失败（非关键）: gameId=" + gameId + " - " + e.getMessage());
         }
 
+        // 历史点和完整状态只是缓存补全，不再阻塞 UI 的交易成功反馈。
+        AppExecutors.getInstance().networkIO().execute(
+                () -> syncSupplementalTradeData(tradeInfo, postState));
+    }
+
+    private void syncSupplementalTradeData(TradeSyncInfo tradeInfo, PostTxState postState) {
+        final int gameId = tradeInfo.gameId;
+
         // ── 2. 添加历史价格点 ──
         try {
             String reserveYES = (postState != null) ? postState.reserveYES : tradeInfo.reserveYESAfter;
@@ -632,7 +709,7 @@ public class GoldMarketRepository {
                 BigInteger noRes = new BigInteger(reserveNO);
                 BigInteger total = yesRes.add(noRes);
                 if (total.compareTo(BigInteger.ZERO) > 0) {
-                    point.yesPrice = (float) (yesRes.doubleValue() / total.doubleValue() * 100);
+                    point.yesPrice = (float) (noRes.doubleValue() / total.doubleValue() * 100);
                     point.noPrice = 100 - point.yesPrice;
                 }
                 point.totalPool = totalPool;
@@ -643,7 +720,7 @@ public class GoldMarketRepository {
             Log.w(TAG, "❌ 后端历史数据同步失败（非关键）: gameId=" + gameId + " - " + e.getMessage());
         }
 
-        // ── 3. 同步链上状态缓存 ──
+        // ── 3. 同步完整链上状态缓存 ──
         try {
             BackendApiClient.ChainStateSyncReq chainReq = new BackendApiClient.ChainStateSyncReq();
             if (postState != null) {
@@ -707,8 +784,8 @@ public class GoldMarketRepository {
     }
 
     private void waitForLocalReceipt(String txHash) throws Exception {
-        for (int i = 0; i < 12; i++) {
-            Thread.sleep(2500);
+        for (int i = 0; i < RECEIPT_MAX_POLLS; i++) {
+            Thread.sleep(RECEIPT_POLL_INTERVAL_MS);
             EthGetTransactionReceipt receiptResp = web3j.ethGetTransactionReceipt(txHash).send();
             if (receiptResp.hasError()) {
                 throw new Exception(receiptResp.getError().getMessage());
@@ -724,6 +801,32 @@ public class GoldMarketRepository {
             }
         }
         throw new Exception("交易已提交但 30 秒内未确认，请稍后手动刷新");
+    }
+
+    private void waitForBrokerChainReceipt(String txHash) throws Exception {
+        Exception lastQueryError = null;
+        for (int i = 0; i < RECEIPT_MAX_POLLS; i++) {
+            Thread.sleep(RECEIPT_POLL_INTERVAL_MS);
+            try {
+                Boolean success =
+                        BrokerChainClient.getTransactionReceiptStatus(privateKey, txHash);
+                if (success == null) continue;
+                if (!success) {
+                    throw new Exception("交易执行失败，链上 receipt status=0x0");
+                }
+                Log.d(TAG, "BrokerChain tx confirmed: " + txHash);
+                return;
+            } catch (Exception e) {
+                if (e.getMessage() != null && e.getMessage().contains("status=0x0")) {
+                    throw e;
+                }
+                lastQueryError = e;
+                Log.w(TAG, "BrokerChain receipt 查询暂时失败，第 " + (i + 1)
+                        + " 次: " + e.getMessage());
+            }
+        }
+        String detail = lastQueryError == null ? "" : "，最后一次查询：" + lastQueryError.getMessage();
+        throw new Exception("交易已提交但 30 秒内未确认，请稍后手动刷新" + detail);
     }
 
     private String extractHexResult(String responseJson) {
@@ -774,6 +877,7 @@ public class GoldMarketRepository {
             BigInteger myNo = parseBigInteger(state.mySharesNO);
             m.myShares = Arrays.asList(myYES, myNo);
         } else {
+            m.deadlineSec = -1L;
             m.totalPool = BigInteger.ZERO;
             m.virtualReserves = Arrays.asList(BigInteger.ZERO, BigInteger.ZERO);
             m.myShares = Arrays.asList(BigInteger.ZERO, BigInteger.ZERO);
@@ -799,6 +903,111 @@ public class GoldMarketRepository {
         }
 
         return m;
+    }
+
+    private static boolean hasUsableDeadline(long deadlineSec) {
+        return deadlineSec >= 1000000000L;
+    }
+
+    private static String buildStateKey(String contractAddress, int gameId) {
+        String normalized = contractAddress == null ? "" : contractAddress.trim().toLowerCase(Locale.ROOT);
+        return normalized + "#" + gameId;
+    }
+
+    private boolean shouldRepairChainState(BackendApiClient.GameMetaDTO meta, BackendApiClient.ChainStateDTO state) {
+        return meta != null
+                && meta.contractAddress != null
+                && !meta.contractAddress.trim().isEmpty()
+                && (state == null || !hasUsableDeadline(state.deadlineSec));
+    }
+
+    private BackendApiClient.ChainStateDTO queryChainStateDirectly(int gameId, String targetContractAddress) {
+        try {
+            org.web3j.abi.datatypes.Function fInfo = new org.web3j.abi.datatypes.Function(
+                    "getGameInfo", Collections.singletonList(new Uint256(BigInteger.valueOf(gameId))),
+                    Arrays.asList(
+                            new TypeReference<Utf8String>() {},
+                            new TypeReference<Uint256>() {},
+                            new TypeReference<Bool>() {},
+                            new TypeReference<Uint8>() {},
+                            new TypeReference<Uint256>() {},
+                            new TypeReference<Bool>() {}));
+
+            String addr = getWalletAddress();
+            if (addr == null || addr.isEmpty()) addr = "0x0000000000000000000000000000000000000000";
+
+            org.web3j.abi.datatypes.Function fExtra = new org.web3j.abi.datatypes.Function(
+                    "getGameExtraData",
+                    Arrays.asList(new Uint256(BigInteger.valueOf(gameId)), new Address(addr)),
+                    Arrays.asList(new TypeReference<DynamicArray<Uint256>>() {}, new TypeReference<DynamicArray<Uint256>>() {}));
+
+            String hexInfo = ethCall(targetContractAddress, fInfo);
+            if (hexInfo == null || hexInfo.equals("0x")) return null;
+            List<Type> res = FunctionReturnDecoder.decode(hexInfo, fInfo.getOutputParameters());
+            if (res.size() < 6) return null;
+
+            BackendApiClient.ChainStateDTO state = new BackendApiClient.ChainStateDTO();
+            state.gameId = gameId;
+            state.contractAddress = targetContractAddress;
+            state.totalPool = ((Uint256) res.get(1)).getValue().toString();
+            state.isResolved = ((Bool) res.get(2)).getValue();
+            state.winningOption = ((Uint8) res.get(3)).getValue().intValue();
+            state.deadlineSec = ((Uint256) res.get(4)).getValue().longValue();
+            state.isRefunded = ((Bool) res.get(5)).getValue();
+            state.reserveYES = "0";
+            state.reserveNO = "0";
+            state.mySharesYES = "0";
+            state.mySharesNO = "0";
+
+            String hexExtra = ethCall(targetContractAddress, fExtra);
+            if (hexExtra != null && !hexExtra.equals("0x")) {
+                List<Type> extraRes = FunctionReturnDecoder.decode(hexExtra, fExtra.getOutputParameters());
+                if (extraRes.size() >= 2) {
+                    List<Uint256> reservesArray = ((DynamicArray<Uint256>) extraRes.get(0)).getValue();
+                    List<Uint256> sharesArray = ((DynamicArray<Uint256>) extraRes.get(1)).getValue();
+                    if (reservesArray.size() >= 2) {
+                        state.reserveNO = reservesArray.get(0).getValue().toString();
+                        state.reserveYES = reservesArray.get(1).getValue().toString();
+                    }
+                    if (sharesArray.size() >= 2) {
+                        state.mySharesYES = sharesArray.get(0).getValue().toString();
+                        state.mySharesNO = sharesArray.get(1).getValue().toString();
+                    }
+                }
+            }
+            return state;
+        } catch (Exception e) {
+            Log.w(TAG, "queryChainStateDirectly failed: contract=" + targetContractAddress
+                    + " gameId=" + gameId + " - " + e.getMessage());
+            return null;
+        }
+    }
+
+    private boolean chainUsesMillisecondTimestamps() {
+        // 官方 BrokerChain 网关在本项目中固定使用毫秒级 block.timestamp。
+        // 不再为每次创建额外发送 gameCount + 状态查询，直接采用已知链配置。
+        if (!useLocalRpc) {
+            return true;
+        }
+
+        try {
+            EthBlock latest = web3j.ethGetBlockByNumber(
+                    DefaultBlockParameterName.LATEST, false).send();
+            if (latest != null && latest.getBlock() != null
+                    && latest.getBlock().getTimestamp() != null) {
+                return latest.getBlock().getTimestamp().longValue()
+                        >= MILLIS_TIMESTAMP_THRESHOLD;
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "chainUsesMillisecondTimestamps local probe failed: "
+                    + e.getMessage());
+        }
+        return false;
+    }
+
+    private long normalizeDurationForChain(long durationSeconds) {
+        if (durationSeconds <= 0) return durationSeconds;
+        return chainUsesMillisecondTimestamps() ? durationSeconds * 1000L : durationSeconds;
     }
 
     private BigInteger parseBigInteger(String s) {
@@ -892,6 +1101,13 @@ public class GoldMarketRepository {
                 long backendStart = System.currentTimeMillis();
                 BackendApiClient.GameMetaDTO meta = BackendApiClient.fetchGameMetadata(id);
                 BackendApiClient.ChainStateDTO state = BackendApiClient.fetchChainState(id, getWalletAddress());
+                if (shouldRepairChainState(meta, state)) {
+                    BackendApiClient.ChainStateDTO repairedState =
+                            queryChainStateDirectly(id, meta.contractAddress);
+                    if (repairedState != null) {
+                        state = repairedState;
+                    }
+                }
                 long backendEnd = System.currentTimeMillis();
                 long backendMs = backendEnd - backendStart;
                 Log.d("时延", "getGameInfo - 后端DB加载: " + backendMs + "ms");
@@ -971,7 +1187,7 @@ public class GoldMarketRepository {
                 model.ipfsCID = ((Utf8String) res.get(0)).getValue();
                 model.totalPool = ((Uint256) res.get(1)).getValue();
                 model.isResolved = ((Bool) res.get(2)).getValue();
-                // 合约 winningOption: 0=NO, 1=YES → 转换为 UI 约定 0=YES, 1=NO
+                // 合约 winningOption 与 UI 保持一致：0=YES, 1=NO
                 model.winningOption = toUiOption(((Uint8) res.get(3)).getValue().intValue());
                 model.deadlineSec = ((Uint256) res.get(4)).getValue().longValue();
                 model.isRefunded = ((Bool) res.get(5)).getValue();
@@ -1044,17 +1260,31 @@ public class GoldMarketRepository {
                 AppExecutors.getInstance().mainThread().execute(() ->
                     callback.onTiming("数据库批量加载", backendMs, false));
 
-                // 建立 gameId → ChainStateDTO 的映射
-                java.util.Map<Integer, BackendApiClient.ChainStateDTO> stateMap = new java.util.HashMap<>();
+                // 建立 contractAddress + gameId → ChainStateDTO 的映射；兼容旧接口缺少 contractAddress 的情况。
+                java.util.Map<String, BackendApiClient.ChainStateDTO> stateMap = new java.util.HashMap<>();
+                java.util.Map<Integer, BackendApiClient.ChainStateDTO> legacyStateMap = new java.util.HashMap<>();
                 if (states != null) {
                     for (BackendApiClient.ChainStateDTO s : states) {
-                        stateMap.put(s.gameId, s);
+                        legacyStateMap.put(s.gameId, s);
+                        if (s.contractAddress != null && !s.contractAddress.trim().isEmpty()) {
+                            stateMap.put(buildStateKey(s.contractAddress, s.gameId), s);
+                        }
                     }
                 }
 
                 List<GameModel> models = new ArrayList<>();
                 for (BackendApiClient.GameMetaDTO meta : metas) {
-                    BackendApiClient.ChainStateDTO state = stateMap.get(meta.gameId);
+                    BackendApiClient.ChainStateDTO state = stateMap.get(buildStateKey(meta.contractAddress, meta.gameId));
+                    if (state == null) {
+                        state = legacyStateMap.get(meta.gameId);
+                    }
+                    if (shouldRepairChainState(meta, state)) {
+                        BackendApiClient.ChainStateDTO repairedState =
+                                queryChainStateDirectly(meta.gameId, meta.contractAddress);
+                        if (repairedState != null) {
+                            state = repairedState;
+                        }
+                    }
                     GameModel m = buildModelFromBackend(meta, state);
                     if (m.history == null || m.history.isEmpty()) {
                         m.history = generateMockHistory(m.virtualReserves);
@@ -1146,7 +1376,7 @@ public class GoldMarketRepository {
                     m.deadlineSec = deadlines.get(i).getValue().longValue();
                     m.isResolved = isResolveds.get(i).getValue();
                     m.isRefunded = isRefundeds.get(i).getValue();
-                    // 合约 winningOption: 0=NO, 1=YES → 转换为 UI 约定 0=YES, 1=NO
+                    // 合约 winningOption 与 UI 保持一致：0=YES, 1=NO
                     m.winningOption = toUiOption(winningOptions.get(i).getValue().intValue());
                     m.optionNames = Arrays.asList("YES", "NO");
 
@@ -1243,6 +1473,13 @@ public class GoldMarketRepository {
 
                 List<GameModel> models = new ArrayList<>();
                 for (BackendApiClient.ChainStateDTO state : myStates) {
+                    if (!hasUsableDeadline(state.deadlineSec) && state.contractAddress != null && !state.contractAddress.trim().isEmpty()) {
+                        BackendApiClient.ChainStateDTO repairedState =
+                                queryChainStateDirectly(state.gameId, state.contractAddress);
+                        if (repairedState != null) {
+                            state = repairedState;
+                        }
+                    }
                     GameModel m;
                     try {
                         BackendApiClient.GameMetaDTO meta = BackendApiClient.fetchGameMetadata(state.gameId);
@@ -1254,7 +1491,7 @@ public class GoldMarketRepository {
                         m.totalPool = parseBigInteger(state.totalPool);
                         m.isResolved = state.isResolved;
                         m.isRefunded = state.isRefunded;
-                        // 后端 DB 存储合约约定 (0=NO, 1=YES)，转换为 UI 约定 (0=YES, 1=NO)
+                        // 后端 DB 的 winning_option 与当前合约保持一致：0=YES, 1=NO
                         m.winningOption = toUiOption(state.winningOption);
                         m.deadlineSec = state.deadlineSec;
                         // 核心修复：Java 索引 0 必须为 reserveNO，以匹配 UI 概率计算 (res0 / total)
@@ -1323,7 +1560,7 @@ public class GoldMarketRepository {
                     m.deadlineSec = dto.deadlineSec.longValue();
                     m.isResolved = dto.isResolved;
                     m.isRefunded = dto.isRefunded;
-                    // 合约返回 winningOption: 0=NO, 1=YES → 转换为 UI 约定 0=YES, 1=NO
+                    // 合约返回 winningOption 与 UI 保持一致：0=YES, 1=NO
                     m.winningOption = toUiOption(dto.winningOption.intValue());
                     m.optionNames = Arrays.asList("YES", "NO");
                     // 核心修复：Java 索引 0 对应 YES 概率源 (reserveNO) 和 YES 持仓 (mySharesYES)
@@ -1387,9 +1624,9 @@ public class GoldMarketRepository {
     //  设计原则：onConfirmed 回调时，后端 DB 已包含最新数据，UI 无需额外等待
     //
     //  ⚠️ 选项 ID 映射约定：
-    //  合约内部使用 0=NO, 1=YES（与 getGameExtraData 的 reserves=[NO,YES] 顺序一致）
-    //  Java/UI 层统一使用 0=YES, 1=NO（用户直觉：上=YES=0, 下=NO=1）
-    //  所有合约调用前通过 toContractOption() 转换，所有合约返回值通过 toUiOption() 转换
+    //  当前合约 buyShares/resolveGame 明确使用 0=YES, 1=NO。
+    //  getGameExtraData 的储备金顺序仍然是 [reserveNO, reserveYES]，因此选项 ID 与储备金数组顺序不要混淆。
+    //  Java/UI 层与合约保持同一套 optionId，避免交易和展示错位。
     // ========================================================================
 
     /** UI → 合约：保持映射一致 (0=YES, 1=NO) */
@@ -1403,7 +1640,7 @@ public class GoldMarketRepository {
     }
 
     public void buyShares(int gameId, int optionId, BigInteger amountWei, TxCallback callback) {
-        // optionId 是 UI 约定 (0=YES, 1=NO)，需转换为合约约定 (0=NO, 1=YES)
+        // optionId 与当前合约保持一致：0=YES, 1=NO
         int contractOption = toContractOption(optionId);
         org.web3j.abi.datatypes.Function f = new org.web3j.abi.datatypes.Function(
             "buyShares",
@@ -1421,7 +1658,7 @@ public class GoldMarketRepository {
     }
 
     public void sellShares(int gameId, int optionId, BigInteger shareAmount, TxCallback callback) {
-        // optionId 是 UI 约定 (0=YES, 1=NO)，需转换为合约约定 (0=NO, 1=YES)
+        // optionId 与当前合约保持一致：0=YES, 1=NO
         int contractOption = toContractOption(optionId);
         org.web3j.abi.datatypes.Function f = new org.web3j.abi.datatypes.Function(
             "sellShares", Arrays.asList(new Uint256(gameId), new Uint8(contractOption), new Uint256(shareAmount)), Collections.emptyList());
@@ -1477,29 +1714,31 @@ public class GoldMarketRepository {
                 Log.d(TAG, "元数据上传到IPFS成功, CID: " + metadataCid);
 
                 // ---- 步骤 3: 发送 createGame 链上交易 ----
-                // duration 已经是秒（由上层 (end - now) / 1000 计算），合约 createGame 的 _durationSec 参数期望秒
+                // duration 由上层按“秒”计算；如果链上的 block.timestamp 实际是毫秒，则这里补齐到链单位，
+                // 否则会出现“刚创建就到期，随后无法买入 YES/NO”。
+                long chainDuration = normalizeDurationForChain(duration);
                 org.web3j.abi.datatypes.Function f = new org.web3j.abi.datatypes.Function(
                     "createGame",
-                    Arrays.asList(new Utf8String(metadataCid), new Uint256(duration)),
+                    Arrays.asList(new Utf8String(metadataCid), new Uint256(chainDuration)),
                     Collections.emptyList());
 
                 String data = FunctionEncoder.encode(f);
                 String txHash;
                 if (useLocalRpc) {
-                    txHash = sendLocalRpcAndWait(initialLiquidityWei, data, callback);
+                    txHash = sendLocalRpc(initialLiquidityWei, data, callback);
                     if (txHash == null) return;
                     AppExecutors.getInstance().mainThread().execute(() -> callback.onTxSent(txHash));
+                    waitForLocalReceipt(txHash);
                 } else {
                     txHash = sendBrokerChainTx(initialLiquidityWei, data, callback);
                     if (txHash == null) return;
-                    AppExecutors.getInstance().mainThread().execute(() -> callback.onTxSent("Transaction Sent"));
-                    Thread.sleep(8000); // 等待链上确认
+                    AppExecutors.getInstance().mainThread().execute(() -> callback.onTxSent(txHash));
+                    waitForBrokerChainReceipt(txHash);
                 }
 
-                // ---- 步骤 4: 同步到后端 DB（在 onConfirmed 之前） ----
+                // ---- 步骤 4: 先同步列表必需的元数据，其余缓存后台补齐 ----
                 final String finalAvatarCid = avatarCid;
                 final String finalMetadataCid = metadataCid;
-                final String finalTxHash = txHash;
 
                 // 4a. 获取新创建博弈池的 gameId（通过 gameCount 推算）
                 try {
@@ -1534,48 +1773,13 @@ public class GoldMarketRepository {
                     Log.w(TAG, "❌ 创建博弈池 - 后端元数据同步失败（非关键）: " + e.getMessage());
                 }
 
-                // 4c. 查询初始链上状态并同步到后端 DB
-                if (newGameId > 0) {
-                    try {
-                        // 短暂延迟确保链上状态已更新
-                        Thread.sleep(2000);
-                        PostTxState postState = queryPostTxState(newGameId);
-                        if (postState != null) {
-                            BackendApiClient.ChainStateSyncReq chainReq = new BackendApiClient.ChainStateSyncReq();
-                            chainReq.totalPool = postState.totalPool;
-                            chainReq.isResolved = false;
-                            chainReq.isRefunded = false;
-                            chainReq.winningOption = 0;
-                            chainReq.deadlineSec = postState.deadlineSec;
-                            chainReq.reserveYES = postState.reserveYES;
-                            chainReq.reserveNO = postState.reserveNO;
-                            chainReq.mySharesYES = "0";
-                            chainReq.mySharesNO = "0";
-                            BackendApiClient.syncChainState(newGameId, chainReq);
-                            Log.d(TAG, "✅ 创建博弈池 - 后端初始链上状态同步成功: gameId=" + newGameId
-                                    + " deadlineSec=" + postState.deadlineSec);
-                        }
-                    } catch (Exception e) {
-                        Log.w(TAG, "❌ 创建博弈池 - 后端链上状态同步失败（非关键）: " + e.getMessage());
-                    }
-
-                    // 4d. 添加初始历史价格点
-                    try {
-                        BackendApiClient.HistoryPointDTO point = new BackendApiClient.HistoryPointDTO();
-                        point.gameId = newGameId;
-                        point.timestampSec = System.currentTimeMillis() / 1000;
-                        point.yesPrice = 50f;
-                        point.noPrice = 50f;
-                        point.totalPool = initialLiquidityWei.toString();
-                        BackendApiClient.addHistoryPoint(newGameId, point);
-                        Log.d(TAG, "✅ 创建博弈池 - 初始历史价格点同步成功: gameId=" + newGameId);
-                    } catch (Exception e) {
-                        Log.w(TAG, "❌ 创建博弈池 - 初始历史价格点同步失败（非关键）: " + e.getMessage());
-                    }
-                }
-
-                // ---- 通知 UI 完成（后端 DB 已更新） ----
+                // 元数据已经可供列表读取；状态和历史点作为缓存后台补齐。
                 final int finalGameId = newGameId;
+                if (finalGameId > 0) {
+                    AppExecutors.getInstance().networkIO().execute(
+                            () -> syncCreatedGameSupplemental(
+                                    finalGameId, initialLiquidityWei));
+                }
                 AppExecutors.getInstance().mainThread().execute(() -> callback.onConfirmed("博弈池部署成功 (ID=" + finalGameId + ")"));
 
             } catch (Exception e) {
@@ -1630,6 +1834,46 @@ public class GoldMarketRepository {
         });
     }
 
+    private void syncCreatedGameSupplemental(int gameId, BigInteger initialLiquidityWei) {
+        try {
+            PostTxState postState = queryPostTxState(gameId);
+            if (postState != null) {
+                BackendApiClient.ChainStateSyncReq chainReq =
+                        new BackendApiClient.ChainStateSyncReq();
+                chainReq.totalPool = postState.totalPool;
+                chainReq.isResolved = false;
+                chainReq.isRefunded = false;
+                chainReq.winningOption = 0;
+                chainReq.deadlineSec = postState.deadlineSec;
+                chainReq.reserveYES = postState.reserveYES;
+                chainReq.reserveNO = postState.reserveNO;
+                chainReq.mySharesYES = "0";
+                chainReq.mySharesNO = "0";
+                BackendApiClient.syncChainState(gameId, chainReq);
+                Log.d(TAG, "✅ 创建博弈池 - 后端初始链上状态同步成功: gameId="
+                        + gameId + " deadlineSec=" + postState.deadlineSec);
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "❌ 创建博弈池 - 后端链上状态同步失败（非关键）: "
+                    + e.getMessage());
+        }
+
+        try {
+            BackendApiClient.HistoryPointDTO point =
+                    new BackendApiClient.HistoryPointDTO();
+            point.gameId = gameId;
+            point.timestampSec = System.currentTimeMillis() / 1000;
+            point.yesPrice = 50f;
+            point.noPrice = 50f;
+            point.totalPool = initialLiquidityWei.toString();
+            BackendApiClient.addHistoryPoint(gameId, point);
+            Log.d(TAG, "✅ 创建博弈池 - 初始历史价格点同步成功: gameId=" + gameId);
+        } catch (Exception e) {
+            Log.w(TAG, "❌ 创建博弈池 - 初始历史价格点同步失败（非关键）: "
+                    + e.getMessage());
+        }
+    }
+
     public BigDecimal calculateShuibeiPrice(BigDecimal basePrice, boolean isBuy) {
         BigDecimal spread = new BigDecimal("0.005");
         if (isBuy) {
@@ -1650,7 +1894,7 @@ public class GoldMarketRepository {
     }
 
     public void resolveGame(int gameId, int winningOption, TxCallback callback) {
-        // winningOption 是 UI 约定 (0=YES, 1=NO)，需转换为合约约定 (0=NO, 1=YES)
+        // winningOption 与当前合约保持一致：0=YES, 1=NO
         int contractOption = toContractOption(winningOption);
         org.web3j.abi.datatypes.Function f = new org.web3j.abi.datatypes.Function(
             "resolveGame",
@@ -1663,7 +1907,7 @@ public class GoldMarketRepository {
         tradeInfo.optionId = winningOption;          // 交易记录用 UI 约定 (0=YES, 1=NO)
         tradeInfo.amountWei = "0";
         tradeInfo.isResolved = true;
-        // 后端 DB 的 winning_option 使用合约约定 (0=NO, 1=YES)，与 syncChainState 一致
+        // 后端 DB 的 winning_option 与当前合约保持一致：0=YES, 1=NO
         tradeInfo.winningOption = contractOption;
 
         sendTransaction(BigInteger.ZERO, f, "开奖成功", callback, tradeInfo);

@@ -77,7 +77,7 @@
 | 数据类型 | 说明 | 更新频率 |
 |----------|------|----------|
 | 合约状态 | totalPool, isResolved, winningOption, deadlineSec | 每笔交易后更新 |
-| 储备金 | virtualReserves (YES/NO) | 每笔买卖后更新 |
+| 储备金 | virtualReserves（合约返回顺序为 `[reserveNO, reserveYES]`） | 每笔买卖后更新 |
 | 用户份额 | myShares (每个用户的 YES/NO 份额) | 每笔买卖后更新 |
 | 交易记录 | 所有 buy/sell/claim/create 交易 | 实时 |
 
@@ -878,7 +878,7 @@ curl -X POST "https://dash.broker-chain.com:440/api/v1/gold/games/1/history" \
 |------|------|------|------|
 | `game_id` | int | 是 | 博弈池 ID |
 | `timestamp_sec` | int64 | 是 | 当前 Unix 时间戳（秒），DApp 使用 `System.currentTimeMillis() / 1000` |
-| `yes_price` | float | 是 | 当前 YES 价格百分比，由 `reserveYES/(reserveYES+reserveNO)*100` 计算 |
+| `yes_price` | float | 是 | 当前 YES 价格百分比，由 `reserveNO/(reserveNO+reserveYES)*100` 计算；原因是当前合约中买入 YES 时，注入的是 NO 侧储备，YES 的隐含价格取对侧储备占比 |
 | `no_price` | float | 是 | 当前 NO 价格百分比，`100 - yes_price` |
 | `total_pool` | string | 否 | 当前总池子（wei，十进制字符串） |
 

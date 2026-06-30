@@ -124,6 +124,24 @@ public class GoldMarketRepositoryTest {
     }
 
     @Test
+    public void countdownTreatsNonAbsoluteDeadlineAsUnknown() {
+        long nowMillis = 1_764_000_000_000L;
+
+        assertEquals(-1,
+                GoldNoteMarketActivity.remainingSecondsUntilDeadline(604800, nowMillis));
+        assertFalse(GoldNoteMarketActivity.hasKnownDeadline(604800));
+        assertEquals("截止时间待同步", GoldNoteMarketActivity.formatRemainingTime(-1));
+        assertEquals("同步中", GoldNoteMarketActivity.formatMarketStatus(-1));
+    }
+
+    @Test
+    public void countdownDisplayShowsPreciseRemainingTime() {
+        assertEquals("距结束 2天3小时", GoldNoteMarketActivity.formatRemainingTime(2 * 86400L + 3 * 3600L));
+        assertEquals("距结束 5小时12分钟", GoldNoteMarketActivity.formatRemainingTime(5 * 3600L + 12 * 60L));
+        assertEquals("距结束 45分钟", GoldNoteMarketActivity.formatRemainingTime(45 * 60L));
+    }
+
+    @Test
     public void shareAmountDisplayKeepsFractionalHoldings() {
         assertEquals("0.2", GoldNoteMarketActivity.formatShareAmount(
                 new BigInteger("200000000000000000")));

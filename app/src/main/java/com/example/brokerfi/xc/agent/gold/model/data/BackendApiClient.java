@@ -54,6 +54,8 @@ public class BackendApiClient {
     private static final Gson gson = new Gson();
     private static final int CONNECT_TIMEOUT_MS = 8000;
     private static final int READ_TIMEOUT_MS = 10000;
+    private static final int FAST_WRITE_CONNECT_TIMEOUT_MS = 3000;
+    private static final int FAST_WRITE_READ_TIMEOUT_MS = 5000;
 
     private static String cachedBaseUrl = null;
 
@@ -142,6 +144,11 @@ public class BackendApiClient {
     }
 
     private static String doPost(String path, String jsonBody) throws Exception {
+        return doPost(path, jsonBody, CONNECT_TIMEOUT_MS, READ_TIMEOUT_MS);
+    }
+
+    private static String doPost(String path, String jsonBody,
+                                 int connectTimeoutMs, int readTimeoutMs) throws Exception {
         String base = resolveBaseUrl();
         String fullUrl = base + API_PREFIX + path;
         Log.d(TAG, "POST " + fullUrl);
@@ -151,8 +158,8 @@ public class BackendApiClient {
         conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
         conn.setRequestProperty("Accept", "application/json");
         conn.setDoOutput(true);
-        conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
-        conn.setReadTimeout(READ_TIMEOUT_MS);
+        conn.setConnectTimeout(connectTimeoutMs);
+        conn.setReadTimeout(readTimeoutMs);
 
         try (OutputStream os = conn.getOutputStream()) {
             os.write(jsonBody.getBytes(StandardCharsets.UTF_8));
@@ -296,7 +303,9 @@ public class BackendApiClient {
      * Body: TradeSyncReq
      */
     public static boolean syncTrade(TradeSyncReq req) throws Exception {
-        String body = doPost("/trades/sync", gson.toJson(req));
+        // 交易已经链上确认；缓存写入不应因后端抖动长时间阻塞成功反馈。
+        String body = doPost("/trades/sync", gson.toJson(req),
+                FAST_WRITE_CONNECT_TIMEOUT_MS, FAST_WRITE_READ_TIMEOUT_MS);
         JSONObject json = new JSONObject(body);
         return json.optBoolean("success", false);
     }
@@ -439,6 +448,9 @@ public class BackendApiClient {
     public static class ChainStateDTO {
         @SerializedName("game_id")
         public int gameId;
+
+        @SerializedName("contract_address")
+        public String contractAddress;
 
         @SerializedName("total_pool")
         public String totalPool;

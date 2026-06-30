@@ -202,6 +202,38 @@ public class BrokerChainClient {
         return doPost("eth_sendTransaction", req);
     }
 
+    /**
+     * 查询 BrokerChain 交易回执。
+     *
+     * @return null 表示仍在等待打包；true 表示执行成功；false 表示链上执行失败
+     */
+    public static Boolean getTransactionReceiptStatus(String privateKey, String txHash) throws Exception {
+        String normalizedHash = txHash == null ? "" : txHash.trim();
+        if (normalizedHash.startsWith("0x")) normalizedHash = normalizedHash.substring(2);
+        if (normalizedHash.isEmpty()) throw new IOException("交易哈希为空");
+
+        String uuid = UUID.randomUUID().toString();
+        String[] sign = signECDSA(privateKey, uuid + normalizedHash);
+
+        ReceiptReq req = new ReceiptReq();
+        req.setPublicKey(getPublicKeyFromPrivateKey(privateKey));
+        req.setRandomStr(uuid);
+        req.setUUID(normalizedHash);
+        req.setSign1(sign[0]);
+        req.setSign2(sign[1]);
+
+        return parseTransactionReceiptStatus(doPost("eth_getTransactionReceipt", req));
+    }
+
+    static Boolean parseTransactionReceiptStatus(String response) throws Exception {
+        ReceiptResponse root = gson.fromJson(response, ReceiptResponse.class);
+        if (root == null || root.result == null) return null;
+        String status = root.result.status == null ? "" : root.result.status;
+        if ("0x1".equalsIgnoreCase(status) || "1".equals(status)) return true;
+        if ("0x0".equalsIgnoreCase(status) || "0".equals(status)) return false;
+        return null;
+    }
+
     public static ReturnAccountState getAddrAndBalance(String privateKey) throws Exception {
         String uuid = UUID.randomUUID().toString();
         String rawAddress = getAddress(privateKey);
@@ -282,6 +314,33 @@ public class BrokerChainClient {
         public void setSign1(String s) { Sign1 = s; }
         public void setSign2(String s) { Sign2 = s; }
         public void setUUID(String u) { UUID = u; }
+    }
+
+    public static class ReceiptReq {
+        @SerializedName("uuid")
+        private String UUID;
+        @SerializedName("PublicKey")
+        private String PublicKey;
+        @SerializedName("RandomStr")
+        private String RandomStr;
+        @SerializedName("Sign1")
+        private String Sign1;
+        @SerializedName("Sign2")
+        private String Sign2;
+
+        public void setUUID(String value) { UUID = value; }
+        public void setPublicKey(String value) { PublicKey = value; }
+        public void setRandomStr(String value) { RandomStr = value; }
+        public void setSign1(String value) { Sign1 = value; }
+        public void setSign2(String value) { Sign2 = value; }
+    }
+
+    private static class ReceiptResponse {
+        ReceiptResult result;
+    }
+
+    private static class ReceiptResult {
+        String status;
     }
 
     public static class ReturnAccountState {
