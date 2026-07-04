@@ -88,7 +88,7 @@ public class GoldNoteMarketActivity extends AppCompatActivity {
         new TabLayoutMediator(tabLayout, viewPager, (tab, position) -> {
             switch (position) {
                 case 0: tab.setText("博弈市场"); break;
-                case 1: tab.setText("个人持仓"); break;
+                case 1: tab.setText("个人持有"); break;
                 case 2: tab.setText("创建博弈"); break;
                 case 3: tab.setText("AI投研"); break;
             }

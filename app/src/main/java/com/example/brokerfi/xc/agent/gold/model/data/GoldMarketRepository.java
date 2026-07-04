@@ -50,7 +50,7 @@ import java.util.regex.Pattern;
  * 【写操作】同步写入：IPFS → 链上交易 → 查询真实状态 → 后端 DB（onConfirmed 前完成）
  *   1. 上传图片/元数据到 IPFS（去中心化存储）
  *   2. 发送交易到链上，等待确认（不可篡改的状态变更）
- *   3. 通过 eth_call 查询交易后的链上真实状态（资金池、储备金、持仓）
+ *   3. 通过 eth_call 查询交易后的链上真实状态（资金池、储备金、持有）
  *   4. 将真实状态同步写入后端 DB（加速后续读取，确保缓存一致性）
  *   5. 后端 DB 写入完成后，回调 onConfirmed 通知 UI
  *   注意：步骤 4 失败不阻塞主流程（非关键路径），每项同步独立 try-catch
@@ -277,8 +277,8 @@ public class GoldMarketRepository {
      *
      * 完整流程（三步串行）：
      * 1. 发送交易并轮询链上回执
-     * 2. 通过 eth_call 查询交易后的链上真实状态（资金池、储备金、持仓、结算状态）
-     * 3. 快速同步交易记录（该接口同时更新资金池和用户持仓缓存）
+     * 2. 通过 eth_call 查询交易后的链上真实状态（资金池、储备金、持有、结算状态）
+     * 3. 快速同步交易记录（该接口同时更新资金池和用户持有缓存）
      * 4. 回调 onConfirmed；历史点和完整链上状态在后台继续同步
      */
     private void sendTransaction(BigInteger value, org.web3j.abi.datatypes.Function function,
@@ -520,7 +520,7 @@ public class GoldMarketRepository {
     }
 
     /**
-     * 交易前只读取持仓数组，用于计算本次成交份额。
+     * 交易前只读取持有数组，用于计算本次成交份额。
      * 无需同时查询 getGameInfo，可少一次远程 eth_call。
      */
     private PostTxState queryPreTradeShareState(int gameId) {
@@ -558,7 +558,7 @@ public class GoldMarketRepository {
     /**
      * 查询交易后的链上真实状态
      * 通过 eth_call 调用 getGameInfo + getGameExtraData 合约方法，
-     * 获取资金池、储备金、用户持仓、结算状态等真实值。
+     * 获取资金池、储备金、用户持有、结算状态等真实值。
      *
      * @param gameId 博弈池 ID
      * @return PostTxState，查询失败返回 null
@@ -641,7 +641,7 @@ public class GoldMarketRepository {
     // ── 后端 DB 同步（核心交易缓存先写，其余缓存异步补齐） ──
 
     /**
-     * 先同步交易记录及其级联的资金池/持仓缓存，再异步补齐历史和完整状态。
+     * 先同步交易记录及其级联的资金池/持有缓存，再异步补齐历史和完整状态。
      *
      * 写入策略（三项同步，每项独立 try-catch）：
      * 1. 同步交易记录 → POST /api/v1/gold/trades/sync
@@ -1457,9 +1457,9 @@ public class GoldMarketRepository {
                 long backendMs = backendEnd - backendStart;
                 Log.d("时延", "getMyParticipatedGames - 后端DB加载: " + backendMs + "ms");
                 AppExecutors.getInstance().mainThread().execute(() ->
-                    callback.onTiming("数据库持仓查询", backendMs, false));
+                    callback.onTiming("数据库持有查询", backendMs, false));
 
-                // 过滤出用户有持仓的游戏
+                // 过滤出用户有持有的游戏
                 List<BackendApiClient.ChainStateDTO> myStates = new ArrayList<>();
                 if (allStates != null) {
                     for (BackendApiClient.ChainStateDTO s : allStates) {
@@ -1510,15 +1510,15 @@ public class GoldMarketRepository {
                 Log.d("时延", "getMyParticipatedGames - 总耗时(后端优先): " + totalMs + "ms (共 " + models.size() + " 个项目)");
                 final long finalTotalMs = totalMs;
                 AppExecutors.getInstance().mainThread().execute(() -> {
-                    callback.onTiming("✅ 数据库持仓完成(" + models.size() + "个)", finalTotalMs, false);
+                    callback.onTiming("✅ 数据库持有完成(" + models.size() + "个)", finalTotalMs, false);
                     callback.onSuccess(models);
                 });
                 return;
             } catch (Exception backendErr) {
                 long failMs = System.currentTimeMillis() - totalStart;
-                Log.w(TAG, "后端DB读取持仓失败，回退到链上+IPFS: " + backendErr.getMessage());
+                Log.w(TAG, "后端DB读取持有失败，回退到链上+IPFS: " + backendErr.getMessage());
                 AppExecutors.getInstance().mainThread().execute(() ->
-                    callback.onTiming("⚠️ 数据库失败，回退链上持仓查询...", failMs, true));
+                    callback.onTiming("⚠️ 数据库失败，回退链上持有查询...", failMs, true));
             }
 
             // ---- 策略 2: 回退到链上 + IPFS（可靠路径） ----
@@ -1548,7 +1548,7 @@ public class GoldMarketRepository {
                 long chainMs = chainEnd - chainStart;
                 Log.d("时延", "getMyParticipatedGames - 链上数据加载(回退): " + chainMs + "ms");
                 AppExecutors.getInstance().mainThread().execute(() ->
-                    callback.onTiming("链上持仓查询(" + dtos.size() + "个)", chainMs, true));
+                    callback.onTiming("链上持有查询(" + dtos.size() + "个)", chainMs, true));
 
                 List<GameModel> models = new ArrayList<>();
                 for (ParticipatedGameDTO dto : dtos) {
@@ -1563,7 +1563,7 @@ public class GoldMarketRepository {
                     // 合约返回 winningOption 与 UI 保持一致：0=YES, 1=NO
                     m.winningOption = toUiOption(dto.winningOption.intValue());
                     m.optionNames = Arrays.asList("YES", "NO");
-                    // 核心修复：Java 索引 0 对应 YES 概率源 (reserveNO) 和 YES 持仓 (mySharesYES)
+                    // 核心修复：Java 索引 0 对应 YES 概率源 (reserveNO) 和 YES 持有 (mySharesYES)
                     m.virtualReserves = Arrays.asList(dto.reserveNO, dto.reserveYES);
                     m.myShares = Arrays.asList(dto.mySharesYES, dto.mySharesNO);
                     models.add(m);
@@ -1603,12 +1603,12 @@ public class GoldMarketRepository {
                 long totalMs = ipfsEnd - totalStart;
                 Log.d("时延", "getMyParticipatedGames - 总耗时(回退): " + totalMs + "ms (共 " + models.size() + " 个项目)");
                 AppExecutors.getInstance().mainThread().execute(() ->
-                    callback.onTiming("IPFS 持仓元数据(回退)", ipfsMs, true));
+                    callback.onTiming("IPFS 持有元数据(回退)", ipfsMs, true));
 
                 final long finalTotalMs = totalMs;
                 final int modelCount = models.size();
                 AppExecutors.getInstance().mainThread().execute(() -> {
-                    callback.onTiming("⚠️ 回退持仓完成(" + modelCount + "个)", finalTotalMs, true);
+                    callback.onTiming("⚠️ 回退持有完成(" + modelCount + "个)", finalTotalMs, true);
                     callback.onSuccess(models);
                 });
             } catch (Exception e) {

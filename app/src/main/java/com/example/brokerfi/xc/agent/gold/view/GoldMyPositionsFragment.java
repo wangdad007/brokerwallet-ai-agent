@@ -177,7 +177,7 @@ public class GoldMyPositionsFragment extends Fragment {
         animateBalance(totalBkc.doubleValue());
         String subtitle = String.format(Locale.getDefault(), "累计参与 %d 个博弈池", myPositions.size());
         if (portfolio.getUnavailableMarketCount() > 0) {
-            subtitle += String.format(Locale.getDefault(), " · %d 个持仓暂未计入估值", portfolio.getUnavailableMarketCount());
+            subtitle += String.format(Locale.getDefault(), " · %d 个持有暂未计入估值", portfolio.getUnavailableMarketCount());
         }
         tvTotalPnl.setText(subtitle);
     }

@@ -2,6 +2,7 @@ package com.example.brokerfi.xc.agent.gold.view;
 
 import android.app.AlertDialog;
 import android.app.DatePickerDialog;
+import android.app.TimePickerDialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -52,7 +53,7 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
     private ImageView ivPoolIcon;
     private LinearLayout containerTechnical, containerDirection;
     private Spinner spinnerIndicator, spinnerOperator, spinnerDirection;
-    private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+    private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault());
     
     private byte[] selectedImageData = null;
     private final ActivityResultLauncher<Intent> imagePickerLauncher = registerForActivityResult(
@@ -194,6 +195,8 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
             int days = json.optInt("daysFromNow", 7);
             endCalendar = Calendar.getInstance();
             endCalendar.add(Calendar.DAY_OF_YEAR, days);
+            endCalendar.set(Calendar.SECOND, 0);
+            endCalendar.set(Calendar.MILLISECOND, 0);
             endSelected = true;
             btnSelectTime.setText("截止: " + dateFormat.format(endCalendar.getTime()));
 
@@ -205,14 +208,29 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
     }
 
     private void showDatePicker(boolean isStart) {
-        Calendar now = Calendar.getInstance(), target = isStart ? startCalendar : endCalendar;
+        Calendar target = isStart ? startCalendar : endCalendar;
         DatePickerDialog dialog = new DatePickerDialog(this, (view, year, month, day) -> {
             target.set(Calendar.YEAR, year); target.set(Calendar.MONTH, month); target.set(Calendar.DAY_OF_MONTH, day);
-            target.set(Calendar.HOUR_OF_DAY, isStart ? 0 : 23); target.set(Calendar.MINUTE, isStart ? 0 : 59); target.set(Calendar.SECOND, 0);
-            if (isStart) { startSelected = true; btnSelectStartTime.setText("开始: " + dateFormat.format(target.getTime())); }
-            else { endSelected = true; btnSelectTime.setText("截止: " + dateFormat.format(target.getTime())); }
-        }, now.get(Calendar.YEAR), now.get(Calendar.MONTH), now.get(Calendar.DAY_OF_MONTH));
+            showTimePicker(isStart, target);
+        }, target.get(Calendar.YEAR), target.get(Calendar.MONTH), target.get(Calendar.DAY_OF_MONTH));
         dialog.getDatePicker().setMinDate(System.currentTimeMillis() - 1000);
+        dialog.show();
+    }
+
+    private void showTimePicker(boolean isStart, Calendar target) {
+        TimePickerDialog dialog = new TimePickerDialog(this, (view, hourOfDay, minute) -> {
+            target.set(Calendar.HOUR_OF_DAY, hourOfDay);
+            target.set(Calendar.MINUTE, minute);
+            target.set(Calendar.SECOND, 0);
+            target.set(Calendar.MILLISECOND, 0);
+            if (isStart) {
+                startSelected = true;
+                btnSelectStartTime.setText("开始: " + dateFormat.format(target.getTime()));
+            } else {
+                endSelected = true;
+                btnSelectTime.setText("截止: " + dateFormat.format(target.getTime()));
+            }
+        }, target.get(Calendar.HOUR_OF_DAY), target.get(Calendar.MINUTE), true);
         dialog.show();
     }
 

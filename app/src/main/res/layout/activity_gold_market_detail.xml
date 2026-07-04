@@ -368,7 +368,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="32dp"
-                    android:text="您的持仓"
+                    android:text="您的持有"
                     android:textColor="#000000"
                     android:textSize="17sp"
                     android:textStyle="bold" />
@@ -387,7 +387,7 @@
                         android:layout_height="wrap_content"
                         android:background="@drawable/bg_gold_market_panel"
                         android:padding="20dp"
-                        android:text="暂无持仓"
+                        android:text="暂无持有"
                         android:textColor="#94A3B8"
                         android:textSize="14sp"
                         android:gravity="center"
