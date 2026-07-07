@@ -682,9 +682,9 @@ public class GoldMarketRepository {
                 tradeReq.mySharesNOAfter = tradeInfo.mySharesNOAfter;
             }
             BackendApiClient.syncTrade(tradeReq);
-            Log.d(TAG, "✅ 后端交易同步成功: gameId=" + gameId + " type=" + tradeInfo.tradeType);
+            Log.d(TAG, "后端交易同步成功: gameId=" + gameId + " type=" + tradeInfo.tradeType);
         } catch (Exception e) {
-            Log.w(TAG, "❌ 后端交易同步失败（非关键）: gameId=" + gameId + " - " + e.getMessage());
+            Log.w(TAG, "后端交易同步失败（非关键）: gameId=" + gameId + " - " + e.getMessage());
         }
 
         // 历史点和完整状态只是缓存补全，不再阻塞 UI 的交易成功反馈。
@@ -714,10 +714,10 @@ public class GoldMarketRepository {
                 }
                 point.totalPool = totalPool;
                 BackendApiClient.addHistoryPoint(gameId, point);
-                Log.d(TAG, "✅ 后端历史数据同步成功: gameId=" + gameId);
+                Log.d(TAG, "后端历史数据同步成功: gameId=" + gameId);
             }
         } catch (Exception e) {
-            Log.w(TAG, "❌ 后端历史数据同步失败（非关键）: gameId=" + gameId + " - " + e.getMessage());
+            Log.w(TAG, "后端历史数据同步失败（非关键）: gameId=" + gameId + " - " + e.getMessage());
         }
 
         // ── 3. 同步完整链上状态缓存 ──
@@ -745,12 +745,12 @@ public class GoldMarketRepository {
                 chainReq.mySharesNO = tradeInfo.mySharesNOAfter;
             }
             BackendApiClient.syncChainState(gameId, chainReq);
-            Log.d(TAG, "✅ 后端链上状态同步成功: gameId=" + gameId
+            Log.d(TAG, "后端链上状态同步成功: gameId=" + gameId
                     + " totalPool=" + chainReq.totalPool
                     + " isResolved=" + chainReq.isResolved
                     + " deadlineSec=" + chainReq.deadlineSec);
         } catch (Exception e) {
-            Log.w(TAG, "❌ 后端链上状态同步失败（非关键）: gameId=" + gameId + " - " + e.getMessage());
+            Log.w(TAG, "后端链上状态同步失败（非关键）: gameId=" + gameId + " - " + e.getMessage());
         }
     }
 
@@ -1128,7 +1128,7 @@ public class GoldMarketRepository {
                 Log.d("时延", "getGameInfo - 总耗时(后端优先): " + totalMs + "ms");
                 final long finalTotalMs = totalMs;
                 AppExecutors.getInstance().mainThread().execute(() -> {
-                    callback.onTiming("✅ 数据库读取成功", finalTotalMs, false);
+                    callback.onTiming("数据库读取成功", finalTotalMs, false);
                     callback.onSuccess(model);
                 });
                 return;
@@ -1229,7 +1229,7 @@ public class GoldMarketRepository {
 
                 final long finalTotalMs = totalMs;
                 AppExecutors.getInstance().mainThread().execute(() -> {
-                    callback.onTiming("⚠️ 回退链上+IPFS完成", finalTotalMs, true);
+                    callback.onTiming("回退链上+IPFS完成", finalTotalMs, true);
                     callback.onSuccess(model);
                 });
             } catch (Exception e) {
@@ -1296,7 +1296,7 @@ public class GoldMarketRepository {
                 Log.d("时延", "getAllGamesInfo - 总耗时(后端优先): " + totalMs + "ms (共 " + models.size() + " 个)");
                 final long finalTotalMs = totalMs;
                 AppExecutors.getInstance().mainThread().execute(() -> {
-                    callback.onTiming("✅ 数据库批量完成(" + models.size() + "个)", finalTotalMs, false);
+                    callback.onTiming("数据库批量完成(" + models.size() + "个)", finalTotalMs, false);
                     callback.onSuccess(models);
                 });
                 return;
@@ -1304,7 +1304,7 @@ public class GoldMarketRepository {
                 long failMs = System.currentTimeMillis() - totalStart;
                 Log.w(TAG, "后端DB批量读取失败，回退到链上+IPFS: " + backendErr.getMessage());
                 AppExecutors.getInstance().mainThread().execute(() ->
-                    callback.onTiming("⚠️ 数据库失败，回退链上批量读...", failMs, true));
+                    callback.onTiming("数据库失败，回退链上批量读...", failMs, true));
             }
 
             // ---- 策略 2: 回退到链上 + IPFS（可靠路径） ----
@@ -1430,7 +1430,7 @@ public class GoldMarketRepository {
                 final long finalTotalMs = totalMs;
                 final int modelCount = models.size();
                 AppExecutors.getInstance().mainThread().execute(() -> {
-                    callback.onTiming("⚠️ 回退链上+IPFS完成(" + modelCount + "个)", finalTotalMs, true);
+                    callback.onTiming("回退链上+IPFS完成(" + modelCount + "个)", finalTotalMs, true);
                     callback.onSuccess(models);
                 });
             } catch (Exception e) {
@@ -1510,7 +1510,7 @@ public class GoldMarketRepository {
                 Log.d("时延", "getMyParticipatedGames - 总耗时(后端优先): " + totalMs + "ms (共 " + models.size() + " 个项目)");
                 final long finalTotalMs = totalMs;
                 AppExecutors.getInstance().mainThread().execute(() -> {
-                    callback.onTiming("✅ 数据库持有完成(" + models.size() + "个)", finalTotalMs, false);
+                    callback.onTiming("数据库持有完成(" + models.size() + "个)", finalTotalMs, false);
                     callback.onSuccess(models);
                 });
                 return;
@@ -1518,7 +1518,7 @@ public class GoldMarketRepository {
                 long failMs = System.currentTimeMillis() - totalStart;
                 Log.w(TAG, "后端DB读取持有失败，回退到链上+IPFS: " + backendErr.getMessage());
                 AppExecutors.getInstance().mainThread().execute(() ->
-                    callback.onTiming("⚠️ 数据库失败，回退链上持有查询...", failMs, true));
+                    callback.onTiming("数据库失败，回退链上持有查询...", failMs, true));
             }
 
             // ---- 策略 2: 回退到链上 + IPFS（可靠路径） ----
@@ -1608,7 +1608,7 @@ public class GoldMarketRepository {
                 final long finalTotalMs = totalMs;
                 final int modelCount = models.size();
                 AppExecutors.getInstance().mainThread().execute(() -> {
-                    callback.onTiming("⚠️ 回退持有完成(" + modelCount + "个)", finalTotalMs, true);
+                    callback.onTiming("回退持有完成(" + modelCount + "个)", finalTotalMs, true);
                     callback.onSuccess(models);
                 });
             } catch (Exception e) {
@@ -1623,7 +1623,7 @@ public class GoldMarketRepository {
     //  流程：IPFS 上传 → 链上交易 → 等待确认 → eth_call 查询真实状态 → 后端 DB 同步写入 → 通知 UI
     //  设计原则：onConfirmed 回调时，后端 DB 已包含最新数据，UI 无需额外等待
     //
-    //  ⚠️ 选项 ID 映射约定：
+    //  选项 ID 映射约定：
     //  当前合约 buyShares/resolveGame 明确使用 0=YES, 1=NO。
     //  getGameExtraData 的储备金顺序仍然是 [reserveNO, reserveYES]，因此选项 ID 与储备金数组顺序不要混淆。
     //  Java/UI 层与合约保持同一套 optionId，避免交易和展示错位。
@@ -1768,9 +1768,9 @@ public class GoldMarketRepository {
                     syncReq.durationSec = duration;
                     syncReq.initialLiquidityWei = initialLiquidityWei.toString();
                     BackendApiClient.syncGameMetadata(syncReq);
-                    Log.d(TAG, "✅ 创建博弈池 - 后端元数据同步成功: gameId=" + newGameId);
+                    Log.d(TAG, "创建博弈池 - 后端元数据同步成功: gameId=" + newGameId);
                 } catch (Exception e) {
-                    Log.w(TAG, "❌ 创建博弈池 - 后端元数据同步失败（非关键）: " + e.getMessage());
+                    Log.w(TAG, "创建博弈池 - 后端元数据同步失败（非关键）: " + e.getMessage());
                 }
 
                 // 元数据已经可供列表读取；状态和历史点作为缓存后台补齐。
@@ -1850,11 +1850,11 @@ public class GoldMarketRepository {
                 chainReq.mySharesYES = "0";
                 chainReq.mySharesNO = "0";
                 BackendApiClient.syncChainState(gameId, chainReq);
-                Log.d(TAG, "✅ 创建博弈池 - 后端初始链上状态同步成功: gameId="
+                Log.d(TAG, "创建博弈池 - 后端初始链上状态同步成功: gameId="
                         + gameId + " deadlineSec=" + postState.deadlineSec);
             }
         } catch (Exception e) {
-            Log.w(TAG, "❌ 创建博弈池 - 后端链上状态同步失败（非关键）: "
+            Log.w(TAG, "创建博弈池 - 后端链上状态同步失败（非关键）: "
                     + e.getMessage());
         }
 
@@ -1867,9 +1867,9 @@ public class GoldMarketRepository {
             point.noPrice = 50f;
             point.totalPool = initialLiquidityWei.toString();
             BackendApiClient.addHistoryPoint(gameId, point);
-            Log.d(TAG, "✅ 创建博弈池 - 初始历史价格点同步成功: gameId=" + gameId);
+            Log.d(TAG, "创建博弈池 - 初始历史价格点同步成功: gameId=" + gameId);
         } catch (Exception e) {
-            Log.w(TAG, "❌ 创建博弈池 - 初始历史价格点同步失败（非关键）: "
+            Log.w(TAG, "创建博弈池 - 初始历史价格点同步失败（非关键）: "
                     + e.getMessage());
         }
     }

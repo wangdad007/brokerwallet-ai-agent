@@ -2,6 +2,7 @@ package com.example.brokerfi.xc.agent.gold.model.data;
 
 import android.util.Log;
 
+import com.example.brokerfi.xc.agent.config.AgentConfig;
 import com.google.gson.Gson;
 import com.google.gson.annotations.SerializedName;
 
@@ -33,8 +34,8 @@ import okhttp3.Response;
  */
 public class BrokerChainClient {
     private static final String TAG = "BrokerChainClient";
-    public static final String SERVICE_HOST = "10.0.2.2";
-    private static final String BASE_URL = "http://" + SERVICE_HOST + ":56741/";
+    public static final String SERVICE_HOST = AgentConfig.LOCAL_HOST;
+    private static final String BASE_URL = AgentConfig.BROKER_CHAIN_BASE_URL;
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
     private static final Gson gson = new Gson();
     private static final OkHttpClient httpClient = new OkHttpClient.Builder()

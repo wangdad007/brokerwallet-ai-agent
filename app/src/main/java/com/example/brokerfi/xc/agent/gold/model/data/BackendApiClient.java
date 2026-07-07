@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Log;
 
+import com.example.brokerfi.xc.agent.config.AgentConfig;
 import com.google.gson.Gson;
 import com.google.gson.annotations.SerializedName;
 import com.google.gson.reflect.TypeToken;
@@ -33,26 +34,22 @@ import java.util.Scanner;
  * 后端 API 基础路径：{BASE_URL}/api/v1/gold/
  *
  * URL 自动切换规则：
- * - local 分支默认：http://10.0.2.2:8081  （Android 模拟器 → 宿主机 localhost）
+ * - local 分支默认：AgentConfig.BACKEND_BASE_URL（Android 模拟器 → 宿主机 localhost）
  * - 可手动覆盖：SharedPreferences "backend_prefs" → "base_url"
  */
 public class BackendApiClient {
     private static final String TAG = "BackendApiClient";
 
-    // ── URL 配置 ──
-    // Android 模拟器中 10.0.2.2 = 宿主机 localhost
-    // 真机调试请改为电脑局域网 IP，如 http://192.168.1.100:8081
-    private static final String LOCAL_BASE_URL = "http://10.0.2.2:8081";
     private static final String PREFS_NAME = "backend_prefs";
     private static final String KEY_BASE_URL = "base_url";
 
-    private static final String API_PREFIX = "/api/v1/gold";
+    private static final String API_PREFIX = AgentConfig.BACKEND_GOLD_API_PREFIX;
 
     private static final Gson gson = new Gson();
-    private static final int CONNECT_TIMEOUT_MS = 8000;
-    private static final int READ_TIMEOUT_MS = 10000;
-    private static final int FAST_WRITE_CONNECT_TIMEOUT_MS = 3000;
-    private static final int FAST_WRITE_READ_TIMEOUT_MS = 5000;
+    private static final int CONNECT_TIMEOUT_MS = AgentConfig.HTTP_CONNECT_TIMEOUT_MS;
+    private static final int READ_TIMEOUT_MS = AgentConfig.HTTP_READ_TIMEOUT_MS;
+    private static final int FAST_WRITE_CONNECT_TIMEOUT_MS = AgentConfig.FAST_WRITE_CONNECT_TIMEOUT_MS;
+    private static final int FAST_WRITE_READ_TIMEOUT_MS = AgentConfig.FAST_WRITE_READ_TIMEOUT_MS;
 
     private static String cachedBaseUrl = null;
 
@@ -75,7 +72,7 @@ public class BackendApiClient {
         }
 
         // 2. local 分支始终使用本地后端，避免 Release 包回退到远程服务器
-        cachedBaseUrl = LOCAL_BASE_URL;
+        cachedBaseUrl = AgentConfig.BACKEND_BASE_URL;
         Log.d(TAG, "Base URL 自动选择: " + cachedBaseUrl + " (local-supervisor)");
         return cachedBaseUrl;
     }
@@ -110,7 +107,7 @@ public class BackendApiClient {
         // 无 Context 时的回退：local 分支始终使用本地后端
         // GoldMarketRepository 有 Context，调用前会通过 getBaseUrl(ctx) 触发缓存
         if (cachedBaseUrl != null) return cachedBaseUrl;
-        return LOCAL_BASE_URL;
+        return AgentConfig.BACKEND_BASE_URL;
     }
 
     private static String doGet(String path) throws Exception {
