@@ -7,6 +7,7 @@ import org.web3j.abi.datatypes.generated.Uint256;
 import org.web3j.abi.datatypes.generated.Uint8;
 
 import com.example.brokerfi.xc.agent.gold.model.data.GoldMarketRepository;
+import com.example.brokerfi.xc.agent.gold.model.data.BackendApiClient;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketSecurityPolicy;
 import com.example.brokerfi.xc.agent.gold.view.GoldNoteMarketActivity;
 
@@ -148,6 +149,19 @@ public class GoldMarketRepositoryTest {
         assertEquals("1.25", GoldNoteMarketActivity.formatShareAmount(
                 new BigInteger("1250000000000000000")));
         assertEquals("<0.000001", GoldNoteMarketActivity.formatShareAmount(BigInteger.ONE));
+    }
+
+    @Test
+    public void emptyCachedUserPositionsFallBackToChainWhenMarketsExist() {
+        BackendApiClient.ChainStateDTO state = new BackendApiClient.ChainStateDTO();
+        state.gameId = 1;
+
+        assertTrue(GoldMarketRepository.shouldFallbackToChainForPositions(
+                java.util.Collections.singletonList(state),
+                java.util.Collections.emptyList()));
+        assertFalse(GoldMarketRepository.shouldFallbackToChainForPositions(
+                java.util.Collections.emptyList(),
+                java.util.Collections.emptyList()));
     }
 
     private static Path repoPath(String path) {
