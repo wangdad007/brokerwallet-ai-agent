@@ -18,14 +18,9 @@ import org.bouncycastle.util.encoders.Hex;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.UUID;
 
-import okhttp3.Dns;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -38,37 +33,17 @@ import okhttp3.Response;
  */
 public class BrokerChainClient {
     private static final String TAG = "BrokerChainClient";
-    public static final String SERVICE_HOST = "dash.broker-chain.com";
-    private static final String BASE_URL = "https://" + SERVICE_HOST + "/";
-    // Android 模拟器的系统 DNS（通常为 10.0.2.3）失效时使用。
-    // URL 仍保留域名，因此 HTTPS SNI 和证书主机名校验不会被绕过。
-    private static final byte[] SERVICE_FALLBACK_IPV4 =
-            new byte[] {43, (byte) 162, 111, (byte) 181};
+    public static final String SERVICE_HOST = "10.0.2.2";
+    private static final String BASE_URL = "http://" + SERVICE_HOST + ":56741/";
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
     private static final Gson gson = new Gson();
     private static final OkHttpClient httpClient = new OkHttpClient.Builder()
-            .dns(new BrokerChainDns())
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(120, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
             // 请求带一次性 UUID 和签名，原样重试会触发 replay attack。
             .retryOnConnectionFailure(false)
             .build();
-
-    private static final class BrokerChainDns implements Dns {
-        @Override
-        public List<InetAddress> lookup(String hostname) throws UnknownHostException {
-            try {
-                return Dns.SYSTEM.lookup(hostname);
-            } catch (UnknownHostException systemDnsError) {
-                if (!SERVICE_HOST.equalsIgnoreCase(hostname)) throw systemDnsError;
-                InetAddress fallback = InetAddress.getByAddress(hostname, SERVICE_FALLBACK_IPV4);
-                Log.w(TAG, "系统 DNS 解析失败，BrokerChain 使用备用地址 "
-                        + fallback.getHostAddress());
-                return Collections.singletonList(fallback);
-            }
-        }
-    }
 
     private static String doPost(String endpoint, Object requestBody) throws Exception {
         String jsonInputString = gson.toJson(requestBody);

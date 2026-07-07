@@ -4,7 +4,6 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Log;
 
-import com.example.brokerfi.BuildConfig;
 import com.google.gson.Gson;
 import com.google.gson.annotations.SerializedName;
 import com.google.gson.reflect.TypeToken;
@@ -34,18 +33,16 @@ import java.util.Scanner;
  * 后端 API 基础路径：{BASE_URL}/api/v1/gold/
  *
  * URL 自动切换规则：
- * - Debug 构建：http://10.0.2.2:8081  （Android 模拟器 → 宿主机 localhost）
- * - Release 构建：https://dash.broker-chain.com:440 （生产服务器）
+ * - local 分支默认：http://10.0.2.2:8081  （Android 模拟器 → 宿主机 localhost）
  * - 可手动覆盖：SharedPreferences "backend_prefs" → "base_url"
  */
 public class BackendApiClient {
     private static final String TAG = "BackendApiClient";
 
     // ── URL 配置 ──
-    private static final String PROD_BASE_URL = "https://dash.broker-chain.com:440";
     // Android 模拟器中 10.0.2.2 = 宿主机 localhost
     // 真机调试请改为电脑局域网 IP，如 http://192.168.1.100:8081
-    private static final String DEV_BASE_URL = "http://10.0.2.2:8081";
+    private static final String LOCAL_BASE_URL = "http://10.0.2.2:8081";
     private static final String PREFS_NAME = "backend_prefs";
     private static final String KEY_BASE_URL = "base_url";
 
@@ -77,13 +74,9 @@ public class BackendApiClient {
             }
         }
 
-        // 2. 根据构建类型自动选择
-        if (BuildConfig.DEBUG) {
-            cachedBaseUrl = DEV_BASE_URL;
-        } else {
-            cachedBaseUrl = PROD_BASE_URL;
-        }
-        Log.d(TAG, "Base URL 自动选择: " + cachedBaseUrl + " (DEBUG=" + BuildConfig.DEBUG + ")");
+        // 2. local 分支始终使用本地后端，避免 Release 包回退到远程服务器
+        cachedBaseUrl = LOCAL_BASE_URL;
+        Log.d(TAG, "Base URL 自动选择: " + cachedBaseUrl + " (local-supervisor)");
         return cachedBaseUrl;
     }
 
@@ -114,10 +107,10 @@ public class BackendApiClient {
     // ==================== 内部 HTTP 工具 ====================
 
     private static String resolveBaseUrl() {
-        // 无 Context 时的回退：优先 dev，因为这里主要被 GoldMarketRepository 调用
+        // 无 Context 时的回退：local 分支始终使用本地后端
         // GoldMarketRepository 有 Context，调用前会通过 getBaseUrl(ctx) 触发缓存
         if (cachedBaseUrl != null) return cachedBaseUrl;
-        return BuildConfig.DEBUG ? DEV_BASE_URL : PROD_BASE_URL;
+        return LOCAL_BASE_URL;
     }
 
     private static String doGet(String path) throws Exception {

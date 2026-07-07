@@ -1795,7 +1795,7 @@ public class GoldMarketRepository {
                 } else if (msg != null && (msg.contains("Unable to resolve host")
                         || msg.contains("UnknownHost")
                         || msg.contains("resolve host"))) {
-                    step = "DNS 解析失败，无法连接服务器 dash.broker-chain.com。请检查设备网络/DNS 设置";
+                    step = "DNS 解析失败，无法连接本地服务。请检查本地后端和 Supervisor 是否已启动";
                     reason = msg;
                 } else if (msg != null && (msg.contains("timeout")
                         || msg.contains("TimedOut")
@@ -1933,7 +1933,7 @@ public class GoldMarketRepository {
                     json.put("contract_address", contractAddress);
                     json.put("private_key", privateKey);
 
-                    URL url = new URL("https://dash.broker-chain.com:440/api/gold/ai-managed");
+                    URL url = new URL(BackendApiClient.getBaseUrl(null) + "/api/gold/ai-managed");
                     java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
                     conn.setRequestMethod("POST");
                     conn.setRequestProperty("Content-Type", "application/json");
@@ -1964,7 +1964,7 @@ public class GoldMarketRepository {
                 // 回退到原有直连方式
                 try {
                     String path = String.format("/api/gold/ai-managed?game_id=%d&user_address=%s", gameId, getWalletAddress());
-                    URL url = new URL("https://dash.broker-chain.com:440" + path);
+                    URL url = new URL(BackendApiClient.getBaseUrl(null) + path);
                     java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
                     conn.setRequestMethod("GET");
                     if (conn.getResponseCode() == 200) {
