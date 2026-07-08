@@ -3,16 +3,10 @@ package com.example.brokerfi.xc.agent.gold.view;
 import android.animation.ValueAnimator;
 import android.content.Intent;
 import android.graphics.Color;
-import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.text.Spannable;
-import android.text.SpannableStringBuilder;
-import android.text.style.AbsoluteSizeSpan;
-import android.text.style.ForegroundColorSpan;
-import android.text.style.StyleSpan;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -30,6 +24,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.example.brokerfi.R;
 import com.example.brokerfi.xc.agent.gold.model.data.GoldMarketRepository;
 import com.example.brokerfi.xc.agent.gold.model.data.PinataClient;
+import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketCardPresenter;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketStatusStyle;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldPositionValuation;
 import com.example.brokerfi.xc.agent.gold.viewmodel.GoldMyPositionsViewModel;
@@ -42,8 +37,6 @@ import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class GoldMyPositionsFragment extends Fragment {
     private static final long DATA_REFRESH_INTERVAL_MS = 15_000L;
@@ -130,7 +123,7 @@ public class GoldMyPositionsFragment extends Fragment {
             TextView tvTitle = card.findViewById(R.id.tv_position_title);
             ImageView ivIcon = card.findViewById(R.id.iv_position_icon);
             String rawTitle = game.desc != null && !game.desc.isEmpty() ? game.desc : "博弈池 #" + game.id;
-            tvTitle.setText(styleMarketTitle(rawTitle));
+            tvTitle.setText(GoldMarketCardPresenter.displayTitle(rawTitle, game.deadlineSec));
 
             if (game.avatarUrl != null && !game.avatarUrl.isEmpty()) {
                 Glide.with(this).load(PinataClient.IPFS_GATEWAY + game.avatarUrl).placeholder(R.drawable.apartment_icon).into(ivIcon);
@@ -166,7 +159,7 @@ public class GoldMyPositionsFragment extends Fragment {
             tvProfit.setText(status.label);
             tvProfit.setTextColor(status.textColor);
             tvProfit.setBackground(makeRoundedBackground(status.backgroundColor, 999));
-            card.setBackground(makeRoundedBackground(status.backgroundColor, 12));
+            card.setBackgroundResource(R.drawable.bg_gold_market_card);
 
             card.setOnClickListener(v -> {
                 Intent intent = new Intent(requireContext(), GoldPositionDetailActivity.class);
@@ -242,29 +235,4 @@ public class GoldMyPositionsFragment extends Fragment {
         lastTotalBalance = target;
     }
 
-    private SpannableStringBuilder styleMarketTitle(String title) {
-        SpannableStringBuilder ssb = new SpannableStringBuilder(title);
-        Pattern datePattern = Pattern.compile("\\d{4}-\\d{2}-\\d{2}");
-        Matcher matcher = datePattern.matcher(title);
-        while (matcher.find()) {
-            ssb.setSpan(new ForegroundColorSpan(0xFF888888), matcher.start(), matcher.end(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-            ssb.setSpan(new AbsoluteSizeSpan(11, true), matcher.start(), matcher.end(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-        }
-        String[] subjects = {"黄金价格", "黄金波幅", "成交量", "指标", "金价", "黄金收益率"};
-        for (String sub : subjects) {
-            int start = title.indexOf(sub);
-            if (start >= 0) ssb.setSpan(new StyleSpan(Typeface.BOLD), start, start + sub.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-        }
-        String[] ups = {"上涨", "剧烈", "高于", "跑赢", "YES", "触及", "达标", "Price Up"};
-        for (String kw : ups) {
-            int start = title.indexOf(kw);
-            if (start >= 0) ssb.setSpan(new ForegroundColorSpan(0xFF047857), start, start + kw.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-        }
-        String[] downs = {"下跌", "平稳", "低于", "跑输", "NO", "未达标", "Price Down"};
-        for (String kw : downs) {
-            int start = title.indexOf(kw);
-            if (start >= 0) ssb.setSpan(new ForegroundColorSpan(Color.RED), start, start + kw.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-        }
-        return ssb;
-    }
 }

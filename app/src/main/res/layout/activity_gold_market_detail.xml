@@ -3,13 +3,15 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/white"
+    android:background="#F8FAFC"
     android:fitsSystemWindows="true">
 
     <!-- Premium Header -->
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="64dp"
+        android:background="#FFFFFF"
+        android:elevation="1dp"
         android:paddingHorizontal="16dp">
 
         <ImageView
@@ -45,76 +47,181 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="20dp"
+                android:padding="16dp"
                 android:animateLayoutChanges="true">
 
-                <ImageView
-                    android:id="@+id/iv_market_detail_icon"
-                    android:layout_width="match_parent"
-                    android:layout_height="180dp"
-                    android:layout_marginBottom="20dp"
-                    android:scaleType="centerCrop"
-                    android:background="#F8FAFC"
-                    android:src="@drawable/apartment_icon"
-                    android:elevation="2dp" />
-
-                <!-- Market Title -->
-                <TextView
-                    android:id="@+id/tv_market_desc"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="2026-07-01 黄金价格 上涨"
-                    android:textColor="#000000"
-                    android:textSize="22sp"
-                    android:textStyle="bold"
-                    android:lineSpacingExtra="4dp" />
+                    android:background="@drawable/bg_gold_detail_hero"
+                    android:elevation="2dp"
+                    android:orientation="vertical"
+                    android:padding="18dp">
 
-                <TextView
-                    android:id="@+id/tv_market_condition"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:text="判定逻辑: 金价截至日期相对基准上涨"
-                    android:textColor="#666666"
-                    android:textSize="14sp" />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="top"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:id="@+id/iv_market_detail_icon"
+                            android:layout_width="76dp"
+                            android:layout_height="76dp"
+                            android:scaleType="centerCrop"
+                            android:src="@drawable/apartment_icon" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="18dp"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tv_market_desc"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:lineSpacingExtra="5dp"
+                                android:text="黄金价格 上涨"
+                                android:textColor="#111827"
+                                android:textSize="27sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/tv_market_time"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="8dp"
+                                android:text="2026-07-04 16:40 - 2026-07-23 04:25"
+                                android:textColor="#64748B"
+                                android:textSize="17sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/tv_market_condition"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="22dp"
+                        android:background="@drawable/bg_gold_condition_strip"
+                        android:lineSpacingExtra="5dp"
+                        android:paddingHorizontal="16dp"
+                        android:paddingVertical="14dp"
+                        android:text="判定逻辑: 金价截至日期相对基准上涨"
+                        android:textColor="#475569"
+                        android:textSize="15sp" />
+                </LinearLayout>
 
                 <!-- Status Card -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="28dp"
+                    android:layout_marginTop="16dp"
                     android:orientation="vertical"
-                    android:padding="20dp"
-                    android:background="@drawable/bg_gold_market_panel"
-                    android:elevation="4dp">
+                    android:padding="18dp"
+                    android:background="@drawable/bg_gold_detail_panel"
+                    android:elevation="2dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
                         android:orientation="horizontal">
+
                         <TextView
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="YES (看多)"
-                            android:textColor="#047857"
-                            android:textSize="14sp"
+                            android:text="当前市场预期"
+                            android:textColor="#0F172A"
+                            android:textSize="17sp"
                             android:textStyle="bold" />
+
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="NO (看空)"
-                            android:textColor="#FF0000"
-                            android:textSize="14sp"
+                            android:background="@drawable/bg_gold_condition_strip"
+                            android:paddingHorizontal="10dp"
+                            android:paddingVertical="4dp"
+                            android:text="隐含概率"
+                            android:textColor="#64748B"
+                            android:textSize="12sp"
                             android:textStyle="bold" />
                     </LinearLayout>
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="14dp"
-                        android:layout_marginTop="12dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="18dp"
                         android:orientation="horizontal"
-                        android:background="#F0F0F0"
+                        android:weightSum="2">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="6dp"
+                            android:background="@drawable/bg_gold_metric_yes"
+                            android:orientation="vertical"
+                            android:padding="14dp">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="看多 YES"
+                                android:textColor="#047857"
+                                android:textSize="13sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/tv_up_pct"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="6dp"
+                                android:text="50.0%"
+                                android:textColor="#047857"
+                                android:textSize="24sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="6dp"
+                            android:layout_weight="1"
+                            android:background="@drawable/bg_gold_metric_no"
+                            android:gravity="end"
+                            android:orientation="vertical"
+                            android:padding="14dp">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="看空 NO"
+                                android:textColor="#E11D48"
+                                android:textSize="13sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/tv_down_pct"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="6dp"
+                                android:text="50.0%"
+                                android:textColor="#E11D48"
+                                android:textSize="24sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="10dp"
+                        android:layout_marginTop="16dp"
+                        android:orientation="horizontal"
+                        android:background="#EEF2F7"
                         android:weightSum="100">
 
                         <View
@@ -129,55 +236,66 @@
                             android:layout_width="0dp"
                             android:layout_height="match_parent"
                             android:layout_weight="50"
-                            android:background="#FF0000" />
+                            android:background="#E11D48" />
                     </LinearLayout>
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
-                        android:orientation="horizontal">
+                        android:layout_marginTop="18dp"
+                        android:orientation="horizontal"
+                        android:weightSum="2">
 
-                        <TextView
-                            android:id="@+id/tv_up_pct"
+                        <LinearLayout
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="50.0%"
-                            android:textColor="#047857"
-                            android:textSize="13sp"
-                            android:textStyle="bold" />
+                            android:orientation="vertical">
 
-                        <TextView
-                            android:id="@+id/tv_down_pct"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="50.0%"
-                            android:textColor="#FF0000"
-                            android:textSize="13sp"
-                            android:textStyle="bold" />
-                    </LinearLayout>
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="流动性"
+                                android:textColor="#94A3B8"
+                                android:textSize="12sp"
+                                android:textStyle="bold" />
 
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="24dp"
-                        android:orientation="horizontal">
-                        <TextView
-                            android:id="@+id/tv_pool"
+                            <TextView
+                                android:id="@+id/tv_pool"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="4dp"
+                                android:text="-- BKC"
+                                android:textColor="#334155"
+                                android:textSize="15sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                        <LinearLayout
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="总池子: --- BKC"
-                            android:textColor="#333333"
-                            android:textSize="13sp" />
-                        <TextView
-                            android:id="@+id/tv_countdown"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="距结束 0天"
-                            android:textColor="#888888"
-                            android:textSize="13sp" />
+                            android:gravity="end"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="市场状态"
+                                android:textColor="#94A3B8"
+                                android:textSize="12sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/tv_countdown"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="4dp"
+                                android:text="距结束 0天"
+                                android:textColor="#64748B"
+                                android:textSize="15sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
                     </LinearLayout>
                 </LinearLayout>
 
@@ -187,25 +305,33 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="20dp"
-                    android:background="@drawable/bg_gold_market_panel"
+                    android:background="@drawable/bg_gold_detail_panel"
                     android:elevation="2dp"
                     android:orientation="vertical"
-                    android:padding="16dp"
+                    android:padding="18dp"
                     android:visibility="gone">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="赔率/概率历史走势"
-                        android:textColor="#000000"
-                        android:textSize="15sp"
+                        android:text="概率历史走势"
+                        android:textColor="#0F172A"
+                        android:textSize="17sp"
                         android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="YES / NO 隐含概率随时间变化"
+                        android:textColor="#64748B"
+                        android:textSize="12sp" />
 
                     <com.github.mikephil.charting.charts.LineChart
                         android:id="@+id/line_chart"
                         android:layout_width="match_parent"
-                        android:layout_height="200dp"
-                        android:layout_marginTop="12dp" />
+                        android:layout_height="220dp"
+                        android:layout_marginTop="14dp" />
                 </LinearLayout>
 
                 <!-- AI Section -->
@@ -368,7 +494,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="32dp"
-                    android:text="您的持有"
+                    android:text="个人持有"
                     android:textColor="#000000"
                     android:textSize="17sp"
                     android:textStyle="bold" />

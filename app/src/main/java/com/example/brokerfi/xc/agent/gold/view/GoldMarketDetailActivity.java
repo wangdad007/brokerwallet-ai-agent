@@ -1,9 +1,15 @@
 package com.example.brokerfi.xc.agent.gold.view;
 
 import android.app.AlertDialog;
+import android.graphics.Typeface;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.Spannable;
+import android.text.SpannableStringBuilder;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.RelativeSizeSpan;
+import android.text.style.StyleSpan;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
@@ -20,6 +26,7 @@ import io.noties.markwon.Markwon;
 import com.example.brokerfi.R;
 import com.example.brokerfi.xc.agent.gold.model.data.GoldMarketRepository;
 import com.example.brokerfi.xc.agent.gold.model.data.PinataClient;
+import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketDetailPresenter;
 import com.example.brokerfi.xc.agent.gold.viewmodel.GoldMarketDetailViewModel;
 import com.bumptech.glide.Glide;
 import com.github.mikephil.charting.charts.LineChart;
@@ -44,7 +51,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
     private int gameId;
     private String contractAddress;
 
-    private TextView tvMarketDesc, tvMarketCondition;
+    private TextView tvMarketDesc, tvMarketTime, tvMarketCondition;
     private TextView tvUpPct, tvDownPct, tvPool, tvCountdown;
     private TextView tvHoldingsEmpty, tvHoldingYesLabel, tvHoldingYesAmount, tvHoldingNoLabel, tvHoldingNoAmount;
     private View cardHoldingYes, cardHoldingNo;
@@ -149,6 +156,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
     private void initViews() {
         findViewById(R.id.btn_back).setOnClickListener(v -> finish());
         tvMarketDesc = findViewById(R.id.tv_market_desc);
+        tvMarketTime = findViewById(R.id.tv_market_time);
         tvMarketCondition = findViewById(R.id.tv_market_condition);
         tvUpPct = findViewById(R.id.tv_up_pct);
         tvDownPct = findViewById(R.id.tv_down_pct);
@@ -193,8 +201,13 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
 
     private void updateUI() {
         if (currentGame == null) return;
-        tvMarketDesc.setText(currentGame.desc != null && !currentGame.desc.isEmpty() ? currentGame.desc : "博弈池 #" + currentGame.id);
-        tvMarketCondition.setText("判定逻辑: " + (currentGame.condition != null ? currentGame.condition : "暂无"));
+        String title = currentGame.desc != null && !currentGame.desc.isEmpty() ? currentGame.desc : "博弈池 #" + currentGame.id;
+        String condition = "判定逻辑: " + (currentGame.condition != null ? currentGame.condition : "暂无");
+        GoldMarketDetailPresenter.HeroText hero = GoldMarketDetailPresenter.heroText(title, currentGame.deadlineSec);
+        tvMarketDesc.setText(styleMarketText(hero.primaryTitle, true));
+        tvMarketTime.setText(hero.timeSubtitle);
+        tvMarketTime.setVisibility(hero.timeSubtitle == null || hero.timeSubtitle.isEmpty() ? View.GONE : View.VISIBLE);
+        tvMarketCondition.setText(styleMarketText(condition, false));
         
         if (currentGame.avatarUrl != null && !currentGame.avatarUrl.isEmpty()) {
             Glide.with(this).load(PinataClient.IPFS_GATEWAY + currentGame.avatarUrl).placeholder(R.drawable.apartment_icon).into(ivMarketIcon);
@@ -220,10 +233,33 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
                 lp1.width = 0; lp1.weight = p1; barDown.setLayoutParams(lp1);
             }
         }
-        tvPool.setText("总池子: " + GoldNoteMarketActivity.formatBkc(currentGame.totalPool) + " BKC");
+        tvPool.setText(GoldNoteMarketActivity.formatBkc(currentGame.totalPool) + " BKC");
         updateHoldingsUI();
         setupHistoryChart();
         updateCountdown();
+    }
+
+    private CharSequence styleMarketText(String text, boolean title) {
+        SpannableStringBuilder styled = new SpannableStringBuilder(text);
+        List<GoldMarketDetailPresenter.Part> parts = GoldMarketDetailPresenter.highlightParts(text);
+        for (GoldMarketDetailPresenter.Part part : parts) {
+            int color = colorForPart(part.role);
+            styled.setSpan(new ForegroundColorSpan(color), part.start, part.end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            styled.setSpan(new StyleSpan(Typeface.BOLD), part.start, part.end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            if (title) {
+                float scale = part.role == GoldMarketDetailPresenter.Role.TIME ? 0.86f : 1.05f;
+                styled.setSpan(new RelativeSizeSpan(scale), part.start, part.end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+        }
+        return styled;
+    }
+
+    private int colorForPart(GoldMarketDetailPresenter.Role role) {
+        if (role == GoldMarketDetailPresenter.Role.TIME) return 0xFF64748B;
+        if (role == GoldMarketDetailPresenter.Role.SUBJECT) return 0xFF111827;
+        if (role == GoldMarketDetailPresenter.Role.TREND_UP) return 0xFF047857;
+        if (role == GoldMarketDetailPresenter.Role.TREND_DOWN) return 0xFFE11D48;
+        return 0xFF111827;
     }
 
     private void updateHoldingsUI() {
