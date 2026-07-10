@@ -24,6 +24,7 @@ import com.example.brokerfi.xc.agent.gold.model.data.GoldMarketRepository;
 import com.example.brokerfi.xc.agent.gold.model.data.PinataClient;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldAdvisoryManager;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketCardPresenter;
+import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketOptionText;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketStatusStyle;
 import com.example.brokerfi.xc.agent.gold.viewmodel.GoldMarketViewModel;
 import com.bumptech.glide.Glide;
@@ -33,7 +34,6 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 
 public class GoldMarketListFragment extends Fragment {
     private static final long DATA_REFRESH_INTERVAL_MS = 15_000L;
@@ -155,8 +155,8 @@ public class GoldMarketListFragment extends Fragment {
                     LinearLayout.LayoutParams lpNo = (LinearLayout.LayoutParams) barNo.getLayoutParams();
                     lpNo.weight = noRatio;
                     barNo.setLayoutParams(lpNo);
-                    ((TextView) card.findViewById(R.id.tv_yes_pct)).setText(String.format(Locale.getDefault(), "YES %.1f%%", yesRatio));
-                    ((TextView) card.findViewById(R.id.tv_no_pct)).setText(String.format(Locale.getDefault(), "%.1f%% NO", noRatio));
+                    ((TextView) card.findViewById(R.id.tv_yes_pct)).setText(GoldMarketOptionText.probabilityLabel(0, yesRatio));
+                    ((TextView) card.findViewById(R.id.tv_no_pct)).setText(GoldMarketOptionText.probabilityLabel(1, noRatio));
                 }
             }
             card.setOnClickListener(v -> {

@@ -2,6 +2,7 @@ package com.example.brokerfi.xc.agent.gold.view;
 
 import android.app.AlertDialog;
 import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -27,6 +28,8 @@ import com.example.brokerfi.R;
 import com.example.brokerfi.xc.agent.gold.model.data.GoldMarketRepository;
 import com.example.brokerfi.xc.agent.gold.model.data.PinataClient;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketDetailPresenter;
+import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketOptionText;
+import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketStatusStyle;
 import com.example.brokerfi.xc.agent.gold.viewmodel.GoldMarketDetailViewModel;
 import com.bumptech.glide.Glide;
 import com.github.mikephil.charting.charts.LineChart;
@@ -45,16 +48,23 @@ import java.util.Locale;
 public class GoldMarketDetailActivity extends AppCompatActivity {
     private static final String MARKET_AI_LOADING_MESSAGE = "专属分析仍在生成，请稍后";
     private static final long DATA_REFRESH_INTERVAL_MS = 15_000L;
+    private static final int YES_COLOR = GoldMarketStatusStyle.YES_TEXT;
+    private static final int YES_BACKGROUND = GoldMarketStatusStyle.YES_BACKGROUND;
+    private static final int NO_COLOR = GoldMarketStatusStyle.NO_TEXT;
+    private static final int NO_BACKGROUND = GoldMarketStatusStyle.NO_BACKGROUND;
+    private static final int MUTED_TEXT = 0xFF64748B;
+    private static final int MUTED_BACKGROUND = 0xFFF8FAFC;
+    private static final int MUTED_BORDER = 0xFFE2E8F0;
 
     private GoldMarketDetailViewModel viewModel;
     private GoldMarketRepository.GameModel currentGame;
     private int gameId;
     private String contractAddress;
 
-    private TextView tvMarketDesc, tvMarketTime, tvMarketCondition;
-    private TextView tvUpPct, tvDownPct, tvPool, tvCountdown;
+    private TextView tvMarketDesc, tvMarketTime, tvMarketCondition, tvMarketStatusBadge;
+    private TextView tvUpLabel, tvDownLabel, tvUpPct, tvDownPct, tvPool, tvCountdown;
     private TextView tvHoldingsEmpty, tvHoldingYesLabel, tvHoldingYesAmount, tvHoldingNoLabel, tvHoldingNoAmount;
-    private View cardHoldingYes, cardHoldingNo;
+    private View cardMetricYes, cardMetricNo, cardHoldingYes, cardHoldingNo;
     private TextView tvMarketAiStatus, tvMarketAiSummary, tvMarketAiFull;
     private ImageView ivMarketIcon;
     private View barUp, barDown, btnClaimReward, cardMarketAi, layoutAiDetails, layoutChartContainer;
@@ -158,6 +168,9 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         tvMarketDesc = findViewById(R.id.tv_market_desc);
         tvMarketTime = findViewById(R.id.tv_market_time);
         tvMarketCondition = findViewById(R.id.tv_market_condition);
+        tvMarketStatusBadge = findViewById(R.id.tv_market_status_badge);
+        tvUpLabel = findViewById(R.id.tv_up_label);
+        tvDownLabel = findViewById(R.id.tv_down_label);
         tvUpPct = findViewById(R.id.tv_up_pct);
         tvDownPct = findViewById(R.id.tv_down_pct);
         tvPool = findViewById(R.id.tv_pool);
@@ -167,6 +180,8 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         tvHoldingYesAmount = findViewById(R.id.tv_holding_yes_amount);
         tvHoldingNoLabel = findViewById(R.id.tv_holding_no_label);
         tvHoldingNoAmount = findViewById(R.id.tv_holding_no_amount);
+        cardMetricYes = findViewById(R.id.card_metric_yes);
+        cardMetricNo = findViewById(R.id.card_metric_no);
         cardHoldingYes = findViewById(R.id.card_holding_yes);
         cardHoldingNo = findViewById(R.id.card_holding_no);
 
@@ -188,8 +203,8 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         swipeRefresh = findViewById(R.id.swipe_refresh);
         swipeRefresh.setOnRefreshListener(() -> viewModel.loadGameInfo(gameId, resolveContractAddress()));
 
-        findViewById(R.id.btn_buy_up).setOnClickListener(v -> showBuyDialog(0, "YES"));
-        findViewById(R.id.btn_buy_down).setOnClickListener(v -> showBuyDialog(1, "NO"));
+        findViewById(R.id.btn_buy_up).setOnClickListener(v -> showBuyDialog(0, GoldMarketOptionText.displayName(0)));
+        findViewById(R.id.btn_buy_down).setOnClickListener(v -> showBuyDialog(1, GoldMarketOptionText.displayName(1)));
         cardMarketAi.setOnClickListener(v -> toggleAiDetails());
         switchAiManaged.setOnCheckedChangeListener((btn, isChecked) -> {
             if (currentGame != null && currentGame.isManaged != isChecked) {
@@ -204,9 +219,9 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         String title = currentGame.desc != null && !currentGame.desc.isEmpty() ? currentGame.desc : "博弈池 #" + currentGame.id;
         String condition = "判定逻辑: " + (currentGame.condition != null ? currentGame.condition : "暂无");
         GoldMarketDetailPresenter.HeroText hero = GoldMarketDetailPresenter.heroText(title, currentGame.deadlineSec);
-        tvMarketDesc.setText(styleMarketText(hero.primaryTitle, true));
-        tvMarketTime.setText(hero.timeSubtitle);
-        tvMarketTime.setVisibility(hero.timeSubtitle == null || hero.timeSubtitle.isEmpty() ? View.GONE : View.VISIBLE);
+        tvMarketDesc.setText(styleMarketText(composeInlineHeroTitle(hero), true));
+        tvMarketTime.setText("");
+        tvMarketTime.setVisibility(View.GONE);
         tvMarketCondition.setText(styleMarketText(condition, false));
         
         if (currentGame.avatarUrl != null && !currentGame.avatarUrl.isEmpty()) {
@@ -240,6 +255,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
     }
 
     private CharSequence styleMarketText(String text, boolean title) {
+        if (text == null) text = "";
         SpannableStringBuilder styled = new SpannableStringBuilder(text);
         List<GoldMarketDetailPresenter.Part> parts = GoldMarketDetailPresenter.highlightParts(text);
         for (GoldMarketDetailPresenter.Part part : parts) {
@@ -257,9 +273,19 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
     private int colorForPart(GoldMarketDetailPresenter.Role role) {
         if (role == GoldMarketDetailPresenter.Role.TIME) return 0xFF64748B;
         if (role == GoldMarketDetailPresenter.Role.SUBJECT) return 0xFF111827;
-        if (role == GoldMarketDetailPresenter.Role.TREND_UP) return 0xFF047857;
-        if (role == GoldMarketDetailPresenter.Role.TREND_DOWN) return 0xFFE11D48;
+        if (role == GoldMarketDetailPresenter.Role.COMPARATOR) return 0xFF2563EB;
+        if (role == GoldMarketDetailPresenter.Role.AMOUNT) return 0xFFB45309;
+        if (role == GoldMarketDetailPresenter.Role.TREND_UP) return YES_COLOR;
+        if (role == GoldMarketDetailPresenter.Role.TREND_DOWN) return NO_COLOR;
         return 0xFF111827;
+    }
+
+    private String composeInlineHeroTitle(GoldMarketDetailPresenter.HeroText hero) {
+        String primary = hero.primaryTitle == null ? "" : hero.primaryTitle.trim();
+        String time = hero.timeSubtitle == null ? "" : hero.timeSubtitle.trim();
+        if (time.isEmpty()) return primary;
+        if (primary.isEmpty()) return time;
+        return primary + " " + time;
     }
 
     private void updateHoldingsUI() {
@@ -284,18 +310,24 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
             
             if (hasYes) {
                 cardHoldingYes.setVisibility(View.VISIBLE);
-                String name = (currentGame.optionNames != null && !currentGame.optionNames.isEmpty()) ? currentGame.optionNames.get(0) : "YES";
+                String name = optionName(0);
                 tvHoldingYesLabel.setText(name);
                 tvHoldingYesAmount.setText(GoldNoteMarketActivity.formatShareAmount(sYes) + " 份额");
+                tvHoldingYesLabel.setTextColor(YES_COLOR);
+                tvHoldingYesAmount.setTextColor(YES_COLOR);
+                styleHoldingCard(cardHoldingYes, true);
             } else {
                 cardHoldingYes.setVisibility(View.GONE);
             }
 
             if (hasNo) {
                 cardHoldingNo.setVisibility(View.VISIBLE);
-                String name = (currentGame.optionNames != null && currentGame.optionNames.size() > 1) ? currentGame.optionNames.get(1) : "NO";
+                String name = optionName(1);
                 tvHoldingNoLabel.setText(name);
                 tvHoldingNoAmount.setText(GoldNoteMarketActivity.formatShareAmount(sNo) + " 份额");
+                tvHoldingNoLabel.setTextColor(NO_COLOR);
+                tvHoldingNoAmount.setTextColor(NO_COLOR);
+                styleHoldingCard(cardHoldingNo, false);
             } else {
                 cardHoldingNo.setVisibility(View.GONE);
             }
@@ -318,7 +350,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         }
 
         // YES 曲线 (深绿色)
-        LineDataSet setYes = new LineDataSet(yesEntries, "YES (看多 %)");
+        LineDataSet setYes = new LineDataSet(yesEntries, GoldMarketOptionText.chartLabel(0));
         setYes.setColor(0xFF059669);
         setYes.setCircleColor(0xFF059669);
         setYes.setLineWidth(2.5f);
@@ -331,7 +363,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         setYes.setFillAlpha(40);
 
         // NO 曲线 (红色)
-        LineDataSet setNo = new LineDataSet(noEntries, "NO (看空 %)");
+        LineDataSet setNo = new LineDataSet(noEntries, GoldMarketOptionText.chartLabel(1));
         setNo.setColor(0xFFE11D48);
         setNo.setCircleColor(0xFFE11D48);
         setNo.setLineWidth(2.5f);
@@ -434,7 +466,99 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
     private void updateCountdown() {
         if (currentGame == null) return;
         long rem = GoldNoteMarketActivity.remainingSecondsUntilDeadline(currentGame.deadlineSec, System.currentTimeMillis());
-        tvCountdown.setText(GoldNoteMarketActivity.formatRemainingTime(rem));
+        GoldMarketStatusStyle status = GoldMarketStatusStyle.forMarketOutcome(
+                currentGame.isResolved,
+                currentGame.isRefunded,
+                rem,
+                currentGame.winningOption,
+                optionName(0),
+                optionName(1));
+        tvMarketStatusBadge.setText(status.label);
+        tvMarketStatusBadge.setTextColor(status.textColor);
+        tvMarketStatusBadge.setBackground(makeRoundedBackground(status.backgroundColor, 999));
+        tvCountdown.setText(statusTextForCountdown(status, rem));
+        tvCountdown.setTextColor(status.textColor);
+        styleMetricCards();
+    }
+
+    private String statusTextForCountdown(GoldMarketStatusStyle status, long remainingSeconds) {
+        if (currentGame.isResolved || currentGame.isRefunded || remainingSeconds <= 0) {
+            return status.label;
+        }
+        return GoldNoteMarketActivity.formatRemainingTime(remainingSeconds);
+    }
+
+    private void styleMetricCards() {
+        if (currentGame == null) return;
+        boolean resolved = currentGame.isResolved && !currentGame.isRefunded;
+        styleMetricCard(cardMetricYes, tvUpLabel, tvUpPct, true, resolved && currentGame.winningOption == 0, resolved);
+        styleMetricCard(cardMetricNo, tvDownLabel, tvDownPct, false, resolved && currentGame.winningOption == 1, resolved);
+    }
+
+    private void styleMetricCard(View card, TextView label, TextView value, boolean yes, boolean winner, boolean resolved) {
+        int color = yes ? YES_COLOR : NO_COLOR;
+        if (resolved) {
+            label.setText(GoldMarketOptionText.outcomeLabel(yes ? 0 : 1, winner));
+            label.setTextColor(winner ? color : MUTED_TEXT);
+            value.setTextColor(winner ? color : MUTED_TEXT);
+            card.setBackground(makeOptionBackground(yes, winner, true));
+            return;
+        }
+        label.setText(GoldMarketOptionText.displayName(yes ? 0 : 1));
+        label.setTextColor(color);
+        value.setTextColor(color);
+        card.setBackground(makeOptionBackground(yes, false, false));
+    }
+
+    private void styleHoldingCard(View card, boolean yes) {
+        boolean winner = currentGame != null
+                && currentGame.isResolved
+                && !currentGame.isRefunded
+                && currentGame.winningOption == (yes ? 0 : 1);
+        card.setBackground(makeOptionBackground(yes, winner, currentGame != null && currentGame.isResolved));
+    }
+
+    private GradientDrawable makeOptionBackground(boolean yes, boolean winner, boolean resolved) {
+        int color = yes ? YES_COLOR : NO_COLOR;
+        int fill = yes ? YES_BACKGROUND : NO_BACKGROUND;
+        int strokeColor = yes ? 0xFF86EFAC : 0xFFFFB3C1;
+        int strokeWidth = 1;
+        if (resolved && winner) {
+            fill = yes ? 0xFFD1FAE5 : 0xFFFFDCE5;
+            strokeColor = color;
+            strokeWidth = 2;
+        } else if (resolved) {
+            fill = MUTED_BACKGROUND;
+            strokeColor = MUTED_BORDER;
+        }
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setColor(fill);
+        drawable.setCornerRadius(dp(8));
+        drawable.setStroke(dp(strokeWidth), strokeColor);
+        return drawable;
+    }
+
+    private GradientDrawable makeRoundedBackground(int fill, int radiusDp) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setColor(fill);
+        drawable.setCornerRadius(dp(radiusDp));
+        return drawable;
+    }
+
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    private String optionName(int index) {
+        if (currentGame != null
+                && currentGame.optionNames != null
+                && index >= 0
+                && index < currentGame.optionNames.size()
+                && currentGame.optionNames.get(index) != null
+                && !currentGame.optionNames.get(index).trim().isEmpty()) {
+            return GoldMarketOptionText.displayName(currentGame.optionNames.get(index), index);
+        }
+        return GoldMarketOptionText.displayName(index);
     }
 
     private void showBuyDialog(int optionId, String name) {
@@ -522,7 +646,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         long remaining = GoldNoteMarketActivity.remainingSecondsUntilDeadline(
                 currentGame.deadlineSec, System.currentTimeMillis());
         if (remaining == 0) {
-            return "下单失败：该博弈池已经截止，链上不会再接受新的 YES/NO 购买。";
+            return "下单失败：该博弈池已经截止，链上不会再接受新的达成/未达成份额购买。";
         }
         if (remaining < 0) {
             return "下单失败：该博弈池的截止时间还未同步完成。\n\n"

@@ -140,12 +140,15 @@
                             android:textStyle="bold" />
 
                         <TextView
+                            android:id="@+id/tv_market_status_badge"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:background="@drawable/bg_gold_condition_strip"
+                            android:ellipsize="end"
+                            android:maxLines="1"
                             android:paddingHorizontal="10dp"
                             android:paddingVertical="4dp"
-                            android:text="隐含概率"
+                            android:text="运行中"
                             android:textColor="#64748B"
                             android:textSize="12sp"
                             android:textStyle="bold" />
@@ -159,6 +162,7 @@
                         android:weightSum="2">
 
                         <LinearLayout
+                            android:id="@+id/card_metric_yes"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
@@ -168,9 +172,10 @@
                             android:padding="14dp">
 
                             <TextView
+                                android:id="@+id/tv_up_label"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="看多 YES"
+                                android:text="达成 (YES)"
                                 android:textColor="#047857"
                                 android:textSize="13sp"
                                 android:textStyle="bold" />
@@ -187,6 +192,7 @@
                         </LinearLayout>
 
                         <LinearLayout
+                            android:id="@+id/card_metric_no"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="6dp"
@@ -197,9 +203,10 @@
                             android:padding="14dp">
 
                             <TextView
+                                android:id="@+id/tv_down_label"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="看空 NO"
+                                android:text="未达成 (NO)"
                                 android:textColor="#E11D48"
                                 android:textSize="13sp"
                                 android:textStyle="bold" />
@@ -323,7 +330,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="YES / NO 隐含概率随时间变化"
+                        android:text="达成 / 未达成概率随时间变化"
                         android:textColor="#64748B"
                         android:textSize="12sp" />
 
@@ -467,7 +474,7 @@
                         android:layout_weight="1"
                         android:layout_marginEnd="8dp"
                         android:background="@drawable/bg_bet_yes"
-                        android:text="下注 YES"
+                        android:text="下注达成"
                         android:textAllCaps="false"
                         android:textColor="#FFFFFF"
                         android:textSize="17sp"
@@ -481,7 +488,7 @@
                         android:layout_weight="1"
                         android:layout_marginStart="8dp"
                         android:background="@drawable/bg_bet_no"
-                        android:text="下注 NO"
+                        android:text="下注未达成"
                         android:textAllCaps="false"
                         android:textColor="#FFFFFF"
                         android:textSize="17sp"

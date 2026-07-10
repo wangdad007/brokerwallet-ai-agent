@@ -20,6 +20,7 @@ import com.example.brokerfi.R;
 import com.example.brokerfi.xc.agent.gold.model.data.BackendApiClient;
 import com.example.brokerfi.xc.agent.gold.model.data.GoldMarketRepository;
 import com.example.brokerfi.xc.agent.gold.model.data.PinataClient;
+import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketOptionText;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldPositionHistoryPresenter;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketStatusStyle;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldPositionValuation;
@@ -237,9 +238,11 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
         tvPositionEmpty.setVisibility(View.GONE);
 
         String yesName = (currentGame.optionNames != null && !currentGame.optionNames.isEmpty())
-                ? currentGame.optionNames.get(0) : "YES (达成)";
+                ? GoldMarketOptionText.displayName(currentGame.optionNames.get(0), 0)
+                : GoldMarketOptionText.displayName(0);
         String noName = (currentGame.optionNames != null && currentGame.optionNames.size() > 1)
-                ? currentGame.optionNames.get(1) : "NO (未达成)";
+                ? GoldMarketOptionText.displayName(currentGame.optionNames.get(1), 1)
+                : GoldMarketOptionText.displayName(1);
 
         if (hasYes) {
             rowPositionYes.setVisibility(View.VISIBLE);
@@ -351,11 +354,11 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
             boolean isYes = (trade.optionId == 0);
             if (isYes) {
                 indicator.setBackgroundColor(0xFF059669);
-                tvSideBadge.setText("YES");
+                tvSideBadge.setText(GoldMarketOptionText.shortName(0));
                 tvSideBadge.setBackgroundResource(R.drawable.bg_badge_yes);
             } else {
                 indicator.setBackgroundColor(0xFFE11D48);
-                tvSideBadge.setText("NO");
+                tvSideBadge.setText(GoldMarketOptionText.shortName(1));
                 tvSideBadge.setBackgroundResource(R.drawable.bg_badge_no);
             }
 

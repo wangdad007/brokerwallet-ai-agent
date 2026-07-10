@@ -3,8 +3,13 @@ package com.example.brokerfi.xc.agent.gold.view;
 import android.animation.ValueAnimator;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
+import android.text.Spannable;
+import android.text.SpannableStringBuilder;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.StyleSpan;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.LayoutInflater;
@@ -25,6 +30,7 @@ import com.example.brokerfi.R;
 import com.example.brokerfi.xc.agent.gold.model.data.GoldMarketRepository;
 import com.example.brokerfi.xc.agent.gold.model.data.PinataClient;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketCardPresenter;
+import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketOptionText;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketStatusStyle;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldPositionValuation;
 import com.example.brokerfi.xc.agent.gold.viewmodel.GoldMyPositionsViewModel;
@@ -40,6 +46,12 @@ import java.util.Locale;
 
 public class GoldMyPositionsFragment extends Fragment {
     private static final long DATA_REFRESH_INTERVAL_MS = 15_000L;
+    private static final int YES_COLOR = GoldMarketStatusStyle.YES_TEXT;
+    private static final int YES_BACKGROUND = GoldMarketStatusStyle.YES_BACKGROUND;
+    private static final int NO_COLOR = GoldMarketStatusStyle.NO_TEXT;
+    private static final int NO_BACKGROUND = GoldMarketStatusStyle.NO_BACKGROUND;
+    private static final int NEUTRAL_TEXT = 0xFF475569;
+    private static final int NEUTRAL_BACKGROUND = 0xFFF1F5F9;
     private GoldMyPositionsViewModel viewModel;
     private final List<GoldMarketRepository.GameModel> myPositions = new ArrayList<>();
 
@@ -148,9 +160,10 @@ public class GoldMyPositionsFragment extends Fragment {
                     shareText.append(sideName).append(": ").append(GoldNoteMarketActivity.formatShareAmount(shares)).append(" 份额");
                 }
             }
-            tvSide.setText(joinSideNames(sideNames));
+            tvSide.setText(styleSideText(joinSideNames(sideNames)));
             tvSide.setTextColor(resolveSideColor(sideNames));
-            tvShares.setText(shareText.length() == 0 ? "暂无份额" : shareText.toString());
+            tvSide.setBackground(makeRoundedBackground(resolveSideBackground(sideNames), 999));
+            tvShares.setText(shareText.length() == 0 ? "暂无份额" : styleShareText(shareText.toString()));
 
             GoldPositionValuation.MarketValue marketValue = GoldPositionValuation.calculateMarket(game);
             tvCurrentValue.setText(marketValue.isComplete() ? GoldNoteMarketActivity.formatBkc(marketValue.getValueWei()) + " BKC" : "暂不可估值");
@@ -194,8 +207,10 @@ public class GoldMyPositionsFragment extends Fragment {
     }
 
     private String optionNameFor(GoldMarketRepository.GameModel game, int index) {
-        if (game.optionNames != null && index < game.optionNames.size()) return game.optionNames.get(index);
-        return "选项" + (index + 1);
+        if (game.optionNames != null && index < game.optionNames.size()) {
+            return GoldMarketOptionText.displayName(game.optionNames.get(index), index);
+        }
+        return GoldMarketOptionText.displayName(index);
     }
 
     private String joinSideNames(List<String> sideNames) {
@@ -213,14 +228,75 @@ public class GoldMyPositionsFragment extends Fragment {
         boolean allPositive = true, allNegative = true;
         for (String s : sideNames) {
             String upper = (s == null ? "" : s).toUpperCase(Locale.US);
-            boolean pos = upper.contains("YES") || upper.contains("UP") || upper.contains("涨") || upper.contains("达标");
-            boolean neg = upper.contains("NO") || upper.contains("DOWN") || upper.contains("跌") || upper.contains("未达标");
+            boolean neg = upper.contains("NO") || upper.contains("DOWN") || upper.contains("跌")
+                    || upper.contains("未达标") || upper.contains("未达成");
+            boolean pos = !neg && (upper.contains("YES") || upper.contains("UP") || upper.contains("涨")
+                    || upper.contains("达标") || upper.contains("达成"));
             allPositive = allPositive && pos;
             allNegative = allNegative && neg;
         }
-        if (allPositive) return 0xFF047857;
-        if (allNegative) return Color.RED;
-        return Color.BLACK;
+        if (allPositive) return YES_COLOR;
+        if (allNegative) return NO_COLOR;
+        return NEUTRAL_TEXT;
+    }
+
+    private int resolveSideBackground(List<String> sideNames) {
+        if (sideNames.isEmpty()) return NEUTRAL_BACKGROUND;
+        int color = resolveSideColor(sideNames);
+        if (color == YES_COLOR) return YES_BACKGROUND;
+        if (color == NO_COLOR) return NO_BACKGROUND;
+        return NEUTRAL_BACKGROUND;
+    }
+
+    private CharSequence styleSideText(String text) {
+        if (text == null || text.isEmpty()) return "--";
+        SpannableStringBuilder styled = new SpannableStringBuilder(text);
+        applySideKeywords(styled, text, YES_COLOR, "YES", "UP", "涨", "达标", "达成");
+        applySideKeywords(styled, text, NO_COLOR, "NO", "DOWN", "跌", "未达标", "未达成");
+        return styled;
+    }
+
+    private CharSequence styleShareText(String text) {
+        SpannableStringBuilder styled = new SpannableStringBuilder(text);
+        int start = 0;
+        while (start <= text.length()) {
+            int end = text.indexOf('\n', start);
+            if (end < 0) end = text.length();
+            String line = text.substring(start, end);
+            int color = colorForSideText(line);
+            styled.setSpan(new ForegroundColorSpan(color), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            styled.setSpan(new StyleSpan(Typeface.BOLD), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            if (end == text.length()) break;
+            start = end + 1;
+        }
+        return styled;
+    }
+
+    private int colorForSideText(String text) {
+        String upper = text == null ? "" : text.toUpperCase(Locale.US);
+        if (upper.contains("NO") || upper.contains("DOWN") || upper.contains("跌")
+                || upper.contains("未达标") || upper.contains("未达成")) {
+            return NO_COLOR;
+        }
+        if (upper.contains("YES") || upper.contains("UP") || upper.contains("涨")
+                || upper.contains("达标") || upper.contains("达成")) {
+            return YES_COLOR;
+        }
+        return NEUTRAL_TEXT;
+    }
+
+    private void applySideKeywords(SpannableStringBuilder styled, String text, int color, String... keywords) {
+        String lower = text.toLowerCase(Locale.US);
+        for (String keyword : keywords) {
+            String key = keyword.toLowerCase(Locale.US);
+            int start = lower.indexOf(key);
+            while (start >= 0) {
+                int end = start + keyword.length();
+                styled.setSpan(new ForegroundColorSpan(color), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                styled.setSpan(new StyleSpan(Typeface.BOLD), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                start = lower.indexOf(key, end);
+            }
+        }
     }
 
     private void animateBalance(double target) {

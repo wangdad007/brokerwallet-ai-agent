@@ -9,7 +9,7 @@
     android:layout_marginBottom="8dp"
     android:elevation="1dp">
 
-    <!-- YES/NO Color Indicator -->
+    <!-- 达成/未达成 Color Indicator -->
     <View
         android:id="@+id/indicator_side"
         android:layout_width="4dp"
@@ -29,14 +29,14 @@
             android:orientation="horizontal"
             android:gravity="center_vertical">
 
-            <!-- YES/NO Badge -->
+            <!-- 达成/未达成 Badge -->
             <TextView
                 android:id="@+id/tv_side_badge"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:paddingHorizontal="8dp"
                 android:paddingVertical="2dp"
-                android:text="YES"
+                android:text="达成"
                 android:textColor="#FFFFFF"
                 android:textSize="11sp"
                 android:textStyle="bold"

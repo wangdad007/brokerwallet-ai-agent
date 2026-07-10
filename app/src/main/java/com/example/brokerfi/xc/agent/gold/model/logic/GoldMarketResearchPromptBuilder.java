@@ -99,10 +99,11 @@ public final class GoldMarketResearchPromptBuilder {
             return;
         }
         List<String> names = new ArrayList<>();
-        for (String optionName : optionNames) {
+        for (int index = 0; index < optionNames.size(); index++) {
+            String optionName = optionNames.get(index);
             String sanitized = sanitizeMarketText(optionName);
             if (!sanitized.isEmpty()) {
-                names.add(sanitized);
+                names.add(GoldMarketOptionText.displayName(sanitized, index));
             }
         }
         if (!names.isEmpty()) {
@@ -128,8 +129,8 @@ public final class GoldMarketResearchPromptBuilder {
 
         BigDecimal yesPercent = roundedPercent(yesReserve, total);
         BigDecimal noPercent = new BigDecimal("100.0").subtract(yesPercent);
-        lines.add("YES 概率: " + formatPercent(yesPercent));
-        lines.add("NO 概率: " + formatPercent(noPercent));
+        lines.add(GoldMarketOptionText.displayName(0) + " 概率: " + formatPercent(yesPercent));
+        lines.add(GoldMarketOptionText.displayName(1) + " 概率: " + formatPercent(noPercent));
     }
 
     private static BigDecimal roundedPercent(
@@ -228,8 +229,11 @@ public final class GoldMarketResearchPromptBuilder {
         if (optionNames != null && index < optionNames.size()) {
             String name = sanitizeMarketText(optionNames.get(index));
             if (!name.isEmpty()) {
-                return name;
+                return GoldMarketOptionText.displayName(name, index);
             }
+        }
+        if (index <= 1) {
+            return GoldMarketOptionText.displayName(index);
         }
         return "选项" + (index + 1);
     }

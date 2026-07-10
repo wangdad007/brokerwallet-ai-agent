@@ -146,7 +146,7 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:layout_marginStart="8dp"
-                            android:text="YES (达成)"
+                            android:text="达成 (YES)"
                             android:textColor="#334155"
                             android:textSize="14sp" />
                         <TextView
@@ -178,7 +178,7 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:layout_marginStart="8dp"
-                            android:text="NO (未达成)"
+                            android:text="未达成 (NO)"
                             android:textColor="#334155"
                             android:textSize="14sp" />
                         <TextView

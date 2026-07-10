@@ -1,6 +1,8 @@
 package com.example.brokerfi.xc.agent.gold.view;
 
 import android.content.Intent;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -43,9 +45,14 @@ public class GoldCreatePoolFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_gold_create_pool, container, false);
         etAiInput = view.findViewById(R.id.et_ai_input);
         btnAiAnalyze = view.findViewById(R.id.btn_ai_analyze);
+        TextView tabAiCreate = view.findViewById(R.id.tab_ai_create);
+        TextView tabManualCreate = view.findViewById(R.id.tab_manual_create);
+        View sectionAiCreate = view.findViewById(R.id.section_ai_create);
+        View sectionManualCreate = view.findViewById(R.id.section_manual_create);
         
         btnAiAnalyze.setOnClickListener(v -> performAiAnalysis());
-        
+
+        bindCreateModeTabs(tabAiCreate, tabManualCreate, sectionAiCreate, sectionManualCreate);
         initTemplates(view.findViewById(R.id.template_grid));
         return view;
     }
@@ -58,7 +65,7 @@ public class GoldCreatePoolFragment extends Fragment {
         }
 
         btnAiAnalyze.setEnabled(false);
-        btnAiAnalyze.setText("✨ AI Parsing Across Languages...");
+        btnAiAnalyze.setText("AI 正在解析...");
 
         String today = dateFormat.format(new Date());
         String systemPrompt =
@@ -211,6 +218,36 @@ public class GoldCreatePoolFragment extends Fragment {
     }
 
     private static final double CONFIDENCE_THRESHOLD = 0.7;
+
+    private void bindCreateModeTabs(TextView aiTab, TextView manualTab, View aiSection, View manualSection) {
+        aiTab.setOnClickListener(v -> updateCreateMode(aiTab, manualTab, aiSection, manualSection, true));
+        manualTab.setOnClickListener(v -> updateCreateMode(aiTab, manualTab, aiSection, manualSection, false));
+        updateCreateMode(aiTab, manualTab, aiSection, manualSection, true);
+    }
+
+    private void updateCreateMode(TextView aiTab, TextView manualTab, View aiSection, View manualSection, boolean aiSelected) {
+        aiSection.setVisibility(aiSelected ? View.VISIBLE : View.GONE);
+        manualSection.setVisibility(aiSelected ? View.GONE : View.VISIBLE);
+        styleCreateTab(aiTab, aiSelected);
+        styleCreateTab(manualTab, !aiSelected);
+    }
+
+    private void styleCreateTab(TextView tab, boolean selected) {
+        tab.setTextColor(selected ? 0xFFFFFFFF : 0xFF475569);
+        tab.setTypeface(Typeface.DEFAULT, selected ? Typeface.BOLD : Typeface.NORMAL);
+        tab.setBackground(makeTabBackground(selected ? 0xFF111827 : 0x00000000));
+    }
+
+    private GradientDrawable makeTabBackground(int color) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setColor(color);
+        drawable.setCornerRadius(dp(8));
+        return drawable;
+    }
+
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
+    }
 
     private void handleAiResponse(String response) {
         try {

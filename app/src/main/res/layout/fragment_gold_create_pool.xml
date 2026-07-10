@@ -30,38 +30,61 @@
             android:textColor="#94A3B8"
             android:textSize="13sp" />
 
-        <!-- AI Assistant Card -->
+        <!-- Mode Tabs -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
-            android:background="@drawable/bg_gold_market_panel"
-            android:orientation="vertical"
-            android:padding="20dp"
-            android:elevation="4dp">
-
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="6dp"
-                    android:text="AI自动解析博弈池"
-                    android:textColor="@color/black"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
+            android:background="@drawable/bg_gold_condition_strip"
+            android:orientation="horizontal"
+            android:padding="4dp">
 
             <TextView
-                android:layout_width="wrap_content"
+                android:id="@+id/tab_ai_create"
+                android:layout_width="0dp"
+                android:layout_height="42dp"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="AI 创建"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tab_manual_create"
+                android:layout_width="0dp"
+                android:layout_height="42dp"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="手动创建"
+                android:textColor="#475569"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- AI Assistant Section -->
+        <LinearLayout
+            android:id="@+id/section_ai_create"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="用任意语言描述您的博弈想法，AI将解析参数并匹配模版"
+                android:text="AI 创建博弈池"
+                android:textColor="#1A1A1A"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="用任意语言描述您的博弈想法，AI 将解析参数并匹配模版"
                 android:textColor="#64748B"
-                android:textSize="12sp"
+                android:textSize="13sp"
                 android:lineSpacingExtra="2dp" />
 
             <EditText
@@ -91,40 +114,42 @@
                 android:textStyle="bold" />
         </LinearLayout>
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginTop="32dp"
-            android:background="#F1F5F9" />
-
-        <!-- Manual Section Header -->
-        <TextView
+        <!-- Manual Section -->
+        <LinearLayout
+            android:id="@+id/section_manual_create"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
-            android:text="手动配置博弈池"
-            android:textColor="#1A1A1A"
-            android:textSize="18sp"
-            android:textStyle="bold" />
+            android:layout_marginTop="22dp"
+            android:orientation="vertical"
+            android:visibility="gone">
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="点击下方经典模版进入精细化规则定制"
-            android:textColor="#94A3B8"
-            android:textSize="13sp" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="手动创建博弈池"
+                android:textColor="#1A1A1A"
+                android:textSize="18sp"
+                android:textStyle="bold" />
 
-        <GridLayout
-            android:id="@+id/template_grid"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:columnCount="2"
-            android:alignmentMode="alignMargins"
-            android:columnOrderPreserved="false">
-            <!-- Templates added dynamically -->
-        </GridLayout>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="点击下方经典模版进入精细化规则定制"
+                android:textColor="#64748B"
+                android:textSize="13sp" />
+
+            <GridLayout
+                android:id="@+id/template_grid"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:columnCount="2"
+                android:alignmentMode="alignMargins"
+                android:columnOrderPreserved="false">
+                <!-- Templates added dynamically -->
+            </GridLayout>
+        </LinearLayout>
 
         <View
             android:layout_width="match_parent"

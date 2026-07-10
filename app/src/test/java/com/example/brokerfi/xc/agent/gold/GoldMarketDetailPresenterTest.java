@@ -30,6 +30,16 @@ public class GoldMarketDetailPresenterTest {
     }
 
     @Test
+    public void highlightPartsIdentifyComparatorAndAmount() {
+        List<GoldMarketDetailPresenter.Part> parts = GoldMarketDetailPresenter.highlightParts(
+                "金价 大于 10 USD");
+
+        assertTrue(contains(parts, GoldMarketDetailPresenter.Role.SUBJECT, "金价"));
+        assertTrue(contains(parts, GoldMarketDetailPresenter.Role.COMPARATOR, "大于"));
+        assertTrue(contains(parts, GoldMarketDetailPresenter.Role.AMOUNT, "10 USD"));
+    }
+
+    @Test
     public void heroTextSplitsDateRangeFromMarketTitle() {
         GoldMarketDetailPresenter.HeroText hero = GoldMarketDetailPresenter.heroText(
                 "2026-07-04 16:40 至 2026-07-23 04:25 黄金价格 上涨", 0);

@@ -1,6 +1,7 @@
 package com.example.brokerfi.xc.agent.gold;
 
 import com.example.brokerfi.xc.agent.config.AgentConfig;
+import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketOptionText;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketStatusStyle;
 
 import org.junit.Test;
@@ -43,6 +44,27 @@ public class AgentLocalConfigTest {
         assertEquals(0xFFB45309, pending.textColor);
         assertEquals(0xFF2563EB, resolved.textColor);
         assertEquals(0xFF64748B, refunded.textColor);
+    }
+
+    @Test
+    public void statusStyleNamesWinningOptionForResolvedMarkets() {
+        GoldMarketStatusStyle yesWinner = GoldMarketStatusStyle.forMarketOutcome(
+                true, false, 0, 0, "YES", "NO");
+        GoldMarketStatusStyle noWinner = GoldMarketStatusStyle.forMarketOutcome(
+                true, false, 0, 1, "YES", "NO");
+
+        assertEquals("达成 (YES) 胜出", yesWinner.label);
+        assertEquals("未达成 (NO) 胜出", noWinner.label);
+        assertEquals(GoldMarketStatusStyle.YES_TEXT, yesWinner.textColor);
+        assertEquals(GoldMarketStatusStyle.NO_TEXT, noWinner.textColor);
+    }
+
+    @Test
+    public void optionTextNormalizesGenericYesNoLabels() {
+        assertEquals("达成 (YES)", GoldMarketOptionText.displayName("YES", 0));
+        assertEquals("未达成 (NO)", GoldMarketOptionText.displayName("NO", 1));
+        assertEquals("达成 60.0%", GoldMarketOptionText.probabilityLabel(0, 60.0f));
+        assertEquals("未达成 40.0%", GoldMarketOptionText.probabilityLabel(1, 40.0f));
     }
 
     @Test
