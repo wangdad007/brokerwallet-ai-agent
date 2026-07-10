@@ -255,29 +255,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
     }
 
     private CharSequence styleMarketText(String text, boolean title) {
-        if (text == null) text = "";
-        SpannableStringBuilder styled = new SpannableStringBuilder(text);
-        List<GoldMarketDetailPresenter.Part> parts = GoldMarketDetailPresenter.highlightParts(text);
-        for (GoldMarketDetailPresenter.Part part : parts) {
-            int color = colorForPart(part.role);
-            styled.setSpan(new ForegroundColorSpan(color), part.start, part.end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-            styled.setSpan(new StyleSpan(Typeface.BOLD), part.start, part.end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-            if (title) {
-                float scale = part.role == GoldMarketDetailPresenter.Role.TIME ? 0.86f : 1.05f;
-                styled.setSpan(new RelativeSizeSpan(scale), part.start, part.end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-            }
-        }
-        return styled;
-    }
-
-    private int colorForPart(GoldMarketDetailPresenter.Role role) {
-        if (role == GoldMarketDetailPresenter.Role.TIME) return 0xFF64748B;
-        if (role == GoldMarketDetailPresenter.Role.SUBJECT) return 0xFF111827;
-        if (role == GoldMarketDetailPresenter.Role.COMPARATOR) return 0xFF2563EB;
-        if (role == GoldMarketDetailPresenter.Role.AMOUNT) return 0xFFB45309;
-        if (role == GoldMarketDetailPresenter.Role.TREND_UP) return YES_COLOR;
-        if (role == GoldMarketDetailPresenter.Role.TREND_DOWN) return NO_COLOR;
-        return 0xFF111827;
+        return GoldMarketTextStyler.style(text, title);
     }
 
     private String composeInlineHeroTitle(GoldMarketDetailPresenter.HeroText hero) {

@@ -8,9 +8,9 @@ import java.util.regex.Pattern;
 
 public final class GoldMarketDetailPresenter {
     private static final Pattern DATE_TIME_PATTERN =
-            Pattern.compile("\\d{4}-\\d{2}-\\d{2}(?:\\s+\\d{1,2}:\\d{2})?");
+            Pattern.compile("(?:\\d{4}-)?\\d{2}-\\d{2}(?:\\s+\\d{1,2}:\\d{2})?");
     private static final Pattern AMOUNT_PATTERN =
-            Pattern.compile("(?i)(?:[$¥￥]\\s*)?\\d+(?:\\.\\d+)?\\s*(?:USD|USDT|美元|美金|BKC|%|吨|盎司|克|kg|g|tons?)");
+            Pattern.compile("(?i)(?:[$¥￥]\\s*)?\\d+(?:\\.\\d+)?\\s*(?:USD|USDT|美元|美金|BKC|%|天|吨|盎司|克|kg|g|tons?)");
     private static final Pattern SPACE_PATTERN = Pattern.compile("\\s+");
     private static final String[] SUBJECTS = {
             "黄金价格", "黄金波幅", "黄金收益率", "金价", "黄金", "成交量", "技术指标", "指标"
@@ -80,6 +80,16 @@ public final class GoldMarketDetailPresenter {
         addKeywordParts(parts, text, UP_TRENDS, Role.TREND_UP);
         addKeywordParts(parts, text, DOWN_TRENDS, Role.TREND_DOWN);
         return parts;
+    }
+
+    public static int colorForRole(Role role) {
+        if (role == Role.TIME) return 0xFF64748B;
+        if (role == Role.SUBJECT) return 0xFF111827;
+        if (role == Role.COMPARATOR) return 0xFF2563EB;
+        if (role == Role.AMOUNT) return 0xFFB45309;
+        if (role == Role.TREND_UP) return 0xFF047857;
+        if (role == Role.TREND_DOWN) return 0xFFE11D48;
+        return 0xFF111827;
     }
 
     private static void addPatternParts(List<Part> parts, String text, Pattern pattern, Role role) {

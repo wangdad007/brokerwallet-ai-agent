@@ -18,6 +18,10 @@ public final class GoldMarketOptionText {
         return optionIndex == 1 ? NO_SHORT : YES_SHORT;
     }
 
+    public static String holdingLabel(int optionIndex) {
+        return optionIndex == 1 ? "持有 NO" : "持有 YES";
+    }
+
     public static String displayName(String rawName, int optionIndex) {
         String fallback = displayName(optionIndex);
         if (rawName == null || rawName.trim().isEmpty()) {

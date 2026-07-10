@@ -29,18 +29,28 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.example.brokerfi.R;
 import com.example.brokerfi.xc.agent.gold.model.data.GoldMarketRepository;
 import com.example.brokerfi.xc.agent.gold.model.data.PinataClient;
-import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketCardPresenter;
+import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketDetailPresenter;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketOptionText;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketStatusStyle;
+import com.example.brokerfi.xc.agent.gold.model.logic.GoldPortfolioHistoryPresenter;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldPositionValuation;
+import com.example.brokerfi.xc.agent.gold.model.logic.GoldPositionVisibility;
 import com.example.brokerfi.xc.agent.gold.viewmodel.GoldMyPositionsViewModel;
 import com.bumptech.glide.Glide;
+import com.github.mikephil.charting.charts.LineChart;
+import com.github.mikephil.charting.components.XAxis;
+import com.github.mikephil.charting.data.Entry;
+import com.github.mikephil.charting.data.LineData;
+import com.github.mikephil.charting.data.LineDataSet;
+import com.github.mikephil.charting.formatter.ValueFormatter;
 
 import android.widget.ImageView;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
@@ -56,6 +66,8 @@ public class GoldMyPositionsFragment extends Fragment {
     private final List<GoldMarketRepository.GameModel> myPositions = new ArrayList<>();
 
     private TextView tvTotalBalance, tvTotalPnl;
+    private LineChart portfolioChart;
+    private View portfolioChartSection;
     private LinearLayout positionsContainer;
     private SwipeRefreshLayout swipeRefresh;
     private double lastTotalBalance = 0.0;
@@ -73,6 +85,8 @@ public class GoldMyPositionsFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_gold_my_positions, container, false);
         tvTotalBalance = view.findViewById(R.id.tv_total_balance);
         tvTotalPnl = view.findViewById(R.id.tv_total_pnl);
+        portfolioChart = view.findViewById(R.id.chart_portfolio_value);
+        portfolioChartSection = view.findViewById(R.id.portfolio_chart_section);
         positionsContainer = view.findViewById(R.id.positions_container);
         swipeRefresh = view.findViewById(R.id.swipe_refresh);
         swipeRefresh.setOnRefreshListener(() -> viewModel.loadPositions());
@@ -91,7 +105,12 @@ public class GoldMyPositionsFragment extends Fragment {
         viewModel.getMyPositions().observe(getViewLifecycleOwner(), positions -> {
             myPositions.clear();
             if (positions != null) {
-                myPositions.addAll(positions);
+                long nowMillis = System.currentTimeMillis();
+                for (GoldMarketRepository.GameModel position : positions) {
+                    if (GoldPositionVisibility.isVisible(position, nowMillis)) {
+                        myPositions.add(position);
+                    }
+                }
             }
             renderPositions();
             updateSummary();
@@ -135,7 +154,7 @@ public class GoldMyPositionsFragment extends Fragment {
             TextView tvTitle = card.findViewById(R.id.tv_position_title);
             ImageView ivIcon = card.findViewById(R.id.iv_position_icon);
             String rawTitle = game.desc != null && !game.desc.isEmpty() ? game.desc : "博弈池 #" + game.id;
-            tvTitle.setText(GoldMarketCardPresenter.displayTitle(rawTitle, game.deadlineSec));
+            tvTitle.setText(stylePositionTitle(rawTitle, game.deadlineSec));
 
             if (game.avatarUrl != null && !game.avatarUrl.isEmpty()) {
                 Glide.with(this).load(PinataClient.IPFS_GATEWAY + game.avatarUrl).placeholder(R.drawable.apartment_icon).into(ivIcon);
@@ -148,21 +167,21 @@ public class GoldMyPositionsFragment extends Fragment {
             TextView tvCurrentValue = card.findViewById(R.id.tv_current_value);
             TextView tvProfit = card.findViewById(R.id.tv_profit);
 
-            List<String> sideNames = new ArrayList<>();
+            List<Integer> heldOptionIndexes = new ArrayList<>();
             StringBuilder shareText = new StringBuilder();
             if (game.myShares != null) {
                 for (int i = 0; i < game.myShares.size(); i++) {
                     BigInteger shares = game.myShares.get(i);
                     if (shares == null || shares.compareTo(BigInteger.ZERO) <= 0) continue;
-                    String sideName = optionNameFor(game, i);
-                    sideNames.add(sideName);
+                    String sideName = GoldMarketOptionText.holdingLabel(i);
+                    heldOptionIndexes.add(i);
                     if (shareText.length() > 0) shareText.append('\n');
                     shareText.append(sideName).append(": ").append(GoldNoteMarketActivity.formatShareAmount(shares)).append(" 份额");
                 }
             }
-            tvSide.setText(styleSideText(joinSideNames(sideNames)));
-            tvSide.setTextColor(resolveSideColor(sideNames));
-            tvSide.setBackground(makeRoundedBackground(resolveSideBackground(sideNames), 999));
+            tvSide.setText(sideBadgeText(heldOptionIndexes));
+            tvSide.setTextColor(resolveSideColor(heldOptionIndexes));
+            tvSide.setBackground(makeRoundedBackground(resolveSideBackground(heldOptionIndexes), 999));
             tvShares.setText(shareText.length() == 0 ? "暂无份额" : styleShareText(shareText.toString()));
 
             GoldPositionValuation.MarketValue marketValue = GoldPositionValuation.calculateMarket(game);
@@ -204,56 +223,32 @@ public class GoldMyPositionsFragment extends Fragment {
             subtitle += String.format(Locale.getDefault(), " · %d 个持有暂未计入估值", portfolio.getUnavailableMarketCount());
         }
         tvTotalPnl.setText(subtitle);
+        setupPortfolioChart();
     }
 
-    private String optionNameFor(GoldMarketRepository.GameModel game, int index) {
-        if (game.optionNames != null && index < game.optionNames.size()) {
-            return GoldMarketOptionText.displayName(game.optionNames.get(index), index);
-        }
-        return GoldMarketOptionText.displayName(index);
+    private String sideBadgeText(List<Integer> heldOptionIndexes) {
+        if (heldOptionIndexes.isEmpty()) return "--";
+        boolean hasYes = heldOptionIndexes.contains(0);
+        boolean hasNo = heldOptionIndexes.contains(1);
+        if (hasYes && hasNo) return "双向持有";
+        return GoldMarketOptionText.holdingLabel(hasNo ? 1 : 0);
     }
 
-    private String joinSideNames(List<String> sideNames) {
-        if (sideNames.isEmpty()) return "--";
-        StringBuilder joined = new StringBuilder();
-        for (String s : sideNames) {
-            if (joined.length() > 0) joined.append(" / ");
-            joined.append(s);
-        }
-        return joined.toString();
-    }
-
-    private int resolveSideColor(List<String> sideNames) {
-        if (sideNames.isEmpty()) return Color.BLACK;
-        boolean allPositive = true, allNegative = true;
-        for (String s : sideNames) {
-            String upper = (s == null ? "" : s).toUpperCase(Locale.US);
-            boolean neg = upper.contains("NO") || upper.contains("DOWN") || upper.contains("跌")
-                    || upper.contains("未达标") || upper.contains("未达成");
-            boolean pos = !neg && (upper.contains("YES") || upper.contains("UP") || upper.contains("涨")
-                    || upper.contains("达标") || upper.contains("达成"));
-            allPositive = allPositive && pos;
-            allNegative = allNegative && neg;
-        }
-        if (allPositive) return YES_COLOR;
-        if (allNegative) return NO_COLOR;
+    private int resolveSideColor(List<Integer> heldOptionIndexes) {
+        if (heldOptionIndexes.isEmpty()) return Color.BLACK;
+        boolean hasYes = heldOptionIndexes.contains(0);
+        boolean hasNo = heldOptionIndexes.contains(1);
+        if (hasYes && !hasNo) return YES_COLOR;
+        if (hasNo && !hasYes) return NO_COLOR;
         return NEUTRAL_TEXT;
     }
 
-    private int resolveSideBackground(List<String> sideNames) {
-        if (sideNames.isEmpty()) return NEUTRAL_BACKGROUND;
-        int color = resolveSideColor(sideNames);
+    private int resolveSideBackground(List<Integer> heldOptionIndexes) {
+        if (heldOptionIndexes.isEmpty()) return NEUTRAL_BACKGROUND;
+        int color = resolveSideColor(heldOptionIndexes);
         if (color == YES_COLOR) return YES_BACKGROUND;
         if (color == NO_COLOR) return NO_BACKGROUND;
         return NEUTRAL_BACKGROUND;
-    }
-
-    private CharSequence styleSideText(String text) {
-        if (text == null || text.isEmpty()) return "--";
-        SpannableStringBuilder styled = new SpannableStringBuilder(text);
-        applySideKeywords(styled, text, YES_COLOR, "YES", "UP", "涨", "达标", "达成");
-        applySideKeywords(styled, text, NO_COLOR, "NO", "DOWN", "跌", "未达标", "未达成");
-        return styled;
     }
 
     private CharSequence styleShareText(String text) {
@@ -285,18 +280,87 @@ public class GoldMyPositionsFragment extends Fragment {
         return NEUTRAL_TEXT;
     }
 
-    private void applySideKeywords(SpannableStringBuilder styled, String text, int color, String... keywords) {
-        String lower = text.toLowerCase(Locale.US);
-        for (String keyword : keywords) {
-            String key = keyword.toLowerCase(Locale.US);
-            int start = lower.indexOf(key);
-            while (start >= 0) {
-                int end = start + keyword.length();
-                styled.setSpan(new ForegroundColorSpan(color), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-                styled.setSpan(new StyleSpan(Typeface.BOLD), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-                start = lower.indexOf(key, end);
-            }
+    private CharSequence stylePositionTitle(String rawTitle, long deadlineSec) {
+        GoldMarketDetailPresenter.HeroText hero =
+                GoldMarketDetailPresenter.heroText(rawTitle, deadlineSec);
+        String primary = hero.primaryTitle == null ? "" : hero.primaryTitle.trim();
+        String time = hero.timeSubtitle == null ? "" : hero.timeSubtitle.trim();
+        String title = time.isEmpty() ? primary : primary + " " + time;
+        return GoldMarketTextStyler.style(title, true);
+    }
+
+
+    private void setupPortfolioChart() {
+        if (portfolioChart == null || portfolioChartSection == null) return;
+        final List<GoldPortfolioHistoryPresenter.Point> points =
+                GoldPortfolioHistoryPresenter.pointsFor(myPositions, System.currentTimeMillis() / 1000L);
+        if (points.size() < 2) {
+            portfolioChartSection.setVisibility(View.GONE);
+            return;
         }
+        portfolioChartSection.setVisibility(View.VISIBLE);
+
+        List<Entry> entries = new ArrayList<>();
+        for (int i = 0; i < points.size(); i++) {
+            BigDecimal bkc = new BigDecimal(points.get(i).valueWei)
+                    .divide(new BigDecimal("1000000000000000000"), 4, RoundingMode.HALF_UP);
+            entries.add(new Entry(i, bkc.floatValue()));
+        }
+
+        LineDataSet dataSet = new LineDataSet(entries, "");
+        dataSet.setColor(0xFF5EEAD4);
+        dataSet.setLineWidth(2.25f);
+        dataSet.setDrawValues(false);
+        dataSet.setDrawCircles(points.size() <= 8);
+        dataSet.setCircleRadius(2.5f);
+        dataSet.setCircleColor(0xFF5EEAD4);
+        dataSet.setDrawCircleHole(false);
+        dataSet.setMode(LineDataSet.Mode.CUBIC_BEZIER);
+        dataSet.setDrawFilled(true);
+        dataSet.setFillColor(0xFF5EEAD4);
+        dataSet.setFillAlpha(32);
+        portfolioChart.setData(new LineData(dataSet));
+        portfolioChart.getDescription().setEnabled(false);
+        portfolioChart.getLegend().setEnabled(false);
+        portfolioChart.setDrawGridBackground(false);
+        portfolioChart.setTouchEnabled(true);
+        portfolioChart.setScaleEnabled(false);
+        portfolioChart.setPinchZoom(false);
+        portfolioChart.setExtraOffsets(0f, 4f, 0f, 0f);
+
+        XAxis xAxis = portfolioChart.getXAxis();
+        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
+        xAxis.setDrawGridLines(false);
+        xAxis.setDrawAxisLine(false);
+        xAxis.setTextColor(0xFF94A3B8);
+        xAxis.setTextSize(9f);
+        xAxis.setLabelCount(Math.min(3, points.size()), false);
+        xAxis.setValueFormatter(new ValueFormatter() {
+            private final SimpleDateFormat formatter = new SimpleDateFormat("MM-dd", Locale.getDefault());
+
+            @Override
+            public String getFormattedValue(float value) {
+                int index = Math.round(value);
+                if (index < 0 || index >= points.size()) return "";
+                return formatter.format(new Date(points.get(index).timeSec * 1000L));
+            }
+        });
+
+        portfolioChart.getAxisRight().setEnabled(false);
+        portfolioChart.getAxisLeft().setDrawAxisLine(false);
+        portfolioChart.getAxisLeft().setDrawGridLines(true);
+        portfolioChart.getAxisLeft().setGridColor(0x22FFFFFF);
+        portfolioChart.getAxisLeft().setTextColor(0xFF94A3B8);
+        portfolioChart.getAxisLeft().setTextSize(9f);
+        portfolioChart.getAxisLeft().setLabelCount(3, true);
+        portfolioChart.getAxisLeft().setValueFormatter(new ValueFormatter() {
+            @Override
+            public String getFormattedValue(float value) {
+                return String.format(Locale.getDefault(), "%.1f", value);
+            }
+        });
+        portfolioChart.animateX(500);
+        portfolioChart.invalidate();
     }
 
     private void animateBalance(double target) {

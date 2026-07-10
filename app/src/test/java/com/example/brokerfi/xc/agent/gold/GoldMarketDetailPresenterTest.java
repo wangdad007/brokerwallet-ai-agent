@@ -40,6 +40,14 @@ public class GoldMarketDetailPresenterTest {
     }
 
     @Test
+    public void highlightPartsTreatDurationDaysAsAnAmount() {
+        List<GoldMarketDetailPresenter.Part> parts = GoldMarketDetailPresenter.highlightParts(
+                "黄金涨跌 19天");
+
+        assertTrue(contains(parts, GoldMarketDetailPresenter.Role.AMOUNT, "19天"));
+    }
+
+    @Test
     public void heroTextSplitsDateRangeFromMarketTitle() {
         GoldMarketDetailPresenter.HeroText hero = GoldMarketDetailPresenter.heroText(
                 "2026-07-04 16:40 至 2026-07-23 04:25 黄金价格 上涨", 0);
@@ -55,6 +63,15 @@ public class GoldMarketDetailPresenterTest {
 
         org.junit.Assert.assertEquals("金价 大于 10 USD", hero.primaryTitle);
         org.junit.Assert.assertEquals("截止 2026-07-06 15:00", hero.timeSubtitle);
+    }
+
+    @Test
+    public void heroTextSplitsMonthDayTimestampWithoutDuplicatingIt() {
+        GoldMarketDetailPresenter.HeroText hero = GoldMarketDetailPresenter.heroText(
+                "黄金目标价 07-10 13:42", 0);
+
+        org.junit.Assert.assertEquals("黄金目标价", hero.primaryTitle);
+        org.junit.Assert.assertEquals("07-10 13:42", hero.timeSubtitle);
     }
 
     private static boolean contains(List<GoldMarketDetailPresenter.Part> parts,

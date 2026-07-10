@@ -122,7 +122,8 @@ public class GoldMarketListFragment extends Fragment {
             TextView tvTitle = card.findViewById(R.id.tv_market_title);
             ImageView ivIcon = card.findViewById(R.id.iv_market_icon);
             String rawTitle = game.desc != null && !game.desc.isEmpty() ? game.desc : "博弈池 #" + game.id;
-            tvTitle.setText(GoldMarketCardPresenter.displayTitle(rawTitle, game.deadlineSec));
+            tvTitle.setText(GoldMarketTextStyler.style(
+                    GoldMarketCardPresenter.displayTitle(rawTitle, game.condition, game.deadlineSec), true));
 
             if (game.avatarUrl != null && !game.avatarUrl.isEmpty()) {
                 Glide.with(this).load(PinataClient.IPFS_GATEWAY + game.avatarUrl).placeholder(R.drawable.apartment_icon).into(ivIcon);

@@ -32,14 +32,28 @@ public class GoldMarketCardPresenterTest {
     }
 
     @Test
-    public void displayTitleAddsTargetTimeSuffixWhenOnlyDeadlineExists() {
-        assertEquals("黄金目标价 07-07 13:55", GoldMarketCardPresenter.displayTitle(
+    public void displayTitleKeepsThresholdAndAmountInsteadOfDeadlineTime() {
+        assertEquals("金价 大于 10 USD", GoldMarketCardPresenter.displayTitle(
                 "截止 2026-07-07 13:55 金价 大于 10 USD", 0));
     }
 
     @Test
-    public void displayTitleUsesChainDeadlineWhenDescriptionHasNoTime() {
-        assertEquals("黄金预测 07-08 00:00", GoldMarketCardPresenter.displayTitle(
+    public void displayTitleUsesConditionWhenLegacyDescriptionOmitsThresholdAmount() {
+        assertEquals("黄金价格 大于 10 USD", GoldMarketCardPresenter.displayTitle(
+                "黄金目标价 07-06 20:30",
+                "黄金价格 大于 10 USD (截至 2026-07-06 20:30)",
+                0));
+    }
+
+    @Test
+    public void displayTitleDoesNotAppendChainDeadlineToGenericTitle() {
+        assertEquals("黄金预测", GoldMarketCardPresenter.displayTitle(
                 "博弈池 #9", 1783440000L));
+    }
+
+    @Test
+    public void displayTitleHidesSubDayDurationInsteadOfShowingHoursOrMinutes() {
+        assertEquals("黄金涨跌", GoldMarketCardPresenter.displayTitle(
+                "2026-07-04 16:32 至 2026-07-04 21:20 黄金价格 上涨", 0));
     }
 }

@@ -6,6 +6,8 @@ import android.app.TimePickerDialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
@@ -24,6 +26,7 @@ import android.util.Log;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.bumptech.glide.Glide;
@@ -56,6 +59,7 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
     private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault());
     
     private byte[] selectedImageData = null;
+    private byte[] templateImageData = null;
     private final ActivityResultLauncher<Intent> imagePickerLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
@@ -72,6 +76,7 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
         templateTitle = getIntent().getStringExtra("TEMPLATE_TITLE");
         viewModel = new ViewModelProvider(this).get(GoldCreatePoolViewModel.class);
         initViews();
+        applyTemplateDefaultCover();
         setupTemplateUI();
         
         // Handle AI Parsed Data if available
@@ -144,6 +149,32 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
         ArrayAdapter<String> adapterOp = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, operators);
         adapterOp.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerOperator.setAdapter(adapterOp);
+    }
+
+    private void applyTemplateDefaultCover() {
+        int iconRes = GoldMarketTemplateIcon.forType(templateType);
+        ivPoolIcon.setImageResource(iconRes);
+        templateImageData = renderDrawableAsPng(iconRes);
+        if (iconRes != R.drawable.apartment_icon) {
+            btnSelectImage.setText("更换封面");
+        }
+    }
+
+    private byte[] renderDrawableAsPng(int drawableRes) {
+        try {
+            Drawable drawable = ContextCompat.getDrawable(this, drawableRes);
+            if (drawable == null) return null;
+            Bitmap bitmap = Bitmap.createBitmap(256, 256, Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(bitmap);
+            drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
+            drawable.draw(canvas);
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, output);
+            return output.toByteArray();
+        } catch (Exception e) {
+            Log.w("GoldCreate", "模板默认封面生成失败", e);
+            return null;
+        }
     }
 
     private void setupTemplateUI() {
@@ -295,7 +326,8 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
         AlertDialog dialog = builder.create();
         btn.setOnClickListener(view -> { 
             dialog.dismiss(); 
-            viewModel.createGame(title, condition, selectedImageData, "Premium", Arrays.asList("达成 (YES)", "未达成 (NO)"), dur, liqWei); 
+            byte[] coverImage = selectedImageData != null ? selectedImageData : templateImageData;
+            viewModel.createGame(title, condition, coverImage, "Premium", Arrays.asList("达成 (YES)", "未达成 (NO)"), dur, liqWei);
         });
         dialog.show();
     }

@@ -134,7 +134,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="当前市场预期"
+                            android:text="当前市场"
                             android:textColor="#0F172A"
                             android:textSize="17sp"
                             android:textStyle="bold" />
@@ -321,19 +321,10 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="概率历史走势"
+                        android:text="YES/NO份额走势"
                         android:textColor="#0F172A"
                         android:textSize="17sp"
                         android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:text="达成 / 未达成概率随时间变化"
-                        android:textColor="#64748B"
-                        android:textSize="12sp" />
-
                     <com.github.mikephil.charting.charts.LineChart
                         android:id="@+id/line_chart"
                         android:layout_width="match_parent"
@@ -474,7 +465,7 @@
                         android:layout_weight="1"
                         android:layout_marginEnd="8dp"
                         android:background="@drawable/bg_bet_yes"
-                        android:text="下注达成"
+                        android:text="买入yes"
                         android:textAllCaps="false"
                         android:textColor="#FFFFFF"
                         android:textSize="17sp"
@@ -488,7 +479,7 @@
                         android:layout_weight="1"
                         android:layout_marginStart="8dp"
                         android:background="@drawable/bg_bet_no"
-                        android:text="下注未达成"
+                        android:text="下注no"
                         android:textAllCaps="false"
                         android:textColor="#FFFFFF"
                         android:textSize="17sp"

@@ -403,21 +403,22 @@ public class GoldCreatePoolFragment extends Fragment {
     }
 
     private void initTemplates(GridLayout grid) {
-        addTemplate(grid, "价格涨跌", "预测金价在某日涨跌", R.drawable.ic_template_price, "TYPE_PRICE");
-        addTemplate(grid, "波动幅度", "预测行情剧烈程度", R.drawable.ic_template_volatility, "TYPE_VOLATILITY");
-        addTemplate(grid, "交易量", "预测市场整体流动性", R.drawable.ic_template_volume, "TYPE_VOLUME");
-        addTemplate(grid, "技术指标", "预测 RSI/MACD 形态", R.drawable.ic_template_technical, "TYPE_TECHNICAL");
-        addTemplate(grid, "极值触碰", "预测金价是否触及目标", R.drawable.ic_template_touch, "TYPE_TOUCH");
-        addTemplate(grid, "跑赢率", "黄金 vs BTC 收益率", R.drawable.ic_template_relative, "TYPE_RELATIVE");
-        addTemplate(grid, "价格阈值", "预测金价与目标价格关系", R.drawable.ic_template_price_threshold, "TYPE_PRICE_THRESHOLD");
-        addTemplate(grid, "事件驱动", "预测宏观事件是否发生", R.drawable.ic_template_event, "TYPE_EVENT");
+        addTemplate(grid, "价格涨跌", "预测金价在某日涨跌", "TYPE_PRICE");
+        addTemplate(grid, "波动幅度", "预测行情剧烈程度", "TYPE_VOLATILITY");
+        addTemplate(grid, "交易量", "预测市场整体流动性", "TYPE_VOLUME");
+        addTemplate(grid, "技术指标", "预测 RSI/MACD 形态", "TYPE_TECHNICAL");
+        addTemplate(grid, "极值触碰", "预测金价是否触及目标", "TYPE_TOUCH");
+        addTemplate(grid, "跑赢率", "黄金 vs BTC 收益率", "TYPE_RELATIVE");
+        addTemplate(grid, "价格阈值", "预测金价与目标价格关系", "TYPE_PRICE_THRESHOLD");
+        addTemplate(grid, "事件驱动", "预测宏观事件是否发生", "TYPE_EVENT");
     }
 
-    private void addTemplate(GridLayout grid, String title, String desc, int iconRes, String type) {
+    private void addTemplate(GridLayout grid, String title, String desc, String type) {
         View card = LayoutInflater.from(requireContext()).inflate(R.layout.item_gold_template_card, grid, false);
         ((TextView) card.findViewById(R.id.tv_template_title)).setText(title);
         ((TextView) card.findViewById(R.id.tv_template_desc)).setText(desc);
-        ((ImageView) card.findViewById(R.id.iv_template_icon)).setImageResource(iconRes);
+        ((ImageView) card.findViewById(R.id.iv_template_icon)).setImageResource(
+                GoldMarketTemplateIcon.forType(type));
         
         GridLayout.LayoutParams params = new GridLayout.LayoutParams();
         params.width = 0;

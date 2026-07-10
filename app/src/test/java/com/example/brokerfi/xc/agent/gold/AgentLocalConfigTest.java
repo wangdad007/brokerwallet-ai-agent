@@ -65,6 +65,8 @@ public class AgentLocalConfigTest {
         assertEquals("未达成 (NO)", GoldMarketOptionText.displayName("NO", 1));
         assertEquals("达成 60.0%", GoldMarketOptionText.probabilityLabel(0, 60.0f));
         assertEquals("未达成 40.0%", GoldMarketOptionText.probabilityLabel(1, 40.0f));
+        assertEquals("持有 YES", GoldMarketOptionText.holdingLabel(0));
+        assertEquals("持有 NO", GoldMarketOptionText.holdingLabel(1));
     }
 
     @Test

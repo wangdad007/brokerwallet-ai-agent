@@ -26,7 +26,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="选择 AI 智能驱动或手动配置模版"
+            android:text="选择AI配置或手动配置模版"
             android:textColor="#94A3B8"
             android:textSize="13sp" />
 
@@ -107,7 +107,7 @@
                 android:layout_height="52dp"
                 android:layout_marginTop="16dp"
                 android:background="@drawable/custom_button_background_black"
-                android:text="智能解析并进入配置"
+                android:text="创建博弈池"
                 android:textAllCaps="false"
                 android:textColor="#FFFFFF"
                 android:textSize="15sp"

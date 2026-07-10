@@ -21,12 +21,29 @@ public final class GoldMarketCardPresenter {
     private GoldMarketCardPresenter() {}
 
     public static String displayTitle(String rawTitle, long deadlineSec) {
-        String base = compactTitle(rawTitle);
-        String suffix = timeSuffix(rawTitle, deadlineSec);
-        if (suffix.isEmpty()) {
-            return base;
+        return displayTitle(rawTitle, "", deadlineSec);
+    }
+
+    public static String displayTitle(String rawTitle, String condition, long deadlineSec) {
+        GoldMarketDetailPresenter.HeroText hero =
+                GoldMarketDetailPresenter.heroText(rawTitle, deadlineSec);
+        String primary = cleanTitle(hero.primaryTitle);
+        if (containsAmount(primary)) {
+            return primary;
         }
-        return base + " " + suffix;
+        String conditionTitle = cleanTitle(
+                GoldMarketDetailPresenter.heroText(condition, deadlineSec).primaryTitle);
+        if (containsAmount(conditionTitle)) {
+            return conditionTitle;
+        }
+        String base = compactTitle(rawTitle);
+        String durationDays = durationSuffixDays(rawTitle);
+        return durationDays.isEmpty() ? base : base + " " + durationDays;
+    }
+
+    private static String cleanTitle(String title) {
+        if (title == null) return "";
+        return title.replaceAll("\\(\\s*\\)|（\\s*）", "").trim();
     }
 
     public static String compactTitle(String rawTitle) {
@@ -60,18 +77,18 @@ public final class GoldMarketCardPresenter {
         return trimFallback(normalized);
     }
 
-    private static String timeSuffix(String rawTitle, long deadlineSec) {
+    private static boolean containsAmount(String title) {
+        for (GoldMarketDetailPresenter.Part part : GoldMarketDetailPresenter.highlightParts(title)) {
+            if (part.role == GoldMarketDetailPresenter.Role.AMOUNT) return true;
+        }
+        return false;
+    }
+
+    private static String durationSuffixDays(String rawTitle) {
         List<TimePoint> points = extractTimePoints(rawTitle);
         if (points.size() >= 2) {
             long diffMs = points.get(1).date.getTime() - points.get(0).date.getTime();
-            return formatDuration(diffMs);
-        }
-        if (points.size() == 1) {
-            return formatTargetTime(points.get(0));
-        }
-        if (deadlineSec > 0) {
-            return new SimpleDateFormat("MM-dd HH:mm", Locale.US)
-                    .format(new Date(deadlineSec * 1000L));
+            return formatDurationDays(diffMs);
         }
         return "";
     }
@@ -107,25 +124,15 @@ public final class GoldMarketCardPresenter {
         }
     }
 
-    private static String formatDuration(long diffMs) {
+    private static String formatDurationDays(long diffMs) {
         if (diffMs <= 0) {
             return "";
         }
         long minutes = Math.max(1L, TimeUnit.MILLISECONDS.toMinutes(diffMs));
-        if (minutes < 60) {
-            return minutes + "分钟";
-        }
         long hours = (minutes + 59) / 60;
-        if (hours < 24) {
-            return hours + "小时";
-        }
+        if (hours < 24) return "";
         long days = (hours + 23) / 24;
         return days + "天";
-    }
-
-    private static String formatTargetTime(TimePoint point) {
-        return new SimpleDateFormat(point.hasClockTime ? "MM-dd HH:mm" : "MM-dd", Locale.US)
-                .format(point.date);
     }
 
     private static String normalize(String title) {
