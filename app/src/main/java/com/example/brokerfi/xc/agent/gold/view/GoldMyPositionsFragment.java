@@ -156,7 +156,8 @@ public class GoldMyPositionsFragment extends Fragment {
             String rawTitle = game.desc != null && !game.desc.isEmpty() ? game.desc : "博弈池 #" + game.id;
             tvTitle.setText(stylePositionTitle(rawTitle, game.condition, game.deadlineSec));
 
-            int templateIcon = GoldMarketTemplateIcon.forAvatarUrl(game.avatarUrl);
+            int templateIcon = GoldMarketTemplateIcon.forMarket(
+                    game.avatarUrl, rawTitle, game.condition);
             if (templateIcon != 0) {
                 ivIcon.setImageResource(templateIcon);
             } else if (game.avatarUrl != null && !game.avatarUrl.isEmpty()) {

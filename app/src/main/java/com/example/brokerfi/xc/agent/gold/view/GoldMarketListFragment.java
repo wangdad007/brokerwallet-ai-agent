@@ -125,7 +125,8 @@ public class GoldMarketListFragment extends Fragment {
             tvTitle.setText(GoldMarketTextStyler.style(
                     GoldMarketCardPresenter.displayTitle(rawTitle, game.condition, game.deadlineSec), true));
 
-            int templateIcon = GoldMarketTemplateIcon.forAvatarUrl(game.avatarUrl);
+            int templateIcon = GoldMarketTemplateIcon.forMarket(
+                    game.avatarUrl, rawTitle, game.condition);
             if (templateIcon != 0) {
                 ivIcon.setImageResource(templateIcon);
             } else if (game.avatarUrl != null && !game.avatarUrl.isEmpty()) {

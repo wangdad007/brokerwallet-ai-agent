@@ -193,7 +193,8 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
                 GoldMarketCardPresenter.displayTitle(rawTitle, condition, currentGame.deadlineSec), true));
         tvPoolCondition.setText(GoldMarketTextStyler.style("判断逻辑：" + condition, false));
 
-        int templateIcon = GoldMarketTemplateIcon.forAvatarUrl(currentGame.avatarUrl);
+        int templateIcon = GoldMarketTemplateIcon.forMarket(
+                currentGame.avatarUrl, rawTitle, condition);
         if (templateIcon != 0) {
             ivPoolIcon.setImageResource(templateIcon);
         } else if (currentGame.avatarUrl != null && !currentGame.avatarUrl.isEmpty()) {

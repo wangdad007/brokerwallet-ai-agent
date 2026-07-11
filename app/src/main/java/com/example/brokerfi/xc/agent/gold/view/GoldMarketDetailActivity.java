@@ -225,7 +225,8 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         tvMarketTime.setVisibility(View.GONE);
         tvMarketCondition.setText(styleMarketText(condition, false));
         
-        int templateIcon = GoldMarketTemplateIcon.forAvatarUrl(currentGame.avatarUrl);
+        int templateIcon = GoldMarketTemplateIcon.forMarket(
+                currentGame.avatarUrl, title, currentGame.condition);
         if (templateIcon != 0) {
             ivMarketIcon.setImageResource(templateIcon);
         } else if (currentGame.avatarUrl != null && !currentGame.avatarUrl.isEmpty()) {

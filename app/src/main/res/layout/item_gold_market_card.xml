@@ -36,14 +36,17 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="12dp"
-        android:layout_marginEnd="8dp"
-        android:ellipsize="end"
+        android:breakStrategy="simple"
         android:maxLines="1"
         android:text="黄金涨跌"
         android:textColor="#111827"
         android:textSize="18sp"
         android:textStyle="bold"
-        app:layout_constraintEnd_toStartOf="@+id/tv_market_status"
+        app:autoSizeMaxTextSize="18sp"
+        app:autoSizeMinTextSize="14sp"
+        app:autoSizeStepGranularity="1sp"
+        app:autoSizeTextType="uniform"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@+id/cv_icon_container"
         app:layout_constraintTop_toTopOf="@+id/cv_icon_container" />
 
@@ -52,6 +55,8 @@
         android:id="@+id/tv_market_status"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="12dp"
         android:background="@drawable/bg_ai_analysis_content"
         android:paddingHorizontal="8dp"
         android:paddingVertical="3dp"
@@ -59,8 +64,10 @@
         android:textColor="#047857"
         android:textSize="12sp"
         android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintBottom_toBottomOf="@+id/tv_total_pool"
+        app:layout_constraintEnd_toStartOf="@+id/tv_deadline"
+        app:layout_constraintStart_toEndOf="@+id/tv_total_pool"
+        app:layout_constraintTop_toTopOf="@+id/tv_total_pool" />
 
     <!-- Pool and Deadline Row -->
     <TextView
