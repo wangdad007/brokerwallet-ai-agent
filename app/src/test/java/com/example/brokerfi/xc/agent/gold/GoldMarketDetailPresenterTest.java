@@ -16,7 +16,7 @@ public class GoldMarketDetailPresenterTest {
 
         assertTrue(contains(parts, GoldMarketDetailPresenter.Role.TIME, "2026-07-04"));
         assertTrue(contains(parts, GoldMarketDetailPresenter.Role.TIME, "2026-08-20"));
-        assertTrue(contains(parts, GoldMarketDetailPresenter.Role.SUBJECT, "黄金价格"));
+        assertTrue(contains(parts, GoldMarketDetailPresenter.Role.NOUN, "价格"));
         assertTrue(contains(parts, GoldMarketDetailPresenter.Role.TREND_UP, "上涨"));
     }
 
@@ -25,7 +25,7 @@ public class GoldMarketDetailPresenterTest {
         List<GoldMarketDetailPresenter.Part> parts = GoldMarketDetailPresenter.highlightParts(
                 "截止 2026-07-30 金价 下跌");
 
-        assertTrue(contains(parts, GoldMarketDetailPresenter.Role.SUBJECT, "金价"));
+        assertTrue(contains(parts, GoldMarketDetailPresenter.Role.NOUN, "金价"));
         assertTrue(contains(parts, GoldMarketDetailPresenter.Role.TREND_DOWN, "下跌"));
     }
 
@@ -34,7 +34,7 @@ public class GoldMarketDetailPresenterTest {
         List<GoldMarketDetailPresenter.Part> parts = GoldMarketDetailPresenter.highlightParts(
                 "金价 大于 10 USD");
 
-        assertTrue(contains(parts, GoldMarketDetailPresenter.Role.SUBJECT, "金价"));
+        assertTrue(contains(parts, GoldMarketDetailPresenter.Role.NOUN, "金价"));
         assertTrue(contains(parts, GoldMarketDetailPresenter.Role.COMPARATOR, "大于"));
         assertTrue(contains(parts, GoldMarketDetailPresenter.Role.AMOUNT, "10 USD"));
     }
@@ -46,6 +46,34 @@ public class GoldMarketDetailPresenterTest {
 
         assertTrue(contains(parts, GoldMarketDetailPresenter.Role.TREND_UP, "上涨"));
         assertTrue(contains(parts, GoldMarketDetailPresenter.Role.AMOUNT, "19天"));
+    }
+
+    @Test
+    public void highlightPartsDistinguishesRelativeMarketDirectionAndBenchmark() {
+        List<GoldMarketDetailPresenter.Part> parts = GoldMarketDetailPresenter.highlightParts(
+                "黄金 跑赢 比特币");
+
+        assertTrue(contains(parts, GoldMarketDetailPresenter.Role.NOUN, "比特币"));
+        assertTrue(contains(parts, GoldMarketDetailPresenter.Role.TREND_UP, "跑赢"));
+    }
+
+    @Test
+    public void highlightPartsDistinguishesTechnicalIndicatorAndSignalDirection() {
+        List<GoldMarketDetailPresenter.Part> parts = GoldMarketDetailPresenter.highlightParts(
+                "黄金 MACD 上穿信号线");
+
+        assertTrue(contains(parts, GoldMarketDetailPresenter.Role.NOUN, "MACD"));
+        assertTrue(contains(parts, GoldMarketDetailPresenter.Role.TREND_UP, "上穿"));
+    }
+
+    @Test
+    public void highlightPartsTreatsBareTechnicalThresholdAsAnAmount() {
+        List<GoldMarketDetailPresenter.Part> parts = GoldMarketDetailPresenter.highlightParts(
+                "黄金RSI 大于 70");
+
+        assertTrue(contains(parts, GoldMarketDetailPresenter.Role.NOUN, "RSI"));
+        assertTrue(contains(parts, GoldMarketDetailPresenter.Role.COMPARATOR, "大于"));
+        assertTrue(contains(parts, GoldMarketDetailPresenter.Role.AMOUNT, "70"));
     }
 
     @Test

@@ -156,7 +156,10 @@ public class GoldMyPositionsFragment extends Fragment {
             String rawTitle = game.desc != null && !game.desc.isEmpty() ? game.desc : "博弈池 #" + game.id;
             tvTitle.setText(stylePositionTitle(rawTitle, game.condition, game.deadlineSec));
 
-            if (game.avatarUrl != null && !game.avatarUrl.isEmpty()) {
+            int templateIcon = GoldMarketTemplateIcon.forAvatarUrl(game.avatarUrl);
+            if (templateIcon != 0) {
+                ivIcon.setImageResource(templateIcon);
+            } else if (game.avatarUrl != null && !game.avatarUrl.isEmpty()) {
                 Glide.with(this).load(PinataClient.IPFS_GATEWAY + game.avatarUrl).placeholder(R.drawable.apartment_icon).into(ivIcon);
             } else {
                 ivIcon.setImageResource(R.drawable.apartment_icon);

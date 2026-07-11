@@ -4,6 +4,8 @@ import com.example.brokerfi.R;
 
 /** Keeps template selection and market cover art on the same icon mapping. */
 public final class GoldMarketTemplateIcon {
+    private static final String AVATAR_PREFIX = "template://";
+
     private GoldMarketTemplateIcon() {
     }
 
@@ -17,5 +19,10 @@ public final class GoldMarketTemplateIcon {
         if ("TYPE_PRICE_THRESHOLD".equals(templateType)) return R.drawable.ic_template_price_threshold;
         if ("TYPE_EVENT".equals(templateType)) return R.drawable.ic_template_event;
         return R.drawable.apartment_icon;
+    }
+
+    public static int forAvatarUrl(String avatarUrl) {
+        if (avatarUrl == null || !avatarUrl.startsWith(AVATAR_PREFIX)) return 0;
+        return forType(avatarUrl.substring(AVATAR_PREFIX.length()));
     }
 }

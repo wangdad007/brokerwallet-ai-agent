@@ -10,10 +10,12 @@ public final class GoldMarketDetailPresenter {
     private static final Pattern DATE_TIME_PATTERN =
             Pattern.compile("(?:\\d{4}-)?\\d{2}-\\d{2}(?:\\s+\\d{1,2}:\\d{2})?");
     private static final Pattern AMOUNT_PATTERN =
-            Pattern.compile("(?i)(?:[$¥￥]\\s*)?\\d+(?:\\.\\d+)?\\s*(?:USD|USDT|美元|美金|BKC|%|天|吨|盎司|克|kg|g|tons?)");
+            Pattern.compile("(?i)(?:[$¥￥]\\s*)?\\d+(?:\\.\\d+)?\\s*(?:(?:USD|USDT|美元|美金)(?:/盎司)?|BKC|%|天|吨|盎司|克|kg|g|tons?)");
+    private static final Pattern NUMBER_PATTERN = Pattern.compile("\\d+(?:\\.\\d+)?");
     private static final Pattern SPACE_PATTERN = Pattern.compile("\\s+");
-    private static final String[] SUBJECTS = {
-            "黄金价格", "黄金波幅", "黄金收益率", "金价", "黄金", "成交量", "技术指标", "指标"
+    private static final String[] NOUNS = {
+            "美联储降息", "成交量", "收益率", "价格", "金价", "波动", "BTC", "比特币", "Bitcoin",
+            "标普500", "S&P 500", "白银", "RSI", "MACD", "KDJ", "BOLL", "指标"
     };
     private static final String[] TIME_WORDS = {
             "截止", "截至"
@@ -21,13 +23,13 @@ public final class GoldMarketDetailPresenter {
     private static final String[] COMPARATORS = {
             "greater than", "less than", "not below", "not above", "大于等于", "小于等于",
             "不低于", "不高于", "高于", "低于", "大于", "小于", "等于", "超过",
-            "above", "below", "equal"
+            "持平", "above", "below", "equal"
     };
     private static final String[] UP_TRENDS = {
-            "上涨", "上升", "触及", "达标", "Price Up", "UP"
+            "交叉向上", "上穿", "金叉", "上涨", "上升", "触及", "达标", "发生", "跑赢", "Price Up", "UP"
     };
     private static final String[] DOWN_TRENDS = {
-            "下跌", "下降", "未达标", "Price Down", "DOWN"
+            "交叉向下", "下穿", "死叉", "下跌", "下降", "未达标", "Price Down", "DOWN"
     };
 
     private GoldMarketDetailPresenter() {}
@@ -74,21 +76,21 @@ public final class GoldMarketDetailPresenter {
         }
         addPatternParts(parts, text, DATE_TIME_PATTERN, Role.TIME);
         addKeywordParts(parts, text, TIME_WORDS, Role.TIME);
-        addKeywordParts(parts, text, SUBJECTS, Role.SUBJECT);
+        addKeywordParts(parts, text, NOUNS, Role.NOUN);
         addKeywordParts(parts, text, COMPARATORS, Role.COMPARATOR);
         addPatternParts(parts, text, AMOUNT_PATTERN, Role.AMOUNT);
+        addPatternParts(parts, text, NUMBER_PATTERN, Role.AMOUNT);
         addKeywordParts(parts, text, UP_TRENDS, Role.TREND_UP);
         addKeywordParts(parts, text, DOWN_TRENDS, Role.TREND_DOWN);
         return parts;
     }
 
     public static int colorForRole(Role role) {
-        if (role == Role.TIME) return 0xFF64748B;
-        if (role == Role.SUBJECT) return 0xFF111827;
-        if (role == Role.COMPARATOR) return 0xFF2563EB;
-        if (role == Role.AMOUNT) return 0xFFB45309;
-        if (role == Role.TREND_UP) return 0xFF047857;
-        if (role == Role.TREND_DOWN) return 0xFFE11D48;
+        if (role == Role.TIME || role == Role.AMOUNT) return 0xFFB45309;
+        if (role == Role.NOUN) return 0xFF2563EB;
+        if (role == Role.COMPARATOR || role == Role.TREND_UP || role == Role.TREND_DOWN) {
+            return 0xFF047857;
+        }
         return 0xFF111827;
     }
 
@@ -123,7 +125,7 @@ public final class GoldMarketDetailPresenter {
 
     public enum Role {
         TIME,
-        SUBJECT,
+        NOUN,
         COMPARATOR,
         AMOUNT,
         TREND_UP,

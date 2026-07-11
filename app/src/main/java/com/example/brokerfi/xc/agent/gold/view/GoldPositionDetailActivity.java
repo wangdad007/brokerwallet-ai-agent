@@ -193,7 +193,10 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
                 GoldMarketCardPresenter.displayTitle(rawTitle, condition, currentGame.deadlineSec), true));
         tvPoolCondition.setText(GoldMarketTextStyler.style("判断逻辑：" + condition, false));
 
-        if (currentGame.avatarUrl != null && !currentGame.avatarUrl.isEmpty()) {
+        int templateIcon = GoldMarketTemplateIcon.forAvatarUrl(currentGame.avatarUrl);
+        if (templateIcon != 0) {
+            ivPoolIcon.setImageResource(templateIcon);
+        } else if (currentGame.avatarUrl != null && !currentGame.avatarUrl.isEmpty()) {
             Glide.with(this).load(PinataClient.IPFS_GATEWAY + currentGame.avatarUrl)
                     .placeholder(R.drawable.apartment_icon).into(ivPoolIcon);
         } else {

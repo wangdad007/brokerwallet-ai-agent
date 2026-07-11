@@ -27,4 +27,13 @@ public class GoldMarketTemplateIconTest {
         assertEquals(R.drawable.ic_template_event,
                 GoldMarketTemplateIcon.forType("TYPE_EVENT"));
     }
+
+    @Test
+    public void mapsSimulatorAvatarMarkerToTemplateDrawable() {
+        assertEquals(R.drawable.ic_template_price,
+                GoldMarketTemplateIcon.forAvatarUrl("template://TYPE_PRICE"));
+        assertEquals(R.drawable.ic_template_technical,
+                GoldMarketTemplateIcon.forAvatarUrl("template://TYPE_TECHNICAL"));
+        assertEquals(0, GoldMarketTemplateIcon.forAvatarUrl("QmRealImageCid"));
+    }
 }

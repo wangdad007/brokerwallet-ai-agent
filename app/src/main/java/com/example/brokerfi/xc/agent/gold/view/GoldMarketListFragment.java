@@ -125,7 +125,10 @@ public class GoldMarketListFragment extends Fragment {
             tvTitle.setText(GoldMarketTextStyler.style(
                     GoldMarketCardPresenter.displayTitle(rawTitle, game.condition, game.deadlineSec), true));
 
-            if (game.avatarUrl != null && !game.avatarUrl.isEmpty()) {
+            int templateIcon = GoldMarketTemplateIcon.forAvatarUrl(game.avatarUrl);
+            if (templateIcon != 0) {
+                ivIcon.setImageResource(templateIcon);
+            } else if (game.avatarUrl != null && !game.avatarUrl.isEmpty()) {
                 Glide.with(this).load(PinataClient.IPFS_GATEWAY + game.avatarUrl).placeholder(R.drawable.apartment_icon).into(ivIcon);
             } else {
                 ivIcon.setImageResource(R.drawable.apartment_icon);

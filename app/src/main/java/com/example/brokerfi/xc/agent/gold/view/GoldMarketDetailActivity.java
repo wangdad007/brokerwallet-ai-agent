@@ -225,7 +225,10 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         tvMarketTime.setVisibility(View.GONE);
         tvMarketCondition.setText(styleMarketText(condition, false));
         
-        if (currentGame.avatarUrl != null && !currentGame.avatarUrl.isEmpty()) {
+        int templateIcon = GoldMarketTemplateIcon.forAvatarUrl(currentGame.avatarUrl);
+        if (templateIcon != 0) {
+            ivMarketIcon.setImageResource(templateIcon);
+        } else if (currentGame.avatarUrl != null && !currentGame.avatarUrl.isEmpty()) {
             Glide.with(this).load(PinataClient.IPFS_GATEWAY + currentGame.avatarUrl).placeholder(R.drawable.apartment_icon).into(ivMarketIcon);
         } else {
             ivMarketIcon.setImageResource(R.drawable.apartment_icon);
