@@ -33,13 +33,13 @@ public class GoldMarketResearchPromptBuilderTest {
                         + "标题/描述: 黄金是否突破前高\n"
                         + "结算条件: 金价曾触及 2500 USD\n"
                         + "详细信息: 观察国际金价是否在截止前突破关键价位\n"
-                        + "选项: 达成 (YES) / 未达成 (NO)\n"
-                        + "达成 (YES) 概率: 60.0%\n"
-                        + "未达成 (NO) 概率: 40.0%\n"
+                        + "选项: YES / NO\n"
+                        + "YES 概率: 60.0%\n"
+                        + "NO 概率: 40.0%\n"
                         + "总池子: 300.00 BKC\n"
                         + "市场状态: 进行中\n"
                         + "剩余时间: 1天 1小时 1分钟 1秒\n"
-                        + "达成 (YES) 2.5 份额\n"
+                        + "YES 2.5 份额\n"
                         + "黄金现价: 2388.50 USD\n"
                         + "日涨跌: +1.25%\n"
                         + "行情来源: gold-api.com\n"
@@ -51,13 +51,13 @@ public class GoldMarketResearchPromptBuilderTest {
                 "黄金是否突破前高",
                 "结算条件: 金价曾触及 2500 USD",
                 "观察国际金价是否在截止前突破关键价位",
-                "选项: 达成 (YES) / 未达成 (NO)",
-                "达成 (YES) 概率: 60.0%",
-                "未达成 (NO) 概率: 40.0%",
+                "选项: YES / NO",
+                "YES 概率: 60.0%",
+                "NO 概率: 40.0%",
                 "总池子: 300.00 BKC",
                 "市场状态: 进行中",
                 "剩余时间: 1天 1小时 1分钟 1秒",
-                "达成 (YES) 2.5 份额",
+                "YES 2.5 份额",
                 "黄金现价: 2388.50 USD",
                 "日涨跌: +1.25%",
                 "行情来源: gold-api.com",
@@ -100,9 +100,9 @@ public class GoldMarketResearchPromptBuilderTest {
                 game, NOW_MILLIS, completeQuote());
 
         assertContains(context,
-                "达成 (YES) 概率: 0.1%",
-                "未达成 (NO) 概率: 99.9%");
-        assertFalse(context.contains("未达成 (NO) 概率: 100.0%"));
+                "YES 概率: 0.1%",
+                "NO 概率: 99.9%");
+        assertFalse(context.contains("NO 概率: 100.0%"));
     }
 
     @Test
@@ -157,8 +157,8 @@ public class GoldMarketResearchPromptBuilderTest {
                 game, NOW_MILLIS, completeQuote());
 
         assertContains(context,
-                "达成 (YES) 2.5 份额",
-                "未达成 (NO) 1.234567 份额",
+                "YES 2.5 份额",
+                "NO 1.234567 份额",
                 "选项3 <0.000001 份额");
     }
 
@@ -273,7 +273,7 @@ public class GoldMarketResearchPromptBuilderTest {
                         game, NOW_MILLIS, completeQuote()),
                 "博弈池 #9",
                 "选项: ONLY",
-                "未达成 (NO) 1 份额");
+                "NO 1 份额");
     }
 
     private static GoldMarketRepository.GameModel completeGame() {

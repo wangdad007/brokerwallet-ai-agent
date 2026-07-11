@@ -327,7 +327,7 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
         btn.setOnClickListener(view -> { 
             dialog.dismiss(); 
             byte[] coverImage = selectedImageData != null ? selectedImageData : templateImageData;
-            viewModel.createGame(title, condition, coverImage, "Premium", Arrays.asList("达成 (YES)", "未达成 (NO)"), dur, liqWei);
+            viewModel.createGame(title, condition, coverImage, "Premium", Arrays.asList("YES", "NO"), dur, liqWei);
         });
         dialog.show();
     }

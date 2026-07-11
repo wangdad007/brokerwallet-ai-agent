@@ -3,10 +3,10 @@ package com.example.brokerfi.xc.agent.gold.model.logic;
 import java.util.Locale;
 
 public final class GoldMarketOptionText {
-    public static final String YES_DISPLAY = "达成 (YES)";
-    public static final String NO_DISPLAY = "未达成 (NO)";
-    public static final String YES_SHORT = "达成";
-    public static final String NO_SHORT = "未达成";
+    public static final String YES_DISPLAY = "YES";
+    public static final String NO_DISPLAY = "NO";
+    public static final String YES_SHORT = "YES";
+    public static final String NO_SHORT = "NO";
 
     private GoldMarketOptionText() {}
 
@@ -35,12 +35,14 @@ public final class GoldMarketOptionText {
                 .toUpperCase(Locale.US);
         if (optionIndex == 0 && ("YES".equals(normalized)
                 || "YES(达成)".equals(normalized)
-                || "达成(YES)".equals(normalized))) {
+                || "达成(YES)".equals(normalized)
+                || "达成".equals(normalized))) {
             return YES_DISPLAY;
         }
         if (optionIndex == 1 && ("NO".equals(normalized)
                 || "NO(未达成)".equals(normalized)
-                || "未达成(NO)".equals(normalized))) {
+                || "未达成(NO)".equals(normalized)
+                || "未达成".equals(normalized))) {
             return NO_DISPLAY;
         }
         return trimmed;

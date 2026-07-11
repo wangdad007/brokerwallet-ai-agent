@@ -20,6 +20,7 @@ import com.example.brokerfi.R;
 import com.example.brokerfi.xc.agent.gold.model.data.BackendApiClient;
 import com.example.brokerfi.xc.agent.gold.model.data.GoldMarketRepository;
 import com.example.brokerfi.xc.agent.gold.model.data.PinataClient;
+import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketCardPresenter;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketOptionText;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldPositionHistoryPresenter;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketStatusStyle;
@@ -184,9 +185,13 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
             return;
         }
 
-        // Pool Info
-        tvPoolDesc.setText(currentGame.desc != null && !currentGame.desc.isEmpty() ? currentGame.desc : "博弈池 #" + currentGame.id);
-        tvPoolCondition.setText("条件: " + (currentGame.condition != null ? currentGame.condition : "暂无"));
+        String rawTitle = currentGame.desc != null && !currentGame.desc.isEmpty()
+                ? currentGame.desc : "博弈池 #" + currentGame.id;
+        String condition = currentGame.condition != null && !currentGame.condition.trim().isEmpty()
+                ? currentGame.condition : "暂无";
+        tvPoolDesc.setText(GoldMarketTextStyler.style(
+                GoldMarketCardPresenter.displayTitle(rawTitle, condition, currentGame.deadlineSec), true));
+        tvPoolCondition.setText(GoldMarketTextStyler.style("判断逻辑：" + condition, false));
 
         if (currentGame.avatarUrl != null && !currentGame.avatarUrl.isEmpty()) {
             Glide.with(this).load(PinataClient.IPFS_GATEWAY + currentGame.avatarUrl)

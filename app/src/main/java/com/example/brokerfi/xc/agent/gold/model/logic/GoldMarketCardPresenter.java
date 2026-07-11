@@ -36,6 +36,11 @@ public final class GoldMarketCardPresenter {
         if (containsAmount(conditionTitle)) {
             return conditionTitle;
         }
+        String directionalTitle = directionalTitle(rawTitle);
+        if (!directionalTitle.isEmpty()) {
+            String durationDays = durationSuffixDays(rawTitle);
+            return durationDays.isEmpty() ? directionalTitle : directionalTitle + " " + durationDays;
+        }
         String base = compactTitle(rawTitle);
         String durationDays = durationSuffixDays(rawTitle);
         return durationDays.isEmpty() ? base : base + " " + durationDays;
@@ -82,6 +87,25 @@ public final class GoldMarketCardPresenter {
             if (part.role == GoldMarketDetailPresenter.Role.AMOUNT) return true;
         }
         return false;
+    }
+
+    private static String directionalTitle(String rawTitle) {
+        String text = rawTitle == null ? "" : rawTitle.toLowerCase(Locale.US);
+        boolean goldRelated = text.contains("黄金") || text.contains("金价") || text.contains("gold");
+        if (!goldRelated) return "";
+        if (text.contains("下跌") || text.contains("下降") || text.contains("price down")
+                || text.contains(" down")) {
+            return "黄金 下跌";
+        }
+        if (text.contains("上涨") || text.contains("上升") || text.contains("price up")
+                || text.contains(" up")) {
+            return "黄金 上涨";
+        }
+        if (text.contains("持平") || text.contains("横盘") || text.contains("flat")
+                || text.contains("range")) {
+            return "黄金 持平";
+        }
+        return "";
     }
 
     private static String durationSuffixDays(String rawTitle) {

@@ -27,6 +27,7 @@ import io.noties.markwon.Markwon;
 import com.example.brokerfi.R;
 import com.example.brokerfi.xc.agent.gold.model.data.GoldMarketRepository;
 import com.example.brokerfi.xc.agent.gold.model.data.PinataClient;
+import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketCardPresenter;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketDetailPresenter;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketOptionText;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketStatusStyle;
@@ -218,8 +219,8 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         if (currentGame == null) return;
         String title = currentGame.desc != null && !currentGame.desc.isEmpty() ? currentGame.desc : "博弈池 #" + currentGame.id;
         String condition = "判定逻辑: " + (currentGame.condition != null ? currentGame.condition : "暂无");
-        GoldMarketDetailPresenter.HeroText hero = GoldMarketDetailPresenter.heroText(title, currentGame.deadlineSec);
-        tvMarketDesc.setText(styleMarketText(composeInlineHeroTitle(hero), true));
+        tvMarketDesc.setText(styleMarketText(
+                GoldMarketCardPresenter.displayTitle(title, currentGame.condition, currentGame.deadlineSec), true));
         tvMarketTime.setText("");
         tvMarketTime.setVisibility(View.GONE);
         tvMarketCondition.setText(styleMarketText(condition, false));
@@ -256,14 +257,6 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
 
     private CharSequence styleMarketText(String text, boolean title) {
         return GoldMarketTextStyler.style(text, title);
-    }
-
-    private String composeInlineHeroTitle(GoldMarketDetailPresenter.HeroText hero) {
-        String primary = hero.primaryTitle == null ? "" : hero.primaryTitle.trim();
-        String time = hero.timeSubtitle == null ? "" : hero.timeSubtitle.trim();
-        if (time.isEmpty()) return primary;
-        if (primary.isEmpty()) return time;
-        return primary + " " + time;
     }
 
     private void updateHoldingsUI() {
@@ -624,7 +617,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         long remaining = GoldNoteMarketActivity.remainingSecondsUntilDeadline(
                 currentGame.deadlineSec, System.currentTimeMillis());
         if (remaining == 0) {
-            return "下单失败：该博弈池已经截止，链上不会再接受新的达成/未达成份额购买。";
+            return "下单失败：该博弈池已经截止，链上不会再接受新的 YES/NO 份额购买。";
         }
         if (remaining < 0) {
             return "下单失败：该博弈池的截止时间还未同步完成。\n\n"

@@ -26,8 +26,8 @@ public class GoldMarketCardPresenterTest {
     }
 
     @Test
-    public void displayTitleAddsDurationSuffixWhenStartAndEndTimesExist() {
-        assertEquals("黄金涨跌 26天", GoldMarketCardPresenter.displayTitle(
+    public void displayTitleKeepsDirectionAndAddsDurationDaysWhenStartAndEndTimesExist() {
+        assertEquals("黄金 上涨 26天", GoldMarketCardPresenter.displayTitle(
                 "2026-07-04 16:32 至 2026-07-30 16:20 黄金价格 上涨", 0));
     }
 
@@ -53,7 +53,7 @@ public class GoldMarketCardPresenterTest {
 
     @Test
     public void displayTitleHidesSubDayDurationInsteadOfShowingHoursOrMinutes() {
-        assertEquals("黄金涨跌", GoldMarketCardPresenter.displayTitle(
+        assertEquals("黄金 上涨", GoldMarketCardPresenter.displayTitle(
                 "2026-07-04 16:32 至 2026-07-04 21:20 黄金价格 上涨", 0));
     }
 }

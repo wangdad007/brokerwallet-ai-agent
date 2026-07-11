@@ -42,8 +42,9 @@ public class GoldMarketDetailPresenterTest {
     @Test
     public void highlightPartsTreatDurationDaysAsAnAmount() {
         List<GoldMarketDetailPresenter.Part> parts = GoldMarketDetailPresenter.highlightParts(
-                "黄金涨跌 19天");
+                "黄金 上涨 19天");
 
+        assertTrue(contains(parts, GoldMarketDetailPresenter.Role.TREND_UP, "上涨"));
         assertTrue(contains(parts, GoldMarketDetailPresenter.Role.AMOUNT, "19天"));
     }
 

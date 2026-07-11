@@ -53,18 +53,20 @@ public class AgentLocalConfigTest {
         GoldMarketStatusStyle noWinner = GoldMarketStatusStyle.forMarketOutcome(
                 true, false, 0, 1, "YES", "NO");
 
-        assertEquals("达成 (YES) 胜出", yesWinner.label);
-        assertEquals("未达成 (NO) 胜出", noWinner.label);
+        assertEquals("YES 胜出", yesWinner.label);
+        assertEquals("NO 胜出", noWinner.label);
         assertEquals(GoldMarketStatusStyle.YES_TEXT, yesWinner.textColor);
         assertEquals(GoldMarketStatusStyle.NO_TEXT, noWinner.textColor);
     }
 
     @Test
     public void optionTextNormalizesGenericYesNoLabels() {
-        assertEquals("达成 (YES)", GoldMarketOptionText.displayName("YES", 0));
-        assertEquals("未达成 (NO)", GoldMarketOptionText.displayName("NO", 1));
-        assertEquals("达成 60.0%", GoldMarketOptionText.probabilityLabel(0, 60.0f));
-        assertEquals("未达成 40.0%", GoldMarketOptionText.probabilityLabel(1, 40.0f));
+        assertEquals("YES", GoldMarketOptionText.displayName("YES", 0));
+        assertEquals("NO", GoldMarketOptionText.displayName("NO", 1));
+        assertEquals("YES", GoldMarketOptionText.displayName("达成 (YES)", 0));
+        assertEquals("NO", GoldMarketOptionText.displayName("未达成 (NO)", 1));
+        assertEquals("YES 60.0%", GoldMarketOptionText.probabilityLabel(0, 60.0f));
+        assertEquals("NO 40.0%", GoldMarketOptionText.probabilityLabel(1, 40.0f));
         assertEquals("持有 YES", GoldMarketOptionText.holdingLabel(0));
         assertEquals("持有 NO", GoldMarketOptionText.holdingLabel(1));
     }

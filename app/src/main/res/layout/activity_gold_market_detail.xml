@@ -175,7 +175,7 @@
                                 android:id="@+id/tv_up_label"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="达成 (YES)"
+                                android:text="YES"
                                 android:textColor="#047857"
                                 android:textSize="13sp"
                                 android:textStyle="bold" />
@@ -206,7 +206,7 @@
                                 android:id="@+id/tv_down_label"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="未达成 (NO)"
+                                android:text="NO"
                                 android:textColor="#E11D48"
                                 android:textSize="13sp"
                                 android:textStyle="bold" />
@@ -465,7 +465,7 @@
                         android:layout_weight="1"
                         android:layout_marginEnd="8dp"
                         android:background="@drawable/bg_bet_yes"
-                        android:text="买入yes"
+                        android:text="买入YES"
                         android:textAllCaps="false"
                         android:textColor="#FFFFFF"
                         android:textSize="17sp"
@@ -479,7 +479,7 @@
                         android:layout_weight="1"
                         android:layout_marginStart="8dp"
                         android:background="@drawable/bg_bet_no"
-                        android:text="下注no"
+                        android:text="买入NO"
                         android:textAllCaps="false"
                         android:textColor="#FFFFFF"
                         android:textSize="17sp"
@@ -538,7 +538,7 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:layout_marginStart="12dp"
-                            android:text="达成 (YES)"
+                            android:text="YES"
                             android:textColor="#334155"
                             android:textSize="14sp"
                             android:textStyle="bold" />
@@ -572,7 +572,7 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:layout_marginStart="12dp"
-                            android:text="未达成 (NO)"
+                            android:text="NO"
                             android:textColor="#334155"
                             android:textSize="14sp"
                             android:textStyle="bold" />
