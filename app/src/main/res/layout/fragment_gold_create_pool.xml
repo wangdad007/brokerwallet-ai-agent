@@ -67,31 +67,13 @@
             android:id="@+id/section_ai_create"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="22dp"
+            android:layout_marginTop="10dp"
             android:orientation="vertical">
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="AI 创建博弈池"
-                android:textColor="#1A1A1A"
-                android:textSize="18sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="用任意语言描述您的博弈想法，AI 将解析参数并匹配模版"
-                android:textColor="#64748B"
-                android:textSize="13sp"
-                android:lineSpacingExtra="2dp" />
 
             <EditText
                 android:id="@+id/et_ai_input"
                 android:layout_width="match_parent"
                 android:layout_height="110dp"
-                android:layout_marginTop="16dp"
                 android:background="@drawable/custom_edittext_background"
                 android:gravity="top"
                 android:hint="例如：我想创建一个关于黄金在下周一能否涨到 2400 美金的博弈池..."
@@ -119,34 +101,20 @@
             android:id="@+id/section_manual_create"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="22dp"
+            android:layout_marginTop="10dp"
             android:orientation="vertical"
             android:visibility="gone">
 
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="手动创建博弈池"
-                android:textColor="#1A1A1A"
-                android:textSize="18sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="点击下方经典模版进入精细化规则定制"
-                android:textColor="#64748B"
-                android:textSize="13sp" />
 
             <GridLayout
                 android:id="@+id/template_grid"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
+                android:background="@drawable/bg_gold_template_grid"
                 android:columnCount="2"
                 android:alignmentMode="alignMargins"
-                android:columnOrderPreserved="false">
+                android:columnOrderPreserved="false"
+                android:clipToOutline="true">
                 <!-- Templates added dynamically -->
             </GridLayout>
         </LinearLayout>

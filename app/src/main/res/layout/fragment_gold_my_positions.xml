@@ -78,7 +78,7 @@
                     android:layout_height="wrap_content"
                     android:layout_below="@id/divider_card"
                     android:layout_marginTop="16dp"
-                    android:text="累计参与 0 个博弈池"
+                    android:text="参与 0 个博弈池"
                     android:textColor="#AAFFFFFF"
                     android:textSize="14sp" />
 

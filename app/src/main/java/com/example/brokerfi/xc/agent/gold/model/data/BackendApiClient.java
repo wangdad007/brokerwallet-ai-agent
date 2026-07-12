@@ -283,6 +283,28 @@ public class BackendApiClient {
         return json.optBoolean("success", false);
     }
 
+    // ==================== 个人总资产历史 API ====================
+
+    /** 保存当前钱包总资产估值；后端按 5 分钟时间桶去重。 */
+    public static boolean savePortfolioHistory(String userAddress, String totalValueWei,
+                                               int activeMarketCount) throws Exception {
+        PortfolioHistorySyncReq req = new PortfolioHistorySyncReq();
+        req.userAddress = userAddress;
+        req.totalValueWei = totalValueWei;
+        req.activeMarketCount = activeMarketCount;
+        String body = doPost("/portfolio-history", gson.toJson(req),
+                FAST_WRITE_CONNECT_TIMEOUT_MS, FAST_WRITE_READ_TIMEOUT_MS);
+        return new JSONObject(body).optBoolean("success", false);
+    }
+
+    /** 获取按时间升序排列的个人总资产估值历史。 */
+    public static List<PortfolioHistoryPointDTO> fetchPortfolioHistory(String userAddress) throws Exception {
+        String body = doGet("/portfolio-history?user_address=" + userAddress + "&limit=256");
+        JSONArray arr = new JSONObject(body).getJSONArray("history");
+        Type listType = new TypeToken<List<PortfolioHistoryPointDTO>>(){}.getType();
+        return gson.fromJson(arr.toString(), listType);
+    }
+
     // ==================== 交易同步 API ====================
 
     /**
@@ -523,6 +545,28 @@ public class BackendApiClient {
 
         @SerializedName("total_pool")
         public String totalPool;
+    }
+
+    public static class PortfolioHistoryPointDTO {
+        @SerializedName("timestamp_sec")
+        public long timestampSec;
+
+        @SerializedName("total_value_wei")
+        public String totalValueWei;
+
+        @SerializedName("active_market_count")
+        public int activeMarketCount;
+    }
+
+    private static class PortfolioHistorySyncReq {
+        @SerializedName("user_address")
+        String userAddress;
+
+        @SerializedName("total_value_wei")
+        String totalValueWei;
+
+        @SerializedName("active_market_count")
+        int activeMarketCount;
     }
 
     /**

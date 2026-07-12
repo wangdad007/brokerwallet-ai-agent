@@ -28,6 +28,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.example.brokerfi.R;
 import com.example.brokerfi.xc.agent.gold.model.data.GoldMarketRepository;
+import com.example.brokerfi.xc.agent.gold.model.data.BackendApiClient;
 import com.example.brokerfi.xc.agent.gold.model.data.PinataClient;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketCardPresenter;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketOptionText;
@@ -64,6 +65,7 @@ public class GoldMyPositionsFragment extends Fragment {
     private static final int NEUTRAL_BACKGROUND = 0xFFF1F5F9;
     private GoldMyPositionsViewModel viewModel;
     private final List<GoldMarketRepository.GameModel> myPositions = new ArrayList<>();
+    private final List<BackendApiClient.PortfolioHistoryPointDTO> savedPortfolioHistory = new ArrayList<>();
 
     private TextView tvTotalBalance, tvTotalPnl;
     private LineChart portfolioChart;
@@ -124,6 +126,11 @@ public class GoldMyPositionsFragment extends Fragment {
             if (msg != null && !msg.isEmpty()) {
                 Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show();
             }
+        });
+        viewModel.getPortfolioHistory().observe(getViewLifecycleOwner(), points -> {
+            savedPortfolioHistory.clear();
+            if (points != null) savedPortfolioHistory.addAll(points);
+            setupPortfolioChart();
         });
     }
 
@@ -227,6 +234,7 @@ public class GoldMyPositionsFragment extends Fragment {
             subtitle += String.format(Locale.getDefault(), " · %d 个持有暂未计入估值", portfolio.getUnavailableMarketCount());
         }
         tvTotalPnl.setText(subtitle);
+        viewModel.saveAndLoadPortfolioHistory(portfolio.getValueWei(), myPositions.size());
         setupPortfolioChart();
     }
 
@@ -292,8 +300,7 @@ public class GoldMyPositionsFragment extends Fragment {
 
     private void setupPortfolioChart() {
         if (portfolioChart == null || portfolioChartSection == null) return;
-        final List<GoldPortfolioHistoryPresenter.Point> points =
-                GoldPortfolioHistoryPresenter.pointsFor(myPositions, System.currentTimeMillis() / 1000L);
+        final List<GoldPortfolioHistoryPresenter.Point> points = portfolioChartPoints();
         if (points.size() < 2) {
             portfolioChartSection.setVisibility(View.GONE);
             return;
@@ -361,6 +368,24 @@ public class GoldMyPositionsFragment extends Fragment {
         });
         portfolioChart.animateX(500);
         portfolioChart.invalidate();
+    }
+
+    private List<GoldPortfolioHistoryPresenter.Point> portfolioChartPoints() {
+        if (savedPortfolioHistory.size() >= 2) {
+            List<GoldPortfolioHistoryPresenter.Point> points = new ArrayList<>();
+            for (BackendApiClient.PortfolioHistoryPointDTO saved : savedPortfolioHistory) {
+                if (saved == null || saved.timestampSec <= 0 || saved.totalValueWei == null) continue;
+                try {
+                    points.add(new GoldPortfolioHistoryPresenter.Point(
+                            saved.timestampSec, new BigInteger(saved.totalValueWei)));
+                } catch (NumberFormatException ignored) {
+                    // Skip malformed historical rows without hiding valid chart data.
+                }
+            }
+            if (points.size() >= 2) return points;
+        }
+        return GoldPortfolioHistoryPresenter.pointsFor(
+                myPositions, System.currentTimeMillis() / 1000L);
     }
 
     private void animateBalance(double target) {
