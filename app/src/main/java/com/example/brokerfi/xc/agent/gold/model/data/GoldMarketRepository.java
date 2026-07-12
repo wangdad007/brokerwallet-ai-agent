@@ -1694,7 +1694,8 @@ public class GoldMarketRepository {
      */
     public void createGame(String desc, String condition, byte[] imageData,
                            String detailedInfo, List<String> optionNamesList,
-                           long duration, BigInteger initialLiquidityWei, TxCallback callback) {
+                           long duration, BigInteger initialLiquidityWei,
+                           String templateType, JSONObject resolutionRule, TxCallback callback) {
 
         AppExecutors.getInstance().networkIO().execute(() -> {
             String avatarCid = "";
@@ -1713,12 +1714,18 @@ public class GoldMarketRepository {
 
                 // ---- 步骤 2: 上传元数据 JSON 到 IPFS ----
                 JSONObject metadata = new JSONObject();
+                metadata.put("type", templateType);
                 metadata.put("desc", desc);
                 metadata.put("condition", condition);
                 metadata.put("avatarUrl", avatarCid);
                 metadata.put("detailedInfo", detailedInfo);
                 metadata.put("optionYES", optionNamesList.get(0));
                 metadata.put("optionNO", optionNamesList.get(1));
+                if (resolutionRule != null) {
+                    metadata.put("resolutionRule", resolutionRule);
+                    org.json.JSONArray sources = resolutionRule.optJSONArray("authoritative_sources");
+                    if (sources != null) metadata.put("authoritativeSources", sources);
+                }
 
                 metadataCid = PinataClient.uploadJsonToIPFS(metadata);
                 Log.d(TAG, "元数据上传到IPFS成功, CID: " + metadataCid);

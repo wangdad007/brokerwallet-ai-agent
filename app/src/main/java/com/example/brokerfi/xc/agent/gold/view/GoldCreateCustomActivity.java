@@ -327,9 +327,84 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
         btn.setOnClickListener(view -> { 
             dialog.dismiss(); 
             byte[] coverImage = selectedImageData != null ? selectedImageData : templateImageData;
-            viewModel.createGame(title, condition, coverImage, "Premium", Arrays.asList("YES", "NO"), dur, liqWei);
+            JSONObject resolutionRule = buildResolutionRule(
+                    etParam1.getText().toString().trim(), start, end);
+            viewModel.createGame(title, condition, coverImage, "Premium", Arrays.asList("YES", "NO"),
+                    dur, liqWei, templateType, resolutionRule);
         });
         dialog.show();
+    }
+
+    private JSONObject buildResolutionRule(String param, long startMillis, long endMillis) {
+        JSONObject rule = new JSONObject();
+        try {
+            rule.put("type", templateType);
+            rule.put("symbol", "XAU");
+            rule.put("source", "GOLD_API");
+            rule.put("start_time_sec", startMillis / 1000L);
+            rule.put("end_time_sec", endMillis / 1000L);
+            switch (templateType != null ? templateType : "") {
+                case "TYPE_PRICE":
+                    String direction = spinnerDirection.getSelectedItemPosition() == 1 ? "DOWN"
+                            : spinnerDirection.getSelectedItemPosition() == 2 ? "FLAT" : "UP";
+                    rule.put("direction", direction);
+                    rule.put("flat_tolerance_percent", 0.1);
+                    break;
+                case "TYPE_VOLATILITY":
+                    rule.put("operator", "GTE");
+                    rule.put("threshold", Double.parseDouble(param));
+                    break;
+                case "TYPE_VOLUME":
+                    rule.put("symbol", "COMEX_GC");
+                    rule.put("source", "CME_GROUP");
+                    rule.put("operator", canonicalOperator());
+                    rule.put("threshold", Double.parseDouble(param));
+                    rule.put("volume_unit", "METRIC_TON_EQUIVALENT");
+                    break;
+                case "TYPE_TECHNICAL":
+                    rule.put("indicator", spinnerIndicator.getSelectedItem().toString().split(" ")[0]);
+                    rule.put("operator", technicalOperator());
+                    rule.put("threshold", param.isEmpty() ? 0 : Double.parseDouble(param));
+                    rule.put("interval", "hour");
+                    break;
+                case "TYPE_TOUCH":
+                    rule.put("threshold", Double.parseDouble(param));
+                    break;
+                case "TYPE_RELATIVE":
+                    rule.put("benchmark", param.equalsIgnoreCase("比特币") ? "BTC" : param);
+                    break;
+                case "TYPE_PRICE_THRESHOLD":
+                    rule.put("operator", canonicalOperator());
+                    rule.put("threshold", Double.parseDouble(param));
+                    break;
+                case "TYPE_EVENT":
+                    rule.put("source", "AUTHORITATIVE_DOCUMENTS");
+                    rule.put("event", param);
+                    if (param.contains("美联储")) {
+                        org.json.JSONArray sources = new org.json.JSONArray();
+                        sources.put("https://www.federalreserve.gov/newsevents/pressreleases.htm");
+                        rule.put("authoritative_sources", sources);
+                    } else if (param.toUpperCase(java.util.Locale.US).contains("CPI")) {
+                        org.json.JSONArray sources = new org.json.JSONArray();
+                        sources.put("https://www.bls.gov/cpi/");
+                        rule.put("authoritative_sources", sources);
+                    }
+                    break;
+            }
+        } catch (Exception e) {
+            throw new IllegalArgumentException("无法生成结构化裁决规则: " + e.getMessage(), e);
+        }
+        return rule;
+    }
+
+    private String canonicalOperator() {
+        int index = spinnerOperator.getSelectedItemPosition();
+        return index == 1 ? "LT" : index == 2 ? "EQ" : "GT";
+    }
+
+    private String technicalOperator() {
+        int index = spinnerOperator.getSelectedItemPosition();
+        return index == 1 ? "LT" : index == 2 ? "CROSS_UP" : index == 3 ? "CROSS_DOWN" : "GT";
     }
 
     /**
