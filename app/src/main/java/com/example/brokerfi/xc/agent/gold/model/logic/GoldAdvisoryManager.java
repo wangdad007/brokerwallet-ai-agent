@@ -3,6 +3,7 @@ package com.example.brokerfi.xc.agent.gold.model.logic;
 import com.example.brokerfi.xc.agent.ai.DeepSeekClient;
 import com.example.brokerfi.xc.agent.config.AgentConfig;
 import com.example.brokerfi.xc.agent.gold.model.data.AppExecutors;
+import com.example.brokerfi.xc.agent.gold.model.data.GoldBackendClient;
 import com.example.brokerfi.xc.agent.gold.model.data.GoldMarketRepository;
 
 import org.json.JSONArray;
@@ -24,6 +25,7 @@ public class GoldAdvisoryManager {
 
     private static double sinaPrevClose = 0;
     private static boolean sinaPrevCloseFetched = false;
+    private static Advisory lastValidQuote;
 
     public static class Advisory {
         public String signal = "HOLD";
@@ -89,6 +91,9 @@ public class GoldAdvisoryManager {
         AppExecutors.getInstance().networkIO().execute(() -> {
             try {
                 Advisory quote = fetchGoldQuote();
+                if (quote == null || quote.priceUsd <= 0) {
+                    throw new IllegalStateException("实时金价暂时不可用");
+                }
                 AppExecutors.getInstance().mainThread().execute(() -> callback.onSuccess(quote));
             } catch (Exception e) {
                 AppExecutors.getInstance().mainThread().execute(() -> callback.onError(e.getMessage()));
@@ -96,9 +101,31 @@ public class GoldAdvisoryManager {
         });
     }
 
-    // Gold price: gold-api.com with sina fallback
+    // Gold price: local backend first, then public sources, then last valid cache.
 
     static Advisory fetchGoldQuote() {
+        try {
+            GoldBackendClient.Quote backend = GoldBackendClient.fetchQuote();
+            Advisory quote = emptyQuote();
+            quote.priceUsd = backend.priceUsd;
+            quote.change24h = backend.change24h;
+            quote.quoteSource = backend.source;
+            quote.quoteUpdatedAt = backend.updatedAt;
+            quote.quoteDelayed = isWeekendNow();
+            return rememberValidQuote(quote);
+        } catch (Exception ignored) {}
+
+        Advisory direct = fetchGoldApi();
+        if (direct.priceUsd > 0) return rememberValidQuote(direct);
+
+        Advisory sina = fetchGoldSina();
+        if (sina.priceUsd > 0) return rememberValidQuote(sina);
+
+        Advisory cached = cachedQuote();
+        return cached != null ? cached : emptyQuote();
+    }
+
+    private static Advisory fetchGoldApi() {
         try {
             URL url = new URL(AgentConfig.GOLD_API_URL);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -125,7 +152,7 @@ public class GoldAdvisoryManager {
                 }
             }
         } catch (Exception ignored) {}
-        return fetchGoldSina();
+        return emptyQuote();
     }
 
     private static synchronized double getSinaPrevClose() {
@@ -273,6 +300,32 @@ public class GoldAdvisoryManager {
         quote.quoteUpdatedAt = "";
         quote.quoteDelayed = true;
         return quote;
+    }
+
+    private static synchronized Advisory rememberValidQuote(Advisory quote) {
+        if (quote == null || quote.priceUsd <= 0) return quote;
+        lastValidQuote = copyQuote(quote);
+        return quote;
+    }
+
+    private static synchronized Advisory cachedQuote() {
+        if (lastValidQuote == null || lastValidQuote.priceUsd <= 0) return null;
+        Advisory cached = copyQuote(lastValidQuote);
+        cached.quoteDelayed = true;
+        cached.quoteSource = cached.quoteSource == null || cached.quoteSource.trim().isEmpty()
+                ? "最近行情（缓存）" : cached.quoteSource + "（缓存）";
+        return cached;
+    }
+
+    private static Advisory copyQuote(Advisory source) {
+        Advisory copy = emptyQuote();
+        copy.priceUsd = source.priceUsd;
+        copy.change24h = source.change24h;
+        copy.usdCny = source.usdCny;
+        copy.quoteSource = source.quoteSource;
+        copy.quoteUpdatedAt = source.quoteUpdatedAt;
+        copy.quoteDelayed = source.quoteDelayed;
+        return copy;
     }
 
     private static void copyQuoteMeta(Advisory from, Advisory to) {

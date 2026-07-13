@@ -5,6 +5,8 @@ public final class AgentConfig {
 
     public static final String BACKEND_BASE_URL = "http://" + LOCAL_HOST + ":8081";
     public static final String BACKEND_GOLD_API_PREFIX = "/api/v1/gold";
+    public static final String BACKEND_GOLD_QUOTE_URL = BACKEND_BASE_URL + BACKEND_GOLD_API_PREFIX + "/quote";
+    public static final String BACKEND_RESEARCH_URL = BACKEND_BASE_URL + BACKEND_GOLD_API_PREFIX + "/research";
 
     public static final String BROKER_CHAIN_BASE_URL = "http://" + LOCAL_HOST + ":56741/";
 

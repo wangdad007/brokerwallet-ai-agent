@@ -30,6 +30,7 @@ public class GoldNoteMarketActivity extends AppCompatActivity {
     private static final BigDecimal DISPLAY_TOKEN_UNIT = new BigDecimal("1000000000000000000");
     private GoldNoteMarketViewModel viewModel;
     private TextView tvGoldPrice, tvGoldChange, tvGoldQuoteMeta;
+    private boolean hasValidQuote = false;
     private boolean destroyed = false;
     private final Handler timerHandler = new Handler(Looper.getMainLooper());
     private final Runnable priceRefreshRunnable = new Runnable() {
@@ -56,7 +57,13 @@ public class GoldNoteMarketActivity extends AppCompatActivity {
 
     private void observeViewModel() {
         viewModel.getQuote().observe(this, quote -> { if (quote != null) updateGoldPriceUI(quote); });
-        viewModel.getError().observe(this, err -> { if (err != null) { tvGoldPrice.setText("XAU $---.--"); tvGoldChange.setText("--.--%"); } });
+        viewModel.getError().observe(this, err -> {
+            if (err != null && !hasValidQuote) {
+                tvGoldPrice.setText("XAU $---.--/oz");
+                tvGoldChange.setText("--.--%");
+                tvGoldQuoteMeta.setText("行情暂不可用，正在自动重试");
+            }
+        });
     }
 
     @Override
@@ -96,9 +103,17 @@ public class GoldNoteMarketActivity extends AppCompatActivity {
     }
 
     private void updateGoldPriceUI(GoldAdvisoryManager.Advisory quote) {
+        if (quote == null || quote.priceUsd <= 0) {
+            if (!hasValidQuote) tvGoldQuoteMeta.setText("行情暂不可用，正在自动重试");
+            return;
+        }
+        hasValidQuote = true;
         tvGoldPrice.setText(String.format(Locale.getDefault(), "XAU $%,.2f/oz", quote.priceUsd));
         tvGoldChange.setText(String.format(Locale.getDefault(), "%+.2f%%", quote.change24h));
-        tvGoldQuoteMeta.setText("来源 " + quote.quoteSource + " · " + quote.quoteUpdatedAt);
+        String source = quote.quoteSource == null || quote.quoteSource.trim().isEmpty()
+                ? "行情服务" : quote.quoteSource.trim();
+        String updatedAt = quote.quoteUpdatedAt == null ? "" : quote.quoteUpdatedAt.trim();
+        tvGoldQuoteMeta.setText(updatedAt.isEmpty() ? "来源 " + source : "来源 " + source + " · " + updatedAt);
     }
 
     public static String formatShareAmount(BigInteger value) {

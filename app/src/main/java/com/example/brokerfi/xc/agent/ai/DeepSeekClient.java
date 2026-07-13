@@ -8,6 +8,7 @@ import com.example.brokerfi.xc.agent.config.AgentConfig;
 import com.google.gson.Gson;
 import com.google.gson.annotations.SerializedName;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
@@ -37,8 +38,9 @@ public class DeepSeekClient {
     }
 
     public static boolean isConfigured() {
-        if (appContext == null) return false;
-        return isValidApiKey(getApiKey());
+        boolean backendConfigured = AgentConfig.BACKEND_RESEARCH_URL != null
+                && !AgentConfig.BACKEND_RESEARCH_URL.trim().isEmpty();
+        return backendConfigured || (appContext != null && isValidApiKey(getApiKey()));
     }
 
     public static String getApiKey() {
@@ -97,53 +99,68 @@ public class DeepSeekClient {
     }
 
     private static void executeChat(ChatRequest request, ChatCallback callback) {
-        String apiKey = getApiKey();
-        if (!isValidApiKey(apiKey)) {
-            callback.onError("NO_API_KEY");
-            return;
-        }
-
         executor.execute(() -> {
-            HttpURLConnection conn = null;
+            Exception backendFailure;
             try {
-                String json = gson.toJson(request);
-
-                URL url = new URL(API_URL);
-                conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("POST");
-                conn.setRequestProperty("Accept", "application/json");
-                conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
-                conn.setRequestProperty("Authorization", "Bearer " + apiKey);
-                conn.setDoOutput(true);
-                conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
-                conn.setReadTimeout(READ_TIMEOUT_MS);
-
-                try (OutputStream os = conn.getOutputStream()) {
-                    os.write(json.getBytes(StandardCharsets.UTF_8));
-                }
-
-                int code = conn.getResponseCode();
-                String body = readStream(code >= 200 && code < 300
-                        ? conn.getInputStream()
-                        : conn.getErrorStream());
-                if (code >= 200 && code < 300) {
-                    ChatResponse response = gson.fromJson(body, ChatResponse.class);
-                    String content = extractContent(response);
-                    callback.onSuccess(content);
-                } else {
-                    String error = buildHttpError(code, body);
-                    Log.w(TAG, error);
-                    callback.onError(error);
-                }
+                String content = BackendResearchClient.research(
+                        messageContent(request, "system"),
+                        messageContent(request, "user"));
+                callback.onSuccess(content);
+                return;
             } catch (Exception e) {
-                Log.w(TAG, "DeepSeek request failed", e);
-                callback.onError(e.getClass().getSimpleName() + ": " + e.getMessage());
-            } finally {
-                if (conn != null) {
-                    conn.disconnect();
-                }
+                backendFailure = e;
+                Log.w(TAG, "Backend AI request failed; trying direct DeepSeek", e);
+            }
+
+            String apiKey = getApiKey();
+            if (!isValidApiKey(apiKey)) {
+                callback.onError(NetworkErrorFormatter.forThrowable(backendFailure));
+                return;
+            }
+            try {
+                callback.onSuccess(executeDirect(request, apiKey));
+            } catch (Exception directFailure) {
+                Log.w(TAG, "Direct DeepSeek request failed", directFailure);
+                callback.onError(NetworkErrorFormatter.forThrowable(directFailure));
             }
         });
+    }
+
+    private static String executeDirect(ChatRequest request, String apiKey) throws Exception {
+        HttpURLConnection conn = null;
+        try {
+            String json = gson.toJson(request);
+            conn = (HttpURLConnection) new URL(API_URL).openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Accept", "application/json");
+            conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+            conn.setRequestProperty("Authorization", "Bearer " + apiKey);
+            conn.setDoOutput(true);
+            conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
+            conn.setReadTimeout(READ_TIMEOUT_MS);
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(json.getBytes(StandardCharsets.UTF_8));
+            }
+            int code = conn.getResponseCode();
+            String body = readStream(code >= 200 && code < 300
+                    ? conn.getInputStream() : conn.getErrorStream());
+            if (code < 200 || code >= 300) {
+                throw new IOException(buildHttpError(code, body));
+            }
+            return extractContent(gson.fromJson(body, ChatResponse.class));
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+    }
+
+    private static String messageContent(ChatRequest request, String role) {
+        if (request == null || request.messages == null) return "";
+        for (Message message : request.messages) {
+            if (message != null && role.equals(message.role)) {
+                return message.content == null ? "" : message.content;
+            }
+        }
+        return "";
     }
 
     public static void chatSimple(String userMessage, ChatCallback callback) {

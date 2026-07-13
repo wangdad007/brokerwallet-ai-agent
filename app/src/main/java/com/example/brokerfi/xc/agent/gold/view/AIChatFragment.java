@@ -112,7 +112,7 @@ public class AIChatFragment extends Fragment {
                 "我会基于金价、链上预测池和你的问题，给出黄金票据交易建议。\n" +
                 "请不要输入私钥或助记词。\n\n" +
                 (DeepSeekClient.isConfigured() ?
-                        "DeepSeek AI 已就绪，可以直接询问。" :
+                        "AI 投研服务已就绪，可以直接询问。" :
                         "尚未配置 DeepSeek API Key。"));
     }
 
@@ -140,7 +140,7 @@ public class AIChatFragment extends Fragment {
     private void updateAiAdviceUI(GoldAdvisoryManager.Advisory advisory) {
         if (destroyed || !isAdded() || advisory == null) return;
         tvAiSignal.setText(advisory.signal);
-        tvAiConfidence.setText("DeepSeek 置信度 " + advisory.confidence + "%");
+        tvAiConfidence.setText("AI 置信度 " + advisory.confidence + "%");
         tvAiSummary.setText(advisory.summary);
         int color = advisory.signal.equals("BUY") ? Color.parseColor("#047857") : (advisory.signal.equals("SELL") ? Color.RED : Color.BLACK);
         tvAiSignal.setTextColor(color);

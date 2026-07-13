@@ -32,6 +32,7 @@ import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketDetailPresenter;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketOptionText;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketStatusStyle;
 import com.example.brokerfi.xc.agent.gold.viewmodel.GoldMarketDetailViewModel;
+import com.example.brokerfi.xc.agent.ai.DeepSeekClient;
 import com.bumptech.glide.Glide;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.XAxis;
@@ -62,7 +63,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
     private int gameId;
     private String contractAddress;
 
-    private TextView tvMarketDesc, tvMarketTime, tvMarketCondition, tvMarketStatusBadge;
+    private TextView tvMarketDesc, tvMarketTime, tvMarketCondition;
     private TextView tvUpLabel, tvDownLabel, tvUpPct, tvDownPct, tvPool, tvCountdown;
     private TextView tvHoldingsEmpty, tvHoldingYesLabel, tvHoldingYesAmount, tvHoldingNoLabel, tvHoldingNoAmount;
     private View cardMetricYes, cardMetricNo, cardHoldingYes, cardHoldingNo;
@@ -102,6 +103,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_gold_market_detail);
         destroyed = false;
+        DeepSeekClient.init(this);
         gameId = getIntent().getIntExtra("GAME_ID", 1);
         contractAddress = getIntent().getStringExtra("CONTRACT_ADDRESS");
         viewModel = new ViewModelProvider(this).get(GoldMarketDetailViewModel.class);
@@ -126,7 +128,8 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
             if (err != null) {
                 Toast.makeText(this, err, Toast.LENGTH_SHORT).show();
                 if (err.startsWith("AI error:")) {
-                    showMarketAiUnavailable("Error", err);
+                    String message = err.substring("AI error:".length()).trim();
+                    showMarketAiUnavailable("暂不可用", message);
                 }
             }
         });
@@ -169,7 +172,6 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         tvMarketDesc = findViewById(R.id.tv_market_desc);
         tvMarketTime = findViewById(R.id.tv_market_time);
         tvMarketCondition = findViewById(R.id.tv_market_condition);
-        tvMarketStatusBadge = findViewById(R.id.tv_market_status_badge);
         tvUpLabel = findViewById(R.id.tv_up_label);
         tvDownLabel = findViewById(R.id.tv_down_label);
         tvUpPct = findViewById(R.id.tv_up_pct);
@@ -405,7 +407,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         if (marketAiSummary == null || marketAiSummary.isEmpty()) {
             if (!requestInFlight) {
                 tvMarketAiStatus.setText("分析中...");
-                tvMarketAiSummary.setText("DeepSeek 正在全力解析市场数据，请稍后...");
+                tvMarketAiSummary.setText("AI 正在解析市场数据，请稍后...");
                 requestInFlight = true;
                 viewModel.startAiAnalysis();
             }
@@ -448,9 +450,6 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
                 currentGame.winningOption,
                 optionName(0),
                 optionName(1));
-        tvMarketStatusBadge.setText(status.label);
-        tvMarketStatusBadge.setTextColor(status.textColor);
-        tvMarketStatusBadge.setBackground(makeRoundedBackground(status.backgroundColor, 999));
         tvCountdown.setText(statusTextForCountdown(status, rem));
         tvCountdown.setTextColor(status.textColor);
         styleMetricCards();
