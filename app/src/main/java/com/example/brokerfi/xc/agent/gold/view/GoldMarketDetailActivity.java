@@ -1,16 +1,10 @@
 package com.example.brokerfi.xc.agent.gold.view;
 
 import android.app.AlertDialog;
-import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.text.Spannable;
-import android.text.SpannableStringBuilder;
-import android.text.style.ForegroundColorSpan;
-import android.text.style.RelativeSizeSpan;
-import android.text.style.StyleSpan;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
@@ -23,12 +17,12 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
-import io.noties.markwon.Markwon;
 import com.example.brokerfi.R;
 import com.example.brokerfi.xc.agent.gold.model.data.GoldMarketRepository;
 import com.example.brokerfi.xc.agent.gold.model.data.PinataClient;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketCardPresenter;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketDetailPresenter;
+import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketResearchAnalysisPresenter;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketOptionText;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketStatusStyle;
 import com.example.brokerfi.xc.agent.gold.viewmodel.GoldMarketDetailViewModel;
@@ -67,17 +61,19 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
     private TextView tvUpLabel, tvDownLabel, tvUpPct, tvDownPct, tvPool, tvCountdown;
     private TextView tvHoldingsEmpty, tvHoldingYesLabel, tvHoldingYesAmount, tvHoldingNoLabel, tvHoldingNoAmount;
     private View cardMetricYes, cardMetricNo, cardHoldingYes, cardHoldingNo;
-    private TextView tvMarketAiStatus, tvMarketAiSummary, tvMarketAiFull;
+    private TextView tvMarketAiStatus, tvMarketAiSummary, tvMarketAiStance, tvMarketAiRisk;
+    private TextView tvMarketAiDrivers, tvMarketAiActions, tvMarketAiDisclaimer, btnMarketAiRefresh;
     private ImageView ivMarketIcon;
-    private View barUp, barDown, btnClaimReward, cardMarketAi, layoutAiDetails, layoutChartContainer;
+    private View barUp, barDown, btnClaimReward, cardMarketAi, layoutAiDetails, layoutMarketAiChips, layoutChartContainer;
+    private android.widget.ProgressBar progressMarketAi;
     private LineChart lineChart;
     private androidx.appcompat.widget.SwitchCompat switchAiManaged;
     private SwipeRefreshLayout swipeRefresh;
 
-    private Markwon markwon;
     private boolean aiExpanded = false;
     private String marketAiSummary = "";
     private String marketAiUnavailableMessage = "";
+    private boolean marketAiHasResult = false;
     private boolean destroyed = false;
     private boolean requestInFlight = false;
 
@@ -107,7 +103,6 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         gameId = getIntent().getIntExtra("GAME_ID", 1);
         contractAddress = getIntent().getStringExtra("CONTRACT_ADDRESS");
         viewModel = new ViewModelProvider(this).get(GoldMarketDetailViewModel.class);
-        markwon = Markwon.create(this);
         initViews();
         observeViewModel();
         viewModel.loadGameInfo(gameId, contractAddress);
@@ -189,16 +184,23 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         cardHoldingNo = findViewById(R.id.card_holding_no);
 
         tvMarketAiStatus = findViewById(R.id.tv_market_ai_status);
-        tvMarketAiStatus.setText("待启动 ›");
+        tvMarketAiStatus.setText("点击分析 ›");
         tvMarketAiSummary = findViewById(R.id.tv_market_ai_summary);
-        tvMarketAiSummary.setText("点击卡片启动 AI 专属深度投研分析");
-        tvMarketAiFull = findViewById(R.id.tv_market_ai_full);
+        tvMarketAiSummary.setText("点击卡片生成结构化 AI 投研分析");
+        tvMarketAiStance = findViewById(R.id.tv_market_ai_stance);
+        tvMarketAiRisk = findViewById(R.id.tv_market_ai_risk);
+        tvMarketAiDrivers = findViewById(R.id.tv_market_ai_drivers);
+        tvMarketAiActions = findViewById(R.id.tv_market_ai_actions);
+        tvMarketAiDisclaimer = findViewById(R.id.tv_market_ai_disclaimer);
+        btnMarketAiRefresh = findViewById(R.id.btn_market_ai_refresh);
+        progressMarketAi = findViewById(R.id.progress_market_ai);
         ivMarketIcon = findViewById(R.id.iv_market_detail_icon);
         switchAiManaged = findViewById(R.id.switch_ai_managed);
         barUp = findViewById(R.id.bar_up);
         barDown = findViewById(R.id.bar_down);
         cardMarketAi = findViewById(R.id.card_market_ai);
         layoutAiDetails = findViewById(R.id.layout_ai_details);
+        layoutMarketAiChips = findViewById(R.id.layout_market_ai_chips);
         layoutChartContainer = findViewById(R.id.layout_chart_container);
         lineChart = findViewById(R.id.line_chart);
         btnClaimReward = findViewById(R.id.btn_claim_reward);
@@ -209,6 +211,8 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         findViewById(R.id.btn_buy_up).setOnClickListener(v -> showBuyDialog(0, GoldMarketOptionText.displayName(0)));
         findViewById(R.id.btn_buy_down).setOnClickListener(v -> showBuyDialog(1, GoldMarketOptionText.displayName(1)));
         cardMarketAi.setOnClickListener(v -> toggleAiDetails());
+        tvMarketAiStatus.setOnClickListener(v -> toggleAiDetails());
+        btnMarketAiRefresh.setOnClickListener(v -> refreshMarketAiAnalysis());
         switchAiManaged.setOnCheckedChangeListener((btn, isChecked) -> {
             if (currentGame != null && currentGame.isManaged != isChecked) {
                 viewModel.toggleAiManaged(gameId, resolveContractAddress(), isChecked);
@@ -404,19 +408,32 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
     }
 
     private void toggleAiDetails() {
-        if (marketAiSummary == null || marketAiSummary.isEmpty()) {
-            if (!requestInFlight) {
-                tvMarketAiStatus.setText("分析中...");
-                tvMarketAiSummary.setText("AI 正在解析市场数据，请稍后...");
-                requestInFlight = true;
-                viewModel.startAiAnalysis();
-            }
+        if (!marketAiHasResult) {
+            requestMarketAiAnalysis();
             return;
         }
         aiExpanded = !aiExpanded;
         layoutAiDetails.setVisibility(aiExpanded ? View.VISIBLE : View.GONE);
-        tvMarketAiSummary.setVisibility(aiExpanded ? View.GONE : View.VISIBLE);
         tvMarketAiStatus.setText(aiExpanded ? "收起报告 ˄" : "展开详情 ˅");
+    }
+
+    private void refreshMarketAiAnalysis() {
+        aiExpanded = false;
+        layoutAiDetails.setVisibility(View.GONE);
+        requestMarketAiAnalysis();
+    }
+
+    private void requestMarketAiAnalysis() {
+        if (requestInFlight) return;
+        requestInFlight = true;
+        progressMarketAi.setVisibility(View.VISIBLE);
+        tvMarketAiStatus.setVisibility(View.GONE);
+        tvMarketAiSummary.setText("AI 正在核对行情、赔率、结算条件与时间风险…");
+        if (!marketAiHasResult) {
+            layoutMarketAiChips.setVisibility(View.GONE);
+            layoutAiDetails.setVisibility(View.GONE);
+        }
+        viewModel.startAiAnalysis();
     }
 
     private void showMarketAiSummary(String answer) {
@@ -427,17 +444,66 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
             return;
         }
         marketAiSummary = answer;
+        marketAiHasResult = true;
+        GoldMarketResearchAnalysisPresenter.Analysis analysis =
+                GoldMarketResearchAnalysisPresenter.parse(answer);
+        progressMarketAi.setVisibility(View.GONE);
+        tvMarketAiStatus.setVisibility(View.VISIBLE);
         tvMarketAiStatus.setText("展开详情 ˅");
-        tvMarketAiSummary.setText(answer);
-        markwon.setMarkdown(tvMarketAiFull, answer);
+        tvMarketAiSummary.setText(analysis.summary);
+        tvMarketAiStance.setText(analysis.stance);
+        tvMarketAiRisk.setText("风险 " + analysis.riskLevel);
+        tvMarketAiRisk.setBackground(riskBackground(analysis.riskLevel));
+        tvMarketAiRisk.setTextColor(riskTextColor(analysis.riskLevel));
+        tvMarketAiDrivers.setText(analysis.drivers);
+        tvMarketAiActions.setText(analysis.actions);
+        tvMarketAiDisclaimer.setText(analysis.disclaimer);
+        layoutMarketAiChips.setVisibility(View.VISIBLE);
+        aiExpanded = false;
+        layoutAiDetails.setVisibility(View.GONE);
     }
 
     private void showMarketAiUnavailable(String status, String message) {
         requestInFlight = false;
         if (destroyed) return;
         marketAiUnavailableMessage = message;
+        marketAiHasResult = false;
+        progressMarketAi.setVisibility(View.GONE);
+        tvMarketAiStatus.setVisibility(View.VISIBLE);
         tvMarketAiStatus.setText(status);
         tvMarketAiSummary.setText(message);
+        layoutMarketAiChips.setVisibility(View.GONE);
+        layoutAiDetails.setVisibility(View.GONE);
+    }
+
+    private GradientDrawable riskBackground(String riskLevel) {
+        int fill;
+        int stroke;
+        if ("高".equals(riskLevel)) {
+            fill = 0xFFFFE4E6;
+            stroke = 0xFFFDA4AF;
+        } else if ("中".equals(riskLevel)) {
+            fill = 0xFFFFF7ED;
+            stroke = 0xFFFDBA74;
+        } else if ("低".equals(riskLevel)) {
+            fill = 0xFFECFDF5;
+            stroke = 0xFF6EE7B7;
+        } else {
+            fill = 0xFFF1F5F9;
+            stroke = 0xFFCBD5E1;
+        }
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(fill);
+        background.setCornerRadius(dp(999));
+        background.setStroke(dp(1), stroke);
+        return background;
+    }
+
+    private int riskTextColor(String riskLevel) {
+        if ("高".equals(riskLevel)) return 0xFFBE123C;
+        if ("中".equals(riskLevel)) return 0xFFC2410C;
+        if ("低".equals(riskLevel)) return 0xFF047857;
+        return 0xFF475569;
     }
 
     private void updateCountdown() {

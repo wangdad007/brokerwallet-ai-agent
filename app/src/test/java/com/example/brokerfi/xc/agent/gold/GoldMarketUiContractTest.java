@@ -28,6 +28,11 @@ public class GoldMarketUiContractTest {
                     + "GoldMyPositionsFragment.java";
     private static final String POSITION_CARD_LAYOUT_PATH =
             "app/src/main/res/layout/item_gold_position_card.xml";
+    private static final String POSITION_DETAIL_ACTIVITY_PATH =
+            "app/src/main/java/com/example/brokerfi/xc/agent/gold/view/"
+                    + "GoldPositionDetailActivity.java";
+    private static final String POSITION_DETAIL_LAYOUT_PATH =
+            "app/src/main/res/layout/activity_gold_position_detail.xml";
 
     @Test
     public void chatDisplaysExistingSummaryAndUsesSavedContextForFollowUps() throws Exception {
@@ -95,7 +100,7 @@ public class GoldMarketUiContractTest {
     }
 
     @Test
-    public void detailActivityStartsOneAnalysisAndViewModelBuildsResearchContext()
+    public void detailActivityBuildsStructuredResearchAndKeepsDetailsCollapsible()
             throws Exception {
         String source = readUtf8(DETAIL_ACTIVITY_PATH);
         String viewModel = readUtf8(DETAIL_VIEW_MODEL_PATH);
@@ -103,6 +108,7 @@ public class GoldMarketUiContractTest {
         assertTrue(source.contains("private boolean requestInFlight = false;"));
         assertTrue(source.contains("private String marketAiSummary = \"\";"));
         assertTrue(source.contains("private String marketAiUnavailableMessage = \"\";"));
+        assertTrue(source.contains("private boolean marketAiHasResult = false;"));
 
         String onCreate = blockAfter(source, "protected void onCreate");
         assertInOrder(onCreate, "DeepSeekClient.init(this)", "ViewModelProvider",
@@ -112,9 +118,12 @@ public class GoldMarketUiContractTest {
 
         String toggle = blockAfter(source, "private void toggleAiDetails()");
         assertInOrder(toggle,
-                "marketAiSummary == null || marketAiSummary.isEmpty()",
-                "if (!requestInFlight)", "requestInFlight = true",
-                "viewModel.startAiAnalysis()", "return");
+                "if (!marketAiHasResult)", "requestMarketAiAnalysis()", "return");
+        assertTrue(toggle.contains("layoutAiDetails.setVisibility"));
+
+        String requestCard = blockAfter(source, "private void requestMarketAiAnalysis()");
+        assertInOrder(requestCard, "requestInFlight = true", "progressMarketAi.setVisibility",
+                "AI 正在核对行情、赔率、结算条件与时间风险", "viewModel.startAiAnalysis()");
 
         String request = blockAfter(viewModel, "public void startAiAnalysis()");
         assertInOrder(request, "currentGame.getValue()", "GoldAdvisoryManager.fetchPrice");
@@ -123,15 +132,18 @@ public class GoldMarketUiContractTest {
         assertEquals(2, countOccurrences(request, "fetchAiSummary()"));
 
         String fetchSummary = blockAfter(viewModel, "private void fetchAiSummary()");
-        assertTrue(fetchSummary.contains("AgentManager.getInstance().askGoldResearch"));
+        assertTrue(fetchSummary.contains("DeepSeekClient.chatForParsing"));
         assertTrue(fetchSummary.contains(
-                "GoldMarketResearchPromptBuilder.buildSummaryPrompt(marketAiContext)"));
+                "GoldMarketResearchAnalysisPresenter.systemPrompt()"));
+        assertTrue(fetchSummary.contains(
+                "GoldMarketResearchAnalysisPresenter.buildPrompt(marketAiContext)"));
 
         String renderSummary = blockAfter(source, "private void showMarketAiSummary(String answer)");
         assertTrue(renderSummary.contains("requestInFlight = false"));
         assertTrue(renderSummary.contains("if (destroyed) return"));
         assertTrue(renderSummary.contains("marketAiSummary = answer"));
-        assertTrue(renderSummary.contains("markwon.setMarkdown"));
+        assertTrue(renderSummary.contains("GoldMarketResearchAnalysisPresenter.parse(answer)"));
+        assertTrue(renderSummary.contains("layoutMarketAiChips.setVisibility(View.VISIBLE)"));
     }
 
     @Test
@@ -139,9 +151,9 @@ public class GoldMarketUiContractTest {
             throws Exception {
         String source = readUtf8(DETAIL_ACTIVITY_PATH);
 
-        String toggle = blockAfter(source, "private void toggleAiDetails()");
-        assertInOrder(toggle, "tvMarketAiStatus.setText(\"分析中...\")",
-                "tvMarketAiSummary.setText(\"AI 正在解析市场数据，请稍后...\")",
+        String toggle = blockAfter(source, "private void requestMarketAiAnalysis()");
+        assertInOrder(toggle, "progressMarketAi.setVisibility(View.VISIBLE)",
+                "tvMarketAiSummary.setText(\"AI 正在核对行情、赔率、结算条件与时间风险…\")",
                 "viewModel.startAiAnalysis()");
         assertFalse("Starting analysis should update the card instead of showing a loading toast",
                 toggle.contains("Toast.makeText"));
@@ -156,6 +168,26 @@ public class GoldMarketUiContractTest {
         String errorObserver = blockAfter(source, "viewModel.getError().observe");
         assertInOrder(errorObserver, "err.startsWith(\"AI error:\")",
                 "showMarketAiUnavailable(\"暂不可用\", message)");
+    }
+
+    @Test
+    public void positionInsightKeepsSummaryVisibleAndCollapsesDetailedSignals() throws Exception {
+        String source = readUtf8(POSITION_DETAIL_ACTIVITY_PATH);
+        String layout = readUtf8(POSITION_DETAIL_LAYOUT_PATH);
+
+        assertTrue(layout.contains("@+id/layout_position_ai_details"));
+        assertTrue(layout.contains("@+id/card_position_ai"));
+        assertTrue(openingTag(layout, "LinearLayout", "card_position_ai")
+                .contains("android:animateLayoutChanges=\"true\""));
+        assertInOrder(source, "tvPositionAiStatus.setOnClickListener",
+                "togglePositionAnalysisDetails", "cardPositionAi.setOnClickListener");
+
+        String toggle = blockAfter(source, "private void togglePositionAnalysisDetails()");
+        assertInOrder(toggle, "if (!positionAnalysisHasResult)",
+                "requestPositionAnalysis()", "layoutPositionAiDetails.setVisibility");
+        String render = blockAfter(source, "private void showPositionAnalysis(");
+        assertTrue(render.contains("positionAnalysisExpanded = true"));
+        assertTrue(render.contains("layoutPositionAiDetails.setVisibility(View.VISIBLE)"));
     }
 
     @Test

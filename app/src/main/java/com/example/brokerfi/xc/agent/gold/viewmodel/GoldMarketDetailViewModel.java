@@ -7,10 +7,11 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.example.brokerfi.xc.StorageUtil;
-import com.example.brokerfi.xc.agent.ai.AgentManager;
+import com.example.brokerfi.xc.agent.ai.DeepSeekClient;
 import com.example.brokerfi.xc.agent.gold.model.data.GoldMarketRepository;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldAdvisoryManager;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketResearchPromptBuilder;
+import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketResearchAnalysisPresenter;
 
 import java.math.BigInteger;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -166,20 +167,17 @@ public class GoldMarketDetailViewModel extends AndroidViewModel {
     }
 
     private void fetchAiSummary() {
-        AgentManager.getInstance().askGoldResearch(
-                GoldMarketResearchPromptBuilder.buildSummaryPrompt(marketAiContext),
-                new AgentManager.AnalysisCallback() {
-                    @Override public void onBrokerReport(AgentManager.BrokerReport report) { 
+        DeepSeekClient.chatForParsing(
+                GoldMarketResearchAnalysisPresenter.systemPrompt(),
+                GoldMarketResearchAnalysisPresenter.buildPrompt(marketAiContext),
+                new DeepSeekClient.ChatCallback() {
+                    @Override public void onSuccess(String response) {
                         isLoading.postValue(false);
-                        marketAiSummary.postValue(report != null ? report.rawAnalysis : ""); 
+                        marketAiSummary.postValue(response);
                     }
-                    @Override public void onGeneralAdvice(String question, String answer) { 
+                    @Override public void onError(String err) {
                         isLoading.postValue(false);
-                        marketAiSummary.postValue(answer); 
-                    }
-                    @Override public void onError(String err) { 
-                        isLoading.postValue(false);
-                        error.postValue("AI error: " + err); 
+                        error.postValue("AI error: " + err);
                     }
                 });
     }

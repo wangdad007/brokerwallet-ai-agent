@@ -58,7 +58,7 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
     private View rowPositionYes, rowPositionNo, rowReturnRate;
     private LinearLayout tradeHistoryContainer;
     private TextView tvTradeEmpty;
-    private View layoutPositionAiResult;
+    private View cardPositionAi, layoutPositionAiResult, layoutPositionAiDetails;
     private TextView tvPositionAiStatus, tvPositionAiPlaceholder, tvPositionAiStance;
     private TextView tvPositionAiRisk, tvPositionAiSummary, tvPositionAiDrivers;
     private TextView tvPositionAiActions, tvPositionAiDisclaimer, btnPositionAiRefresh;
@@ -71,6 +71,7 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
     private boolean tradeHistoryLoadedOnce;
     private boolean positionAnalysisAutoRequested;
     private boolean positionAnalysisHasResult;
+    private boolean positionAnalysisExpanded = true;
     private boolean destroyed;
     private final Handler dataRefreshHandler = new Handler(Looper.getMainLooper());
     private final Runnable dataRefreshRunnable = new Runnable() {
@@ -125,7 +126,9 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
         tradeHistoryContainer = findViewById(R.id.trade_history_container);
         tvTradeEmpty = findViewById(R.id.tv_trade_empty);
 
+        cardPositionAi = findViewById(R.id.card_position_ai);
         layoutPositionAiResult = findViewById(R.id.layout_position_ai_result);
+        layoutPositionAiDetails = findViewById(R.id.layout_position_ai_details);
         tvPositionAiStatus = findViewById(R.id.tv_position_ai_status);
         tvPositionAiPlaceholder = findViewById(R.id.tv_position_ai_placeholder);
         tvPositionAiStance = findViewById(R.id.tv_position_ai_stance);
@@ -137,8 +140,9 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
         btnPositionAiRefresh = findViewById(R.id.btn_position_ai_refresh);
         progressPositionAi = findViewById(R.id.progress_position_ai);
         btnPositionAiRefresh.setOnClickListener(v -> requestPositionAnalysis());
-        tvPositionAiStatus.setOnClickListener(v -> requestPositionAnalysis());
+        tvPositionAiStatus.setOnClickListener(v -> togglePositionAnalysisDetails());
         tvPositionAiPlaceholder.setOnClickListener(v -> requestPositionAnalysis());
+        cardPositionAi.setOnClickListener(v -> togglePositionAnalysisDetails());
 
         swipeRefresh = findViewById(R.id.swipe_refresh);
         swipeRefresh.setOnRefreshListener(() -> {
@@ -326,6 +330,9 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
     }
 
     private void showEmptyPosition() {
+        positionAnalysisHasResult = false;
+        positionAnalysisAutoRequested = false;
+        positionAnalysisExpanded = true;
         rowPositionYes.setVisibility(View.GONE);
         rowPositionNo.setVisibility(View.GONE);
         tvPositionEmpty.setVisibility(View.VISIBLE);
@@ -381,18 +388,30 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
                     public void onError(String error) {
                         runOnUiThread(() -> showPositionAnalysisError(error));
                     }
-                });
+        });
+    }
+
+    private void togglePositionAnalysisDetails() {
+        if (!positionAnalysisHasResult) {
+            requestPositionAnalysis();
+            return;
+        }
+        positionAnalysisExpanded = !positionAnalysisExpanded;
+        layoutPositionAiDetails.setVisibility(positionAnalysisExpanded ? View.VISIBLE : View.GONE);
+        tvPositionAiStatus.setText(positionAnalysisExpanded ? "收起详情 ˄" : "展开详情 ˅");
     }
 
     private void showPositionAnalysis(GoldPositionAnalysisPresenter.Analysis analysis) {
         positionAnalysisInFlight.set(false);
         if (destroyed || analysis == null) return;
         positionAnalysisHasResult = true;
+        positionAnalysisExpanded = true;
         progressPositionAi.setVisibility(View.GONE);
         tvPositionAiStatus.setVisibility(View.VISIBLE);
-        tvPositionAiStatus.setText("刚刚更新");
+        tvPositionAiStatus.setText("收起详情 ˄");
         tvPositionAiPlaceholder.setVisibility(View.GONE);
         layoutPositionAiResult.setVisibility(View.VISIBLE);
+        layoutPositionAiDetails.setVisibility(View.VISIBLE);
         tvPositionAiStance.setText(analysis.stance);
         tvPositionAiRisk.setText("风险 " + analysis.riskLevel);
         tvPositionAiRisk.setBackground(riskBackground(analysis.riskLevel));
@@ -408,14 +427,16 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
         if (destroyed) return;
         progressPositionAi.setVisibility(View.GONE);
         tvPositionAiStatus.setVisibility(View.VISIBLE);
-        tvPositionAiStatus.setText("可重试");
         if (positionAnalysisHasResult) {
+            tvPositionAiStatus.setText(positionAnalysisExpanded ? "收起详情 ˄" : "展开详情 ˅");
             tvPositionAiPlaceholder.setVisibility(View.GONE);
             layoutPositionAiResult.setVisibility(View.VISIBLE);
             Toast.makeText(this, "AI 持仓分析更新失败，请稍后重试", Toast.LENGTH_SHORT).show();
             return;
         }
+        tvPositionAiStatus.setText("可重试");
         layoutPositionAiResult.setVisibility(View.GONE);
+        layoutPositionAiDetails.setVisibility(View.GONE);
         tvPositionAiPlaceholder.setVisibility(View.VISIBLE);
         tvPositionAiPlaceholder.setText("AI 分析暂不可用，点击此处或右上角重试");
     }
@@ -427,6 +448,7 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
         tvPositionAiStatus.setVisibility(View.VISIBLE);
         tvPositionAiStatus.setText("暂无持仓");
         layoutPositionAiResult.setVisibility(View.GONE);
+        layoutPositionAiDetails.setVisibility(View.GONE);
         tvPositionAiPlaceholder.setVisibility(View.VISIBLE);
         tvPositionAiPlaceholder.setText("建立持仓后，这里会生成专属风险与仓位分析");
     }

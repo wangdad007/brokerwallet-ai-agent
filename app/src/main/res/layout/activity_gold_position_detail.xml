@@ -287,9 +287,13 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="20dp"
                     android:background="@drawable/bg_position_ai_card"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground"
                     android:elevation="3dp"
                     android:orientation="vertical"
-                    android:padding="18dp">
+                    android:padding="18dp"
+                    android:animateLayoutChanges="true">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -413,10 +417,16 @@
                             android:textStyle="bold"
                             android:lineSpacingExtra="4dp" />
 
+                        <LinearLayout
+                            android:id="@+id/layout_position_ai_details"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="15dp"
+                            android:orientation="vertical">
+
                         <View
                             android:layout_width="match_parent"
                             android:layout_height="1dp"
-                            android:layout_marginTop="15dp"
                             android:layout_marginBottom="14dp"
                             android:background="#DDE5F5" />
 
@@ -483,6 +493,7 @@
                                 android:textColor="#4F46E5"
                                 android:textSize="12sp"
                                 android:textStyle="bold" />
+                        </LinearLayout>
                         </LinearLayout>
                     </LinearLayout>
                 </LinearLayout>
