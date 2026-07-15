@@ -101,6 +101,14 @@ public class GoldMarketRepository {
         if (saved == null || saved.trim().isEmpty()) {
             saved = prefs.getString(KEY_CONTRACT_ADDR, null);
         }
+        String normalizedSaved = GoldMarketSecurityPolicy.removeRetiredLocalContractAddresses(saved);
+        if (saved != null && !normalizedSaved.equals(saved.trim())) {
+            prefs.edit()
+                    .putString(KEY_CONTRACT_ADDRS, normalizedSaved)
+                    .putString(KEY_CONTRACT_ADDR, normalizedSaved)
+                    .apply();
+        }
+        saved = normalizedSaved;
         cachedAddresses = GoldMarketSecurityPolicy.resolveContractAddresses(developerToolsEnabled, saved);
         return new ArrayList<>(cachedAddresses);
     }

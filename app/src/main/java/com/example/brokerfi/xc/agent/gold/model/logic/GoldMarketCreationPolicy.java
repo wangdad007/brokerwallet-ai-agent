@@ -100,6 +100,31 @@ public final class GoldMarketCreationPolicy {
         return new Window(start, end);
     }
 
+    /**
+     * Returns a valid 1–4 whole-day end boundary while preserving a manually
+     * selected start date. This is used by the date picker so invalid windows
+     * cannot be selected and rejected only at deployment time.
+     */
+    public static Calendar defaultEndForSelectedStart(Calendar selectedStart,
+                                                       int preferredDurationDays,
+                                                       boolean streak) {
+        Calendar start = normalizeSelectedDate(selectedStart);
+        int preferred = preferredDurationDays >= 1 && preferredDurationDays <= 4
+                ? preferredDurationDays : 2;
+        int[] candidates = {preferred, 1, 2, 3, 4};
+        for (int days : candidates) {
+            Calendar end = (Calendar) start.clone();
+            end.add(Calendar.DAY_OF_YEAR, days);
+            try {
+                validateSelectedWindow(start, end, streak);
+                return end;
+            } catch (IllegalArgumentException ignored) {
+                // Try another duration that still falls within the 1–4 day rule.
+            }
+        }
+        throw new IllegalArgumentException("所选开始日期无法生成 1 至 4 个整天的观察期");
+    }
+
     public static boolean isValidBoundary(Calendar value) {
         Calendar local = Calendar.getInstance(BEIJING);
         local.setTimeInMillis(value.getTimeInMillis());

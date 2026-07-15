@@ -254,6 +254,14 @@
                 android:textColor="#000000"
                 android:textSize="15sp" />
 
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="观察期仅支持 1–4 个整日；修改开始日期后将自动校正截止日期"
+                android:textColor="#8B96A9"
+                android:textSize="13sp" />
+
             <!-- Liquidity -->
             <TextView
                 android:layout_width="match_parent"

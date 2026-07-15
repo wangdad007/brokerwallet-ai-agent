@@ -251,6 +251,17 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
 
     private void showDatePicker(boolean start) {
         Calendar target = start ? startCalendar : endCalendar;
+        if (!start) {
+            try {
+                GoldMarketCreationPolicy.validateSelectedWindow(startCalendar, endCalendar,
+                        GoldMarketTemplateCatalog.TYPE_STREAK.equals(templateType));
+            } catch (IllegalArgumentException ignored) {
+                endCalendar = GoldMarketCreationPolicy.defaultEndForSelectedStart(startCalendar,
+                        2, GoldMarketTemplateCatalog.TYPE_STREAK.equals(templateType));
+                target = endCalendar;
+                updateDateButtons();
+            }
+        }
         DatePickerDialog dialog = new DatePickerDialog(this, (view, year, month, day) -> {
             Calendar selected = Calendar.getInstance(BEIJING);
             selected.clear();
@@ -260,12 +271,38 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
                 Toast.makeText(this, "所选日期无有效边界，已顺延到 "
                         + dateFormat.format(normalized.getTime()), Toast.LENGTH_LONG).show();
             }
-            if (start) startCalendar = normalized;
-            else endCalendar = normalized;
+            if (start) {
+                startCalendar = normalized;
+                int preferredDays = selectedDurationDays();
+                endCalendar = GoldMarketCreationPolicy.defaultEndForSelectedStart(
+                        startCalendar, preferredDays,
+                        GoldMarketTemplateCatalog.TYPE_STREAK.equals(templateType));
+                Toast.makeText(this, "已按 1–4 个整日规则更新截止日期", Toast.LENGTH_SHORT).show();
+            } else {
+                endCalendar = normalized;
+            }
             updateDateButtons();
         }, target.get(Calendar.YEAR), target.get(Calendar.MONTH), target.get(Calendar.DAY_OF_MONTH));
-        dialog.getDatePicker().setMinDate(System.currentTimeMillis() - 1000L);
+        if (start) {
+            dialog.getDatePicker().setMinDate(System.currentTimeMillis() - 1000L);
+        } else {
+            Calendar minEnd = (Calendar) startCalendar.clone();
+            minEnd.add(Calendar.DAY_OF_YEAR, 1);
+            Calendar maxEnd = (Calendar) startCalendar.clone();
+            maxEnd.add(Calendar.DAY_OF_YEAR, 4);
+            dialog.getDatePicker().setMinDate(minEnd.getTimeInMillis());
+            dialog.getDatePicker().setMaxDate(maxEnd.getTimeInMillis());
+        }
         dialog.show();
+    }
+
+    private int selectedDurationDays() {
+        try {
+            return GoldMarketCreationPolicy.validateSelectedWindow(startCalendar, endCalendar,
+                    GoldMarketTemplateCatalog.TYPE_STREAK.equals(templateType)).durationDays();
+        } catch (IllegalArgumentException ignored) {
+            return 2;
+        }
     }
 
     private static boolean sameDate(Calendar left, Calendar right) {

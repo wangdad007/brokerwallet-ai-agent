@@ -55,6 +55,17 @@ public class GoldMarketCreationPolicyTest {
     }
 
     @Test
+    public void manualStartGetsAnEndWithinFourWholeDays() {
+        Calendar start = Calendar.getInstance(BEIJING);
+        start.clear();
+        start.set(2026, Calendar.JULY, 15, 0, 0); // Wednesday
+        Calendar end = GoldMarketCreationPolicy.defaultEndForSelectedStart(start, 2, false);
+        assertEquals(Calendar.FRIDAY, end.get(Calendar.DAY_OF_WEEK));
+        assertEquals(2, (end.getTimeInMillis() - start.getTimeInMillis()) / (24L * 60L * 60L * 1000L));
+        assertTrue(GoldMarketCreationPolicy.isValidBoundary(end));
+    }
+
+    @Test
     public void buildsCanonicalRelativeRule() {
         Calendar now = Calendar.getInstance(BEIJING);
         now.clear();

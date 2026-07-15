@@ -5,7 +5,8 @@ import java.util.Collections;
 import java.util.List;
 
 public final class GoldMarketSecurityPolicy {
-    public static final String DEFAULT_CONTRACT_ADDRESS = "0xad4F9eD0F2b51A26314C9f83DF588cCcE26ae03c";
+    private static final String RETIRED_LOCAL_CONTRACT_ADDRESS = "0xad4F9eD0F2b51A26314C9f83DF588cCcE26ae03c";
+    public static final String DEFAULT_CONTRACT_ADDRESS = "0x981759e72832D96721623355a09323BD8CabbC56";
 
     private GoldMarketSecurityPolicy() {
     }
@@ -40,6 +41,18 @@ public final class GoldMarketSecurityPolicy {
             }
         }
         return addresses;
+    }
+
+    /** Removes the retired test contract from Debug preferences after a local-chain reset. */
+    public static String removeRetiredLocalContractAddresses(String rawAddresses) {
+        StringBuilder kept = new StringBuilder();
+        for (String address : parseContractAddresses(rawAddresses)) {
+            if (!RETIRED_LOCAL_CONTRACT_ADDRESS.equalsIgnoreCase(address)) {
+                if (kept.length() > 0) kept.append('\n');
+                kept.append(address);
+            }
+        }
+        return kept.toString();
     }
 
     public static boolean isValidContractAddress(String address) {
