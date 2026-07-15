@@ -9,6 +9,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -17,12 +18,14 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.bumptech.glide.Glide;
 import com.example.brokerfi.R;
+import com.example.brokerfi.xc.agent.ai.DeepSeekClient;
 import com.example.brokerfi.xc.agent.gold.model.data.BackendApiClient;
 import com.example.brokerfi.xc.agent.gold.model.data.GoldMarketRepository;
 import com.example.brokerfi.xc.agent.gold.model.data.PinataClient;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketCardPresenter;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketOptionText;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldPositionHistoryPresenter;
+import com.example.brokerfi.xc.agent.gold.model.logic.GoldPositionAnalysisPresenter;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketStatusStyle;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldPositionValuation;
 import com.example.brokerfi.xc.agent.gold.viewmodel.GoldMarketDetailViewModel;
@@ -33,6 +36,7 @@ import java.math.RoundingMode;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -54,10 +58,20 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
     private View rowPositionYes, rowPositionNo, rowReturnRate;
     private LinearLayout tradeHistoryContainer;
     private TextView tvTradeEmpty;
+    private View layoutPositionAiResult;
+    private TextView tvPositionAiStatus, tvPositionAiPlaceholder, tvPositionAiStance;
+    private TextView tvPositionAiRisk, tvPositionAiSummary, tvPositionAiDrivers;
+    private TextView tvPositionAiActions, tvPositionAiDisclaimer, btnPositionAiRefresh;
+    private ProgressBar progressPositionAi;
     private SwipeRefreshLayout swipeRefresh;
 
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault());
     private final AtomicBoolean tradeHistoryRequestInFlight = new AtomicBoolean(false);
+    private final AtomicBoolean positionAnalysisInFlight = new AtomicBoolean(false);
+    private boolean tradeHistoryLoadedOnce;
+    private boolean positionAnalysisAutoRequested;
+    private boolean positionAnalysisHasResult;
+    private boolean destroyed;
     private final Handler dataRefreshHandler = new Handler(Looper.getMainLooper());
     private final Runnable dataRefreshRunnable = new Runnable() {
         @Override public void run() {
@@ -71,6 +85,7 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_gold_position_detail);
+        DeepSeekClient.init(this);
 
         gameId = getIntent().getIntExtra("GAME_ID", -1);
         contractAddress = getIntent().getStringExtra("CONTRACT_ADDRESS");
@@ -110,6 +125,21 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
         tradeHistoryContainer = findViewById(R.id.trade_history_container);
         tvTradeEmpty = findViewById(R.id.tv_trade_empty);
 
+        layoutPositionAiResult = findViewById(R.id.layout_position_ai_result);
+        tvPositionAiStatus = findViewById(R.id.tv_position_ai_status);
+        tvPositionAiPlaceholder = findViewById(R.id.tv_position_ai_placeholder);
+        tvPositionAiStance = findViewById(R.id.tv_position_ai_stance);
+        tvPositionAiRisk = findViewById(R.id.tv_position_ai_risk);
+        tvPositionAiSummary = findViewById(R.id.tv_position_ai_summary);
+        tvPositionAiDrivers = findViewById(R.id.tv_position_ai_drivers);
+        tvPositionAiActions = findViewById(R.id.tv_position_ai_actions);
+        tvPositionAiDisclaimer = findViewById(R.id.tv_position_ai_disclaimer);
+        btnPositionAiRefresh = findViewById(R.id.btn_position_ai_refresh);
+        progressPositionAi = findViewById(R.id.progress_position_ai);
+        btnPositionAiRefresh.setOnClickListener(v -> requestPositionAnalysis());
+        tvPositionAiStatus.setOnClickListener(v -> requestPositionAnalysis());
+        tvPositionAiPlaceholder.setOnClickListener(v -> requestPositionAnalysis());
+
         swipeRefresh = findViewById(R.id.swipe_refresh);
         swipeRefresh.setOnRefreshListener(() -> {
             viewModel.loadGameInfo(gameId, resolveContractAddress());
@@ -148,8 +178,13 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
                 // 保留最后一次成功结果，避免短暂网络故障让交易记录闪空。
             } finally {
                 tradeHistoryRequestInFlight.set(false);
+                tradeHistoryLoadedOnce = true;
             }
-            runOnUiThread(this::updateTradeHistoryUI);
+            runOnUiThread(() -> {
+                updateTradeHistoryUI();
+                updatePositionUI();
+                maybeStartPositionAnalysis();
+            });
         }).start();
     }
 
@@ -168,6 +203,7 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        destroyed = true;
         dataRefreshHandler.removeCallbacks(dataRefreshRunnable);
         super.onDestroy();
     }
@@ -218,6 +254,8 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
         // Trade History
         updateTradeHistoryUI();
 
+        maybeStartPositionAnalysis();
+
         swipeRefresh.setRefreshing(false);
     }
 
@@ -228,7 +266,12 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
         return drawable;
     }
 
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
     private void updatePositionUI() {
+        if (currentGame == null) return;
         if (currentGame.myShares == null || currentGame.myShares.size() < 2) {
             showEmptyPosition();
             return;
@@ -279,6 +322,7 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
 
         // Total Invested & Return Rate
         calculateReturnRate();
+        maybeStartPositionAnalysis();
     }
 
     private void showEmptyPosition() {
@@ -288,6 +332,133 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
         tvCurrentValue.setText("-- BKC");
         tvTotalInvested.setText("-- BKC");
         rowReturnRate.setVisibility(View.GONE);
+        showPositionAnalysisEmpty();
+    }
+
+    private boolean hasPosition() {
+        if (currentGame == null || currentGame.myShares == null) return false;
+        for (BigInteger shares : currentGame.myShares) {
+            if (shares != null && shares.signum() > 0) return true;
+        }
+        return false;
+    }
+
+    private void maybeStartPositionAnalysis() {
+        if (!tradeHistoryLoadedOnce || currentGame == null || !hasPosition()
+                || positionAnalysisAutoRequested || positionAnalysisInFlight.get()) {
+            return;
+        }
+        positionAnalysisAutoRequested = true;
+        requestPositionAnalysis();
+    }
+
+    private void requestPositionAnalysis() {
+        if (currentGame == null || !hasPosition()) {
+            showPositionAnalysisEmpty();
+            return;
+        }
+        if (!positionAnalysisInFlight.compareAndSet(false, true)) return;
+
+        progressPositionAi.setVisibility(View.VISIBLE);
+        tvPositionAiStatus.setVisibility(View.GONE);
+        tvPositionAiPlaceholder.setVisibility(View.VISIBLE);
+        tvPositionAiPlaceholder.setText("AI 正在核对持仓结构、现金流和市场风险…");
+        if (!positionAnalysisHasResult) layoutPositionAiResult.setVisibility(View.GONE);
+
+        String prompt = GoldPositionAnalysisPresenter.buildPrompt(
+                currentGame, new ArrayList<>(tradeHistory), System.currentTimeMillis());
+        DeepSeekClient.chatForParsing(
+                GoldPositionAnalysisPresenter.systemPrompt(), prompt,
+                new DeepSeekClient.ChatCallback() {
+                    @Override
+                    public void onSuccess(String response) {
+                        GoldPositionAnalysisPresenter.Analysis analysis =
+                                GoldPositionAnalysisPresenter.parse(response);
+                        runOnUiThread(() -> showPositionAnalysis(analysis));
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        runOnUiThread(() -> showPositionAnalysisError(error));
+                    }
+                });
+    }
+
+    private void showPositionAnalysis(GoldPositionAnalysisPresenter.Analysis analysis) {
+        positionAnalysisInFlight.set(false);
+        if (destroyed || analysis == null) return;
+        positionAnalysisHasResult = true;
+        progressPositionAi.setVisibility(View.GONE);
+        tvPositionAiStatus.setVisibility(View.VISIBLE);
+        tvPositionAiStatus.setText("刚刚更新");
+        tvPositionAiPlaceholder.setVisibility(View.GONE);
+        layoutPositionAiResult.setVisibility(View.VISIBLE);
+        tvPositionAiStance.setText(analysis.stance);
+        tvPositionAiRisk.setText("风险 " + analysis.riskLevel);
+        tvPositionAiRisk.setBackground(riskBackground(analysis.riskLevel));
+        tvPositionAiRisk.setTextColor(riskTextColor(analysis.riskLevel));
+        tvPositionAiSummary.setText(analysis.summary);
+        tvPositionAiDrivers.setText(analysis.drivers);
+        tvPositionAiActions.setText(analysis.actions);
+        tvPositionAiDisclaimer.setText(analysis.disclaimer);
+    }
+
+    private void showPositionAnalysisError(String error) {
+        positionAnalysisInFlight.set(false);
+        if (destroyed) return;
+        progressPositionAi.setVisibility(View.GONE);
+        tvPositionAiStatus.setVisibility(View.VISIBLE);
+        tvPositionAiStatus.setText("可重试");
+        if (positionAnalysisHasResult) {
+            tvPositionAiPlaceholder.setVisibility(View.GONE);
+            layoutPositionAiResult.setVisibility(View.VISIBLE);
+            Toast.makeText(this, "AI 持仓分析更新失败，请稍后重试", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        layoutPositionAiResult.setVisibility(View.GONE);
+        tvPositionAiPlaceholder.setVisibility(View.VISIBLE);
+        tvPositionAiPlaceholder.setText("AI 分析暂不可用，点击此处或右上角重试");
+    }
+
+    private void showPositionAnalysisEmpty() {
+        positionAnalysisInFlight.set(false);
+        if (progressPositionAi == null) return;
+        progressPositionAi.setVisibility(View.GONE);
+        tvPositionAiStatus.setVisibility(View.VISIBLE);
+        tvPositionAiStatus.setText("暂无持仓");
+        layoutPositionAiResult.setVisibility(View.GONE);
+        tvPositionAiPlaceholder.setVisibility(View.VISIBLE);
+        tvPositionAiPlaceholder.setText("建立持仓后，这里会生成专属风险与仓位分析");
+    }
+
+    private GradientDrawable riskBackground(String riskLevel) {
+        int fill;
+        int stroke;
+        if ("高".equals(riskLevel)) {
+            fill = 0xFFFFE4E6;
+            stroke = 0xFFFDA4AF;
+        } else if ("中".equals(riskLevel)) {
+            fill = 0xFFFFF7ED;
+            stroke = 0xFFFDBA74;
+        } else if ("低".equals(riskLevel)) {
+            fill = 0xFFECFDF5;
+            stroke = 0xFF6EE7B7;
+        } else {
+            fill = 0xFFF1F5F9;
+            stroke = 0xFFCBD5E1;
+        }
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(fill);
+        background.setCornerRadius(dp(999));
+        background.setStroke(dp(1), stroke);
+        return background;
+    }
+
+    private int riskTextColor(String riskLevel) {
+        if ("高".equals(riskLevel)) return 0xFFBE123C;
+        if ("中".equals(riskLevel)) return 0xFFC2410C;
+        if ("低".equals(riskLevel)) return 0xFF047857;
+        return 0xFF475569;
     }
 
     private void calculateReturnRate() {
@@ -416,8 +587,9 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
     }
 
     private void normalizeTradeHistory(List<BackendApiClient.TradeDTO> trades) {
-        trades.sort((a, b) -> Long.compare(parseTradeTimeMillis(b != null ? b.createdAt : null),
-                parseTradeTimeMillis(a != null ? a.createdAt : null)));
+        Collections.sort(trades,
+                (a, b) -> Long.compare(parseTradeTimeMillis(b != null ? b.createdAt : null),
+                        parseTradeTimeMillis(a != null ? a.createdAt : null)));
 
         BigInteger previousYesShares = BigInteger.ZERO;
         BigInteger previousNoShares = BigInteger.ZERO;

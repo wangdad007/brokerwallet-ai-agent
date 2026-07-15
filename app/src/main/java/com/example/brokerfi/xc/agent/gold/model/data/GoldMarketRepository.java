@@ -34,7 +34,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
-import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -790,9 +789,9 @@ public class GoldMarketRepository {
             if (receiptResp.hasError()) {
                 throw new Exception(receiptResp.getError().getMessage());
             }
-            Optional<TransactionReceipt> receipt = receiptResp.getTransactionReceipt();
-            if (receipt.isPresent()) {
-                String status = receipt.get().getStatus();
+            TransactionReceipt receipt = receiptResp.getResult();
+            if (receipt != null) {
+                String status = receipt.getStatus();
                 if ("0x0".equals(status)) {
                     throw new Exception("交易执行失败，链上 receipt status=0x0");
                 }
@@ -909,6 +908,14 @@ public class GoldMarketRepository {
         return deadlineSec >= 1000000000L;
     }
 
+    private static boolean hasUsableChainState(BackendApiClient.ChainStateDTO state) {
+        return state != null
+                && hasUsableDeadline(state.deadlineSec)
+                && parseBigInteger(state.totalPool).signum() > 0
+                && parseBigInteger(state.reserveYES).signum() > 0
+                && parseBigInteger(state.reserveNO).signum() > 0;
+    }
+
     private static String buildStateKey(String contractAddress, int gameId) {
         String normalized = contractAddress == null ? "" : contractAddress.trim().toLowerCase(Locale.ROOT);
         return normalized + "#" + gameId;
@@ -918,7 +925,7 @@ public class GoldMarketRepository {
         return meta != null
                 && meta.contractAddress != null
                 && !meta.contractAddress.trim().isEmpty()
-                && (state == null || !hasUsableDeadline(state.deadlineSec));
+                && !hasUsableChainState(state);
     }
 
     private BackendApiClient.ChainStateDTO queryChainStateDirectly(int gameId, String targetContractAddress) {
@@ -1010,7 +1017,7 @@ public class GoldMarketRepository {
         return chainUsesMillisecondTimestamps() ? durationSeconds * 1000L : durationSeconds;
     }
 
-    private BigInteger parseBigInteger(String s) {
+    private static BigInteger parseBigInteger(String s) {
         if (s == null || s.isEmpty()) return BigInteger.ZERO;
         try { return new BigInteger(s); }
         catch (NumberFormatException e) { return BigInteger.ZERO; }
@@ -1476,7 +1483,7 @@ public class GoldMarketRepository {
 
                 List<GameModel> models = new ArrayList<>();
                 for (BackendApiClient.ChainStateDTO state : myStates) {
-                    if (!hasUsableDeadline(state.deadlineSec) && state.contractAddress != null && !state.contractAddress.trim().isEmpty()) {
+                    if (!hasUsableChainState(state) && state.contractAddress != null && !state.contractAddress.trim().isEmpty()) {
                         BackendApiClient.ChainStateDTO repairedState =
                                 queryChainStateDirectly(state.gameId, state.contractAddress);
                         if (repairedState != null) {

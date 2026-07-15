@@ -10,6 +10,15 @@ import static org.junit.Assert.assertEquals;
 
 public class GoldMarketCardPresenterTest {
     @Test
+    public void preservesCanonicalVersion2Titles() {
+        assertEquals("黄金涨跌幅 大于 3%",
+                GoldMarketCardPresenter.displayTitle("黄金涨跌幅 大于 3%", 0));
+        assertEquals("黄金价格 位于 4000-4200USD/盎司",
+                GoldMarketCardPresenter.displayTitle("黄金价格 位于 4000-4200USD/盎司", 0));
+        assertEquals("黄金价格 连续上涨 3天",
+                GoldMarketCardPresenter.displayTitle("黄金价格 连续上涨 3天", 0));
+    }
+    @Test
     public void compactTitleTurnsDatedPriceDirectionIntoShortMarketName() {
         assertEquals("黄金涨跌", GoldMarketCardPresenter.compactTitle(
                 "2026-07-04 16:32 至 2026-07-30 16:20 黄金价格 上涨"));

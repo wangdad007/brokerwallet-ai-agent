@@ -13,19 +13,15 @@ public class GoldMarketTemplateIconTest {
         assertEquals(R.drawable.ic_template_price,
                 GoldMarketTemplateIcon.forType("TYPE_PRICE"));
         assertEquals(R.drawable.ic_template_volatility,
-                GoldMarketTemplateIcon.forType("TYPE_VOLATILITY"));
-        assertEquals(R.drawable.ic_template_volume,
-                GoldMarketTemplateIcon.forType("TYPE_VOLUME"));
-        assertEquals(R.drawable.ic_template_technical,
-                GoldMarketTemplateIcon.forType("TYPE_TECHNICAL"));
-        assertEquals(R.drawable.ic_template_touch,
-                GoldMarketTemplateIcon.forType("TYPE_TOUCH"));
-        assertEquals(R.drawable.ic_template_relative,
-                GoldMarketTemplateIcon.forType("TYPE_RELATIVE"));
+                GoldMarketTemplateIcon.forType("TYPE_RETURN_THRESHOLD"));
         assertEquals(R.drawable.ic_template_price_threshold,
                 GoldMarketTemplateIcon.forType("TYPE_PRICE_THRESHOLD"));
-        assertEquals(R.drawable.ic_template_event,
-                GoldMarketTemplateIcon.forType("TYPE_EVENT"));
+        assertEquals(R.drawable.ic_template_touch,
+                GoldMarketTemplateIcon.forType("TYPE_PRICE_RANGE"));
+        assertEquals(R.drawable.ic_template_relative,
+                GoldMarketTemplateIcon.forType("TYPE_RELATIVE"));
+        assertEquals(R.drawable.ic_template_technical,
+                GoldMarketTemplateIcon.forType("TYPE_STREAK"));
     }
 
     @Test
@@ -55,6 +51,12 @@ public class GoldMarketTemplateIconTest {
                 GoldMarketTemplateIcon.forMarket("", "黄金 跑赢 BTC", ""));
         assertEquals(R.drawable.ic_template_event,
                 GoldMarketTemplateIcon.forMarket("", "发生 美联储降息", ""));
+        assertEquals(R.drawable.ic_template_volatility,
+                GoldMarketTemplateIcon.forMarket("", "黄金涨跌幅 大于等于 3%", ""));
+        assertEquals(R.drawable.ic_template_touch,
+                GoldMarketTemplateIcon.forMarket("", "黄金价格 位于 4000-4200USD/盎司", ""));
+        assertEquals(R.drawable.ic_template_technical,
+                GoldMarketTemplateIcon.forMarket("", "黄金价格 连续上涨 3天", ""));
     }
 
     @Test

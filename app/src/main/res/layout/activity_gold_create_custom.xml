@@ -145,7 +145,30 @@
                     android:background="@drawable/custom_edittext_background" />
             </LinearLayout>
 
-            <!-- Indicator Selection (for TYPE_TECHNICAL) -->
+            <LinearLayout
+                android:id="@+id/container_benchmark"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="选择对比标的"
+                    android:textColor="#888888"
+                    android:textSize="13sp" />
+
+                <Spinner
+                    android:id="@+id/spinner_benchmark"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:layout_marginTop="4dp"
+                    android:background="@drawable/custom_edittext_background" />
+            </LinearLayout>
+
+            <!-- Comparison selection for threshold and range templates. -->
             <LinearLayout
                 android:id="@+id/container_technical"
                 android:layout_width="match_parent"
@@ -157,21 +180,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="技术指标类型"
-                    android:textSize="13sp"
-                    android:textColor="#888888" />
-                <Spinner
-                    android:id="@+id/spinner_indicator"
-                    android:layout_width="match_parent"
-                    android:layout_height="52dp"
-                    android:layout_marginTop="4dp"
-                    android:background="@drawable/custom_edittext_background" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:text="判断逻辑"
+                    android:text="比较方式"
                     android:textSize="13sp"
                     android:textColor="#888888" />
                 <Spinner
@@ -192,6 +201,19 @@
                 android:padding="16dp"
                 android:textSize="15sp"
                 android:inputType="text"
+                android:importantForAutofill="no" />
+
+            <EditText
+                android:id="@+id/et_param2"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/custom_edittext_background"
+                android:hint="输入第二个数值"
+                android:padding="16dp"
+                android:textSize="15sp"
+                android:inputType="numberDecimal"
+                android:visibility="gone"
                 android:importantForAutofill="no" />
 
             <!-- Time Config -->
@@ -258,7 +280,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:text="* 博弈判定将以 BrokerChain 系统获取的权威行情数据为准"
+                android:text="* 博弈判定使用 Ethereum Chainlink Data Feed 与北京时间整日边界"
                 android:textColor="#999999"
                 android:textSize="12sp" />
 

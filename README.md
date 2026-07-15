@@ -3,6 +3,34 @@
 
 # BrokerChain Wallet
 
+## AI Agent Prediction Market Extension
+
+The `agent/gold` module adds a gold-note prediction market to BrokerChain Wallet. It provides market browsing, YES/NO AMM trading, portfolio valuation, DeepSeek research, AI-managed positions, and settlement status display.
+
+New manual and AI-created markets share one versioned template catalog:
+
+- `TYPE_PRICE`: XAU/USD direction over a committed day window.
+- `TYPE_RETURN_THRESHOLD`: absolute XAU/USD return against a percentage threshold.
+- `TYPE_PRICE_THRESHOLD`: deadline XAU/USD price against a USD/oz threshold.
+- `TYPE_PRICE_RANGE`: deadline XAU/USD price inside or outside a closed range.
+- `TYPE_RELATIVE`: XAU/USD return compared with BTC/USD return.
+- `TYPE_STREAK`: consecutive daily XAU/USD increases or decreases.
+
+Every new rule uses Beijing midnight boundaries, a 1-4 day observation window, and the public Ethereum Chainlink XAU/USD feed. Relative markets also commit the Chainlink BTC/USD feed. Sunday and Monday boundaries are moved together with the complete window so its duration remains unchanged. Older market types remain displayable but are not available for new creation.
+
+### Local prerequisites
+
+`AgentConfig.LOCAL_HOST` defaults to `10.0.2.2`, the Android emulator alias for the host machine. Before testing the complete flow, start the PredictionMarket backend on host port `8081`, the configured local EVM/BrokerChain endpoint, MySQL, and the selected IPFS service. A physical Android device must replace `10.0.2.2` with a reachable host LAN address.
+
+The app requests gold quotes and research through the backend first, with its existing direct-source fallbacks. DeepSeek research and AI market parsing require either a working backend AI provider or a valid API Key configured in the AI research tab. Invalid credentials, DNS failures, quota exhaustion, or HTTP 402 are shown as unavailable states; they are not caused by the local Supervisor wallet key.
+
+For a safe local build without starting trading services:
+
+```bash
+export JAVA_HOME='/Applications/Android Studio.app/Contents/jbr/Contents/Home'
+./gradlew testDebugUnitTest assembleDebug
+```
+
 
 ## Basics
 

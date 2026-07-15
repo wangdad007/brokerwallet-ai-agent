@@ -49,6 +49,28 @@ public class GoldMarketDetailPresenterTest {
     }
 
     @Test
+    public void highlightPartsTreatsWholePriceRangeAsOneAmount() {
+        List<GoldMarketDetailPresenter.Part> parts = GoldMarketDetailPresenter.highlightParts(
+                "黄金价格 位于 3900-4050USD/盎司");
+
+        assertTrue(contains(parts, GoldMarketDetailPresenter.Role.AMOUNT,
+                "3900-4050USD/盎司"));
+    }
+
+    @Test
+    public void resolutionRuleUsesReadableSections() {
+        String formatted = GoldMarketDetailPresenter.formatResolutionRule(
+                "黄金价格 位于 3900-4050USD/盎司；北京时间 2026-07-15 00:00 至 "
+                        + "2026-07-16 00:00；信源为 Ethereum Chainlink Data Feed，"
+                        + "取边界时刻之前最后一轮有效报价。");
+
+        assertTrue(formatted.contains("判定条件\n黄金价格 位于 3900-4050USD/盎司"));
+        assertTrue(formatted.contains("观察周期\n北京时间 2026-07-15 00:00 至 2026-07-16 00:00"));
+        assertTrue(formatted.contains("数据来源\nEthereum Chainlink Data Feed"));
+        assertTrue(formatted.contains("取价规则\n取边界时刻之前最后一轮有效报价"));
+    }
+
+    @Test
     public void highlightPartsDistinguishesRelativeMarketDirectionAndBenchmark() {
         List<GoldMarketDetailPresenter.Part> parts = GoldMarketDetailPresenter.highlightParts(
                 "黄金 跑赢 比特币");

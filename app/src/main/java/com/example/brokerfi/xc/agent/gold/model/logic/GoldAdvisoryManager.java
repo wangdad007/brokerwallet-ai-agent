@@ -32,6 +32,7 @@ public class GoldAdvisoryManager {
         public int confidence = 50;
         public double priceUsd = 0;
         public double change24h = 0;
+        public boolean changeAvailable = false;
         public double usdCny = 0;
         public String quoteSource = "";
         public String quoteUpdatedAt = "";
@@ -109,6 +110,7 @@ public class GoldAdvisoryManager {
             Advisory quote = emptyQuote();
             quote.priceUsd = backend.priceUsd;
             quote.change24h = backend.change24h;
+            quote.changeAvailable = backend.changeAvailable;
             quote.quoteSource = backend.source;
             quote.quoteUpdatedAt = backend.updatedAt;
             quote.quoteDelayed = isWeekendNow();
@@ -143,6 +145,7 @@ public class GoldAdvisoryManager {
                         Advisory quote = emptyQuote();
                         quote.priceUsd = price;
                         quote.change24h = change;
+                        quote.changeAvailable = prevClose > 0;
                         quote.quoteSource = "gold-api.com";
                         quote.quoteUpdatedAt = json.optString("updatedAtReadable",
                                 json.optString("updatedAt", ""));
@@ -203,6 +206,7 @@ public class GoldAdvisoryManager {
                                 Advisory quote = emptyQuote();
                                 quote.priceUsd = price;
                                 quote.change24h = change;
+                                quote.changeAvailable = prevClose > 0;
                                 quote.quoteSource = "新浪财经";
                                 quote.quoteUpdatedAt = fields.length > 12
                                         ? fields[12] + " " + fields[6]
@@ -242,9 +246,12 @@ public class GoldAdvisoryManager {
     }
 
     private static String buildUserPrompt(Advisory quote, double cny) {
+        String changeInfo = quote.changeAvailable
+                ? String.format("24小时涨跌幅 %+.2f%%", quote.change24h)
+                : "24小时涨跌幅暂不可用";
         String priceInfo = quote.priceUsd > 0
-                ? String.format("当前黄金现货价格 $%.2f/盎司，24小时涨跌幅 %+.2f%%，来源 %s，更新时间 %s",
-                        quote.priceUsd, quote.change24h, quote.quoteSource, quote.quoteUpdatedAt)
+                ? String.format("当前黄金现货价格 $%.2f/盎司，%s，来源 %s，更新时间 %s",
+                        quote.priceUsd, changeInfo, quote.quoteSource, quote.quoteUpdatedAt)
                 : "（实时金价暂时获取失败）";
         String cnyInfo = cny > 0
                 ? String.format("当前美元兑人民币汇率 %.4f", cny)
@@ -321,6 +328,7 @@ public class GoldAdvisoryManager {
         Advisory copy = emptyQuote();
         copy.priceUsd = source.priceUsd;
         copy.change24h = source.change24h;
+        copy.changeAvailable = source.changeAvailable;
         copy.usdCny = source.usdCny;
         copy.quoteSource = source.quoteSource;
         copy.quoteUpdatedAt = source.quoteUpdatedAt;
@@ -332,6 +340,7 @@ public class GoldAdvisoryManager {
         to.quoteSource = from.quoteSource;
         to.quoteUpdatedAt = from.quoteUpdatedAt;
         to.quoteDelayed = from.quoteDelayed;
+        to.changeAvailable = from.changeAvailable;
     }
 
     private static boolean isWeekendNow() {

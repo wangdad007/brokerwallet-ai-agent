@@ -102,14 +102,12 @@ public class GoldMarketRepositoryTest {
 
     @Test
     public void goldMarketUiKeepsDeepSeekResearchAssistant() throws Exception {
-        String layout = new String(Files.readAllBytes(repoPath(
-                "app/src/main/res/layout/fragment_gold_market_list.xml")));
         String activity = new String(Files.readAllBytes(repoPath(
-                "app/src/main/java/com/example/brokerfi/xc/agent/gold/ui/GoldMarketListFragment.java")));
+                "app/src/main/java/com/example/brokerfi/xc/agent/gold/view/GoldNoteMarketActivity.java")));
 
-        assertTrue(layout.contains("card_ai_advice"));
-        assertTrue(layout.contains("tv_ai_signal"));
-        assertTrue(layout.contains("DeepSeek"));
+        assertTrue(activity.contains("DeepSeekClient.init(this)"));
+        assertTrue(activity.contains("new AIChatFragment()"));
+        assertTrue(activity.contains("tab.setText(\"AI投研\")"));
     }
 
     @Test

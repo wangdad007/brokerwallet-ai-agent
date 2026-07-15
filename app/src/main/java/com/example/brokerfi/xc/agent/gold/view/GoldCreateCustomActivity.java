@@ -2,18 +2,21 @@ package com.example.brokerfi.xc.agent.gold.view;
 
 import android.app.AlertDialog;
 import android.app.DatePickerDialog;
-import android.app.TimePickerDialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -21,7 +24,6 @@ import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.util.Log;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -32,6 +34,9 @@ import androidx.lifecycle.ViewModelProvider;
 import com.bumptech.glide.Glide;
 import com.example.brokerfi.R;
 import com.example.brokerfi.xc.agent.gold.model.data.GoldMarketRepository;
+import com.example.brokerfi.xc.agent.gold.model.logic.GoldBenchmarkCatalog;
+import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketCreationPolicy;
+import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketTemplateCatalog;
 import com.example.brokerfi.xc.agent.gold.viewmodel.GoldCreatePoolViewModel;
 
 import org.json.JSONObject;
@@ -44,25 +49,38 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.TimeZone;
 
 public class GoldCreateCustomActivity extends AppCompatActivity {
+    private static final TimeZone BEIJING = TimeZone.getTimeZone(GoldMarketCreationPolicy.TIMEZONE);
+
     private GoldCreatePoolViewModel viewModel;
-    private String templateType, templateTitle;
-    private Calendar startCalendar = Calendar.getInstance(), endCalendar = Calendar.getInstance();
-    private boolean startSelected = false, endSelected = false;
-    private TextView tvTemplateName, tvTemplateDetail;
-    private EditText etParam1, etInitialLiquidity;
-    private Button btnSelectStartTime, btnSelectTime, btnDeploy, btnSelectImage;
+    private String templateType;
+    private String templateTitle;
+    private Calendar startCalendar;
+    private Calendar endCalendar;
+    private TextView tvTemplateName;
+    private TextView tvTemplateDetail;
+    private EditText etParam1;
+    private EditText etParam2;
+    private EditText etInitialLiquidity;
+    private Button btnSelectStartTime;
+    private Button btnSelectTime;
+    private Button btnDeploy;
+    private Button btnSelectImage;
     private ImageView ivPoolIcon;
-    private LinearLayout containerTechnical, containerDirection;
-    private Spinner spinnerIndicator, spinnerOperator, spinnerDirection;
-    private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault());
-    
-    private byte[] selectedImageData = null;
-    private byte[] templateImageData = null;
+    private LinearLayout containerOperator;
+    private LinearLayout containerDirection;
+    private LinearLayout containerBenchmark;
+    private Spinner spinnerOperator;
+    private Spinner spinnerDirection;
+    private Spinner spinnerBenchmark;
+    private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+
+    private byte[] selectedImageData;
+    private byte[] templateImageData;
     private final ActivityResultLauncher<Intent> imagePickerLauncher = registerForActivityResult(
-            new ActivityResultContracts.StartActivityForResult(),
-            result -> {
+            new ActivityResultContracts.StartActivityForResult(), result -> {
                 if (result.getResultCode() == RESULT_OK && result.getData() != null) {
                     handleImageResult(result.getData().getData());
                 }
@@ -72,19 +90,22 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_gold_create_custom);
+        dateFormat.setTimeZone(BEIJING);
         templateType = getIntent().getStringExtra("TEMPLATE_TYPE");
         templateTitle = getIntent().getStringExtra("TEMPLATE_TITLE");
+        if (!GoldMarketTemplateCatalog.isCreatable(templateType)) {
+            templateType = GoldMarketTemplateCatalog.TYPE_PRICE;
+        }
+        GoldMarketTemplateCatalog.Template template = GoldMarketTemplateCatalog.forType(templateType);
+        if (templateTitle == null || templateTitle.trim().isEmpty()) templateTitle = template.title;
+
         viewModel = new ViewModelProvider(this).get(GoldCreatePoolViewModel.class);
         initViews();
+        applyDefaultWindow(0, 2);
         applyTemplateDefaultCover();
         setupTemplateUI();
-        
-        // Handle AI Parsed Data if available
         String aiData = getIntent().getStringExtra("AI_PARSED_DATA");
-        if (aiData != null) {
-            applyAiParsedData(aiData);
-        }
-        
+        if (aiData != null) applyAiParsedData(aiData);
         observeViewModel();
     }
 
@@ -99,13 +120,10 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
                 if (status.startsWith("Success") || status.equals("Success")) finish();
             }
         });
-        viewModel.getError().observe(this, err -> {
-            if (err != null) {
-                new AlertDialog.Builder(this)
-                        .setTitle("博弈池创建失败")
-                        .setMessage(err)
-                        .setPositiveButton("知道了", null)
-                        .show();
+        viewModel.getError().observe(this, error -> {
+            if (error != null) {
+                new AlertDialog.Builder(this).setTitle("博弈池创建失败").setMessage(error)
+                        .setPositiveButton("知道了", null).show();
             }
         });
     }
@@ -115,49 +133,219 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
         tvTemplateName = findViewById(R.id.tv_template_name);
         tvTemplateDetail = findViewById(R.id.tv_template_detail);
         etParam1 = findViewById(R.id.et_param1);
+        etParam2 = findViewById(R.id.et_param2);
         etInitialLiquidity = findViewById(R.id.et_initial_liquidity);
         btnSelectStartTime = findViewById(R.id.btn_select_start_time);
         btnSelectTime = findViewById(R.id.btn_select_time);
         btnSelectImage = findViewById(R.id.btn_select_image);
         ivPoolIcon = findViewById(R.id.iv_pool_icon);
         btnDeploy = findViewById(R.id.btn_deploy);
-        containerTechnical = findViewById(R.id.container_technical);
-        spinnerIndicator = findViewById(R.id.spinner_indicator);
+        containerOperator = findViewById(R.id.container_technical);
         spinnerOperator = findViewById(R.id.spinner_operator);
         containerDirection = findViewById(R.id.container_direction);
         spinnerDirection = findViewById(R.id.spinner_direction);
-        
+        containerBenchmark = findViewById(R.id.container_benchmark);
+        spinnerBenchmark = findViewById(R.id.spinner_benchmark);
+        spinnerBenchmark.setAdapter(new BenchmarkAdapter());
+
         btnSelectStartTime.setOnClickListener(v -> showDatePicker(true));
         btnSelectTime.setOnClickListener(v -> showDatePicker(false));
         btnSelectImage.setOnClickListener(v -> pickImage());
         btnDeploy.setOnClickListener(v -> attemptShowSummary());
-
-        List<String> indicators = Arrays.asList("RSI (14)", "MACD (12,26,9)", "KDJ (9,3,3)", "BOLL (20,2)");
-        ArrayAdapter<String> adapterInd = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, indicators);
-        adapterInd.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerIndicator.setAdapter(adapterInd);
-        updateOperatorSpinner(false);
-
-        List<String> directions = Arrays.asList("上涨 (Price Up)", "下跌 (Price Down)", "持平 (Flat/Range)");
-        ArrayAdapter<String> adapterDir = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, directions);
-        adapterDir.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerDirection.setAdapter(adapterDir);
     }
 
-    private void updateOperatorSpinner(boolean isVolume) {
-        List<String> operators = isVolume ? Arrays.asList("大于 (Above)", "小于 (Below)", "等于 (Equal To)") : Arrays.asList("大于 (Above)", "小于 (Below)", "交叉向上 (Cross Up)", "交叉向下 (Cross Down)");
-        ArrayAdapter<String> adapterOp = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, operators);
-        adapterOp.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerOperator.setAdapter(adapterOp);
+    private void setupTemplateUI() {
+        GoldMarketTemplateCatalog.Template template = GoldMarketTemplateCatalog.forType(templateType);
+        tvTemplateName.setText(template.title);
+        tvTemplateDetail.setText(template.hint + "。统一使用 Chainlink 与北京时间整日边界。");
+        containerDirection.setVisibility(View.GONE);
+        containerOperator.setVisibility(View.GONE);
+        containerBenchmark.setVisibility(View.GONE);
+        etParam1.setVisibility(View.GONE);
+        etParam2.setVisibility(View.GONE);
+
+        if (GoldMarketTemplateCatalog.TYPE_PRICE.equals(templateType)) {
+            showDirectionOptions(true);
+        } else if (GoldMarketTemplateCatalog.TYPE_STREAK.equals(templateType)) {
+            showDirectionOptions(false);
+        } else if (GoldMarketTemplateCatalog.TYPE_RETURN_THRESHOLD.equals(templateType)) {
+            showOrderedOperator();
+            etParam1.setVisibility(View.VISIBLE);
+            etParam1.setHint("绝对涨跌幅阈值 (%)");
+            etParam1.setInputType(android.text.InputType.TYPE_CLASS_NUMBER
+                    | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        } else if (GoldMarketTemplateCatalog.TYPE_PRICE_THRESHOLD.equals(templateType)) {
+            showOrderedOperator();
+            etParam1.setVisibility(View.VISIBLE);
+            etParam1.setHint("目标价格 (USD/盎司)");
+            etParam1.setInputType(android.text.InputType.TYPE_CLASS_NUMBER
+                    | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        } else if (GoldMarketTemplateCatalog.TYPE_PRICE_RANGE.equals(templateType)) {
+            containerOperator.setVisibility(View.VISIBLE);
+            setSpinnerItems(spinnerOperator, Arrays.asList("位于闭区间", "不在闭区间"));
+            etParam1.setVisibility(View.VISIBLE);
+            etParam2.setVisibility(View.VISIBLE);
+            etParam1.setHint("价格区间下限 (USD/盎司)");
+            etParam2.setHint("价格区间上限 (USD/盎司)");
+            int numeric = android.text.InputType.TYPE_CLASS_NUMBER
+                    | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL;
+            etParam1.setInputType(numeric);
+            etParam2.setInputType(numeric);
+        } else if (GoldMarketTemplateCatalog.TYPE_RELATIVE.equals(templateType)) {
+            containerBenchmark.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void showDirectionOptions(boolean allowFlat) {
+        containerDirection.setVisibility(View.VISIBLE);
+        List<String> values = allowFlat
+                ? Arrays.asList("上涨", "下跌", "持平")
+                : Arrays.asList("上涨", "下跌");
+        setSpinnerItems(spinnerDirection, values);
+    }
+
+    private void showOrderedOperator() {
+        containerOperator.setVisibility(View.VISIBLE);
+        setSpinnerItems(spinnerOperator, Arrays.asList("大于等于", "小于等于"));
+    }
+
+    private void setSpinnerItems(Spinner spinner, List<String> values) {
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                this, android.R.layout.simple_spinner_item, values);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(adapter);
+    }
+
+    private void applyDefaultWindow(int startDays, int durationDays) {
+        Calendar now = Calendar.getInstance(BEIJING);
+        GoldMarketCreationPolicy.Window window = GoldMarketCreationPolicy.normalizeWindow(
+                now, startDays, durationDays,
+                GoldMarketTemplateCatalog.TYPE_STREAK.equals(templateType));
+        startCalendar = window.start;
+        endCalendar = window.end;
+        updateDateButtons();
+    }
+
+    private void applyAiParsedData(String jsonText) {
+        try {
+            JSONObject json = new JSONObject(jsonText);
+            String parsedType = json.optString("type", templateType);
+            if (GoldMarketTemplateCatalog.isCreatable(parsedType)) templateType = parsedType;
+            setupTemplateUI();
+            etParam1.setText(json.optString("param1", ""));
+            etParam2.setText(json.optString("param2", ""));
+            spinnerDirection.setSelection(json.optInt("directionIdx", 0));
+            spinnerOperator.setSelection(json.optInt("operatorIdx", 0));
+            spinnerBenchmark.setSelection(GoldBenchmarkCatalog.indexOf(
+                    json.optString("param1", "BTC")));
+            etInitialLiquidity.setText(json.optString("liquidity", "1"));
+            applyDefaultWindow(json.optInt("startDaysFromNow", 0),
+                    json.optInt("durationDays", 2));
+            applyTemplateDefaultCover();
+            Toast.makeText(this, "已应用 AI 解析规则", Toast.LENGTH_SHORT).show();
+        } catch (Exception error) {
+            Log.e("GoldCreate", "apply AI data failed", error);
+            Toast.makeText(this, "AI 规则无效: " + error.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void showDatePicker(boolean start) {
+        Calendar target = start ? startCalendar : endCalendar;
+        DatePickerDialog dialog = new DatePickerDialog(this, (view, year, month, day) -> {
+            Calendar selected = Calendar.getInstance(BEIJING);
+            selected.clear();
+            selected.set(year, month, day, 0, 0, 0);
+            Calendar normalized = GoldMarketCreationPolicy.normalizeSelectedDate(selected);
+            if (!sameDate(selected, normalized)) {
+                Toast.makeText(this, "所选日期无有效边界，已顺延到 "
+                        + dateFormat.format(normalized.getTime()), Toast.LENGTH_LONG).show();
+            }
+            if (start) startCalendar = normalized;
+            else endCalendar = normalized;
+            updateDateButtons();
+        }, target.get(Calendar.YEAR), target.get(Calendar.MONTH), target.get(Calendar.DAY_OF_MONTH));
+        dialog.getDatePicker().setMinDate(System.currentTimeMillis() - 1000L);
+        dialog.show();
+    }
+
+    private static boolean sameDate(Calendar left, Calendar right) {
+        return left.get(Calendar.YEAR) == right.get(Calendar.YEAR)
+                && left.get(Calendar.DAY_OF_YEAR) == right.get(Calendar.DAY_OF_YEAR);
+    }
+
+    private void updateDateButtons() {
+        btnSelectStartTime.setText("开始日期: " + dateFormat.format(startCalendar.getTime()) + " 00:00");
+        btnSelectTime.setText("截止日期: " + dateFormat.format(endCalendar.getTime()) + " 00:00");
+    }
+
+    private void attemptShowSummary() {
+        try {
+            boolean streak = GoldMarketTemplateCatalog.TYPE_STREAK.equals(templateType);
+            GoldMarketCreationPolicy.Window window = GoldMarketCreationPolicy.validateSelectedWindow(
+                    startCalendar, endCalendar, streak);
+            startCalendar = window.start;
+            endCalendar = window.end;
+            String param1 = etParam1.getText().toString().trim();
+            String param2 = etParam2.getText().toString().trim();
+            if (GoldMarketTemplateCatalog.TYPE_RELATIVE.equals(templateType)) {
+                GoldBenchmarkCatalog.Benchmark benchmark = (GoldBenchmarkCatalog.Benchmark)
+                        spinnerBenchmark.getSelectedItem();
+                param1 = benchmark == null ? "BTC" : benchmark.symbol;
+            }
+            int direction = spinnerDirection.getSelectedItemPosition();
+            int operator = spinnerOperator.getSelectedItemPosition();
+            JSONObject rule = GoldMarketCreationPolicy.buildRule(
+                    templateType, param1, param2, direction, operator,
+                    startCalendar, endCalendar);
+            String title = GoldMarketCreationPolicy.buildTitle(
+                    templateType, param1, param2, direction, operator, window);
+            String condition = GoldMarketCreationPolicy.buildCondition(
+                    templateType, param1, param2, direction, operator, window);
+            Calendar now = Calendar.getInstance(BEIJING);
+            long duration = GoldMarketCreationPolicy.contractDurationSeconds(now, endCalendar);
+            updateDateButtons();
+            showSummaryDialog(title, condition, rule, duration);
+        } catch (Exception error) {
+            Toast.makeText(this, error.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void showSummaryDialog(String title, String condition,
+                                   JSONObject rule, long durationSeconds) {
+        String liquidity = etInitialLiquidity.getText().toString().trim();
+        if (liquidity.isEmpty()) liquidity = "1";
+        final java.math.BigInteger liquidityWei = GoldMarketRepository.parseTokenAmountToWei(liquidity);
+        if (liquidityWei == null) {
+            Toast.makeText(this, "初始流动性金额无效", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        View content = LayoutInflater.from(this).inflate(R.layout.dialog_gold_pool_summary, null);
+        ((TextView) content.findViewById(R.id.tv_summary_id)).setText("待部署: " + title);
+        ((TextView) content.findViewById(R.id.tv_summary_logic)).setText(
+                condition + "\n初始流动性: " + liquidity + " BKC");
+        ((TextView) content.findViewById(R.id.tv_summary_period)).setText(
+                dateFormat.format(startCalendar.getTime()) + " 至 "
+                        + dateFormat.format(endCalendar.getTime()) + "（北京时间）");
+        ((TextView) content.findViewById(R.id.tv_summary_creator)).setText(viewModel.getWalletAddress());
+        ((TextView) content.findViewById(R.id.tv_summary_time)).setText(dateFormat.format(new Date()));
+
+        AlertDialog dialog = new AlertDialog.Builder(this).setView(content).create();
+        Button confirm = content.findViewById(R.id.btn_summary_close);
+        confirm.setText("确认并部署");
+        confirm.setOnClickListener(view -> {
+            dialog.dismiss();
+            byte[] cover = selectedImageData != null ? selectedImageData : templateImageData;
+            viewModel.createGame(title, condition, cover, "Premium", Arrays.asList("YES", "NO"),
+                    durationSeconds, liquidityWei, templateType, rule);
+        });
+        dialog.show();
     }
 
     private void applyTemplateDefaultCover() {
         int iconRes = GoldMarketTemplateIcon.forType(templateType);
         ivPoolIcon.setImageResource(iconRes);
         templateImageData = renderDrawableAsPng(iconRes);
-        if (iconRes != R.drawable.apartment_icon) {
-            btnSelectImage.setText("更换封面");
-        }
+        if (iconRes != R.drawable.apartment_icon) btnSelectImage.setText("更换封面");
     }
 
     private byte[] renderDrawableAsPng(int drawableRes) {
@@ -171,279 +359,75 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
             ByteArrayOutputStream output = new ByteArrayOutputStream();
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, output);
             return output.toByteArray();
-        } catch (Exception e) {
-            Log.w("GoldCreate", "模板默认封面生成失败", e);
+        } catch (Exception error) {
+            Log.w("GoldCreate", "template cover rendering failed", error);
             return null;
         }
     }
 
-    private void setupTemplateUI() {
-        tvTemplateName.setText(templateTitle);
-        containerTechnical.setVisibility(View.GONE);
-        containerDirection.setVisibility(View.GONE);
-        etParam1.setVisibility(View.VISIBLE);
-        switch (templateType != null ? templateType : "") {
-            case "TYPE_PRICE":
-                tvTemplateDetail.setText("对比两个时间点的黄金价格。");
-                etParam1.setVisibility(View.GONE); containerDirection.setVisibility(View.VISIBLE);
-                break;
-            case "TYPE_VOLATILITY": tvTemplateDetail.setText("博弈设定周期内的价格剧烈程度。"); etParam1.setHint("波动率门槛 (%)"); break;
-            case "TYPE_VOLUME":
-                tvTemplateDetail.setText("博弈指定交易日的成交总量。");
-                containerTechnical.setVisibility(View.VISIBLE); spinnerIndicator.setVisibility(View.GONE);
-                updateOperatorSpinner(true); etParam1.setHint("目标成交量 (吨)"); btnSelectStartTime.setVisibility(View.GONE); btnSelectTime.setText("选择交易日: 未选择");
-                break;
-            case "TYPE_TECHNICAL":
-                tvTemplateDetail.setText("博弈特定技术指标是否达到设定形态。");
-                containerTechnical.setVisibility(View.VISIBLE); spinnerIndicator.setVisibility(View.VISIBLE);
-                updateOperatorSpinner(false); etParam1.setHint("触发数值 (如: 70)");
-                break;
-            case "TYPE_TOUCH": tvTemplateDetail.setText("极值触碰博弈。"); etParam1.setHint("触碰价格 (USD)"); break;
-            case "TYPE_RELATIVE": tvTemplateDetail.setText("博弈黄金相对于其他资产的收益率。"); etParam1.setHint("对比标的 (如: BTC)"); break;
-            case "TYPE_PRICE_THRESHOLD":
-                tvTemplateDetail.setText("博弈截止时刻金价大于/小于/等于指定价格。");
-                containerTechnical.setVisibility(View.VISIBLE); spinnerIndicator.setVisibility(View.GONE);
-                updateOperatorSpinner(true); etParam1.setHint("目标价格 (USD)");
-                break;
-            case "TYPE_EVENT":
-                tvTemplateDetail.setText("博弈指定宏观/财经事件在截止日期前是否发生。");
-                etParam1.setHint("事件描述 (如: 美联储降息)");
-                break;
-        }
-    }
-
-    private void applyAiParsedData(String jsonStr) {
-        try {
-            JSONObject json = new JSONObject(jsonStr);
-            // templateType already set from intent but can be overwritten
-            templateType = json.optString("type", templateType);
-            etParam1.setText(json.optString("param1", ""));
-            spinnerDirection.setSelection(json.optInt("directionIdx", 0));
-            spinnerIndicator.setSelection(json.optInt("indicatorIdx", 0));
-            spinnerOperator.setSelection(json.optInt("operatorIdx", 0));
-            etInitialLiquidity.setText(json.optString("liquidity", "1"));
-
-            int days = json.optInt("daysFromNow", 7);
-            endCalendar = Calendar.getInstance();
-            endCalendar.add(Calendar.DAY_OF_YEAR, days);
-            endCalendar.set(Calendar.SECOND, 0);
-            endCalendar.set(Calendar.MILLISECOND, 0);
-            endSelected = true;
-            btnSelectTime.setText("截止: " + dateFormat.format(endCalendar.getTime()));
-
-            setupTemplateUI();
-            Toast.makeText(this, "✨ 已应用 AI 智能解析规则", Toast.LENGTH_SHORT).show();
-        } catch (Exception e) {
-            Log.e("GoldCreate", "Failed to apply AI data", e);
-        }
-    }
-
-    private void showDatePicker(boolean isStart) {
-        Calendar target = isStart ? startCalendar : endCalendar;
-        DatePickerDialog dialog = new DatePickerDialog(this, (view, year, month, day) -> {
-            target.set(Calendar.YEAR, year); target.set(Calendar.MONTH, month); target.set(Calendar.DAY_OF_MONTH, day);
-            showTimePicker(isStart, target);
-        }, target.get(Calendar.YEAR), target.get(Calendar.MONTH), target.get(Calendar.DAY_OF_MONTH));
-        dialog.getDatePicker().setMinDate(System.currentTimeMillis() - 1000);
-        dialog.show();
-    }
-
-    private void showTimePicker(boolean isStart, Calendar target) {
-        TimePickerDialog dialog = new TimePickerDialog(this, (view, hourOfDay, minute) -> {
-            target.set(Calendar.HOUR_OF_DAY, hourOfDay);
-            target.set(Calendar.MINUTE, minute);
-            target.set(Calendar.SECOND, 0);
-            target.set(Calendar.MILLISECOND, 0);
-            if (isStart) {
-                startSelected = true;
-                btnSelectStartTime.setText("开始: " + dateFormat.format(target.getTime()));
-            } else {
-                endSelected = true;
-                btnSelectTime.setText("截止: " + dateFormat.format(target.getTime()));
-            }
-        }, target.get(Calendar.HOUR_OF_DAY), target.get(Calendar.MINUTE), true);
-        dialog.show();
-    }
-
     private void pickImage() {
-        Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-        imagePickerLauncher.launch(intent);
+        imagePickerLauncher.launch(new Intent(
+                Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI));
     }
 
     private void handleImageResult(Uri uri) {
         try {
             Glide.with(this).load(uri).into(ivPoolIcon);
-            InputStream is = getContentResolver().openInputStream(uri);
-            Bitmap bitmap = BitmapFactory.decodeStream(is);
-            if (bitmap != null) {
-                ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 80, baos);
-                selectedImageData = baos.toByteArray();
-                Log.d("GoldCreate", "图片选取成功, 大小: " + selectedImageData.length);
+            try (InputStream input = getContentResolver().openInputStream(uri)) {
+                Bitmap bitmap = BitmapFactory.decodeStream(input);
+                if (bitmap != null) {
+                    ByteArrayOutputStream output = new ByteArrayOutputStream();
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 80, output);
+                    selectedImageData = output.toByteArray();
+                }
             }
-        } catch (Exception e) {
+        } catch (Exception error) {
             Toast.makeText(this, "图片加载失败", Toast.LENGTH_SHORT).show();
         }
     }
 
-    private void attemptShowSummary() {
-        String p1 = etParam1.getText().toString().trim();
-        if (p1.isEmpty() && !"TYPE_PRICE".equals(templateType)) { 
-            Toast.makeText(this, "请输入定制参数", Toast.LENGTH_SHORT).show(); 
-            return; 
+    private final class BenchmarkAdapter extends BaseAdapter {
+        @Override
+        public int getCount() {
+            return GoldBenchmarkCatalog.all().size();
         }
-        if (!endSelected) { Toast.makeText(this, "请选择日期", Toast.LENGTH_SHORT).show(); return; }
-        long now = System.currentTimeMillis(), start = startSelected ? startCalendar.getTimeInMillis() : now, end = endCalendar.getTimeInMillis();
-        if (end <= start) { Toast.makeText(this, "截止日期必须晚于开始日期", Toast.LENGTH_SHORT).show(); return; }
-        
-        String cond = generateConditionString(p1), title = generateDescriptiveTitle(p1);
-        long dur = (end - now) / 1000;
 
-        if (dur <= 0) { Toast.makeText(this, "截止时间必须晚于当前", Toast.LENGTH_SHORT).show(); return; }
-        showSummaryDialog(title, cond, start, end, dur);
-    }
-
-    private void showSummaryDialog(String title, String condition, long start, long end, long dur) {
-        String liqStr = etInitialLiquidity.getText().toString().trim();
-        if (liqStr.isEmpty()) liqStr = "1";
-        final java.math.BigInteger liqWei = GoldMarketRepository.parseTokenAmountToWei(liqStr);
-        if (liqWei == null) {
-            Toast.makeText(this, "初始流动性金额无效，请输入有效数字（如 1）", Toast.LENGTH_SHORT).show();
-            return;
+        @Override
+        public GoldBenchmarkCatalog.Benchmark getItem(int position) {
+            return GoldBenchmarkCatalog.all().get(position);
         }
-        
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        View v = LayoutInflater.from(this).inflate(R.layout.dialog_gold_pool_summary, null);
-        builder.setView(v);
-        ((TextView) v.findViewById(R.id.tv_summary_id)).setText("待部署: " + title);
-        ((TextView) v.findViewById(R.id.tv_summary_logic)).setText(condition + "\n(初始: " + liqStr + " BKC)");
-        ((TextView) v.findViewById(R.id.tv_summary_period)).setText((startSelected ? dateFormat.format(new Date(start)) : "当前") + " 至 " + dateFormat.format(new Date(end)));
-        ((TextView) v.findViewById(R.id.tv_summary_creator)).setText(viewModel.getWalletAddress());
-        ((TextView) v.findViewById(R.id.tv_summary_time)).setText(dateFormat.format(new Date()));
-        
-        Button btn = v.findViewById(R.id.btn_summary_close);
-        btn.setText("确认并部署");
-        AlertDialog dialog = builder.create();
-        btn.setOnClickListener(view -> { 
-            dialog.dismiss(); 
-            byte[] coverImage = selectedImageData != null ? selectedImageData : templateImageData;
-            JSONObject resolutionRule = buildResolutionRule(
-                    etParam1.getText().toString().trim(), start, end);
-            viewModel.createGame(title, condition, coverImage, "Premium", Arrays.asList("YES", "NO"),
-                    dur, liqWei, templateType, resolutionRule);
-        });
-        dialog.show();
-    }
 
-    private JSONObject buildResolutionRule(String param, long startMillis, long endMillis) {
-        JSONObject rule = new JSONObject();
-        try {
-            rule.put("type", templateType);
-            rule.put("symbol", "XAU");
-            rule.put("source", "GOLD_API");
-            rule.put("start_time_sec", startMillis / 1000L);
-            rule.put("end_time_sec", endMillis / 1000L);
-            switch (templateType != null ? templateType : "") {
-                case "TYPE_PRICE":
-                    String direction = spinnerDirection.getSelectedItemPosition() == 1 ? "DOWN"
-                            : spinnerDirection.getSelectedItemPosition() == 2 ? "FLAT" : "UP";
-                    rule.put("direction", direction);
-                    rule.put("flat_tolerance_percent", 0.1);
-                    break;
-                case "TYPE_VOLATILITY":
-                    rule.put("operator", "GTE");
-                    rule.put("threshold", Double.parseDouble(param));
-                    break;
-                case "TYPE_VOLUME":
-                    rule.put("symbol", "COMEX_GC");
-                    rule.put("source", "CME_GROUP");
-                    rule.put("operator", canonicalOperator());
-                    rule.put("threshold", Double.parseDouble(param));
-                    rule.put("volume_unit", "METRIC_TON_EQUIVALENT");
-                    break;
-                case "TYPE_TECHNICAL":
-                    rule.put("indicator", spinnerIndicator.getSelectedItem().toString().split(" ")[0]);
-                    rule.put("operator", technicalOperator());
-                    rule.put("threshold", param.isEmpty() ? 0 : Double.parseDouble(param));
-                    rule.put("interval", "hour");
-                    break;
-                case "TYPE_TOUCH":
-                    rule.put("threshold", Double.parseDouble(param));
-                    break;
-                case "TYPE_RELATIVE":
-                    rule.put("benchmark", param.equalsIgnoreCase("比特币") ? "BTC" : param);
-                    break;
-                case "TYPE_PRICE_THRESHOLD":
-                    rule.put("operator", canonicalOperator());
-                    rule.put("threshold", Double.parseDouble(param));
-                    break;
-                case "TYPE_EVENT":
-                    rule.put("source", "AUTHORITATIVE_DOCUMENTS");
-                    rule.put("event", param);
-                    if (param.contains("美联储")) {
-                        org.json.JSONArray sources = new org.json.JSONArray();
-                        sources.put("https://www.federalreserve.gov/newsevents/pressreleases.htm");
-                        rule.put("authoritative_sources", sources);
-                    } else if (param.toUpperCase(java.util.Locale.US).contains("CPI")) {
-                        org.json.JSONArray sources = new org.json.JSONArray();
-                        sources.put("https://www.bls.gov/cpi/");
-                        rule.put("authoritative_sources", sources);
-                    }
-                    break;
-            }
-        } catch (Exception e) {
-            throw new IllegalArgumentException("无法生成结构化裁决规则: " + e.getMessage(), e);
+        @Override
+        public long getItemId(int position) {
+            return position;
         }
-        return rule;
-    }
 
-    private String canonicalOperator() {
-        int index = spinnerOperator.getSelectedItemPosition();
-        return index == 1 ? "LT" : index == 2 ? "EQ" : "GT";
-    }
-
-    private String technicalOperator() {
-        int index = spinnerOperator.getSelectedItemPosition();
-        return index == 1 ? "LT" : index == 2 ? "CROSS_UP" : index == 3 ? "CROSS_DOWN" : "GT";
-    }
-
-    /**
-     * 安全获取 spinner 当前选中文本的中文部分（"大于 (Above)" → "大于"）
-     */
-    private String safeOperatorText() {
-        Object item = spinnerOperator.getSelectedItem();
-        if (item == null) return "大于";
-        String[] parts = item.toString().split(" ");
-        return parts.length > 0 ? parts[0] : "大于";
-    }
-
-    private String generateDescriptiveTitle(String p1) {
-        String startStr = dateFormat.format(startCalendar.getTime()), endStr = dateFormat.format(endCalendar.getTime());
-        switch (templateType != null ? templateType : "") {
-            case "TYPE_PRICE": return String.format("%s 至 %s 黄金价格 %s", startStr, endStr, spinnerDirection.getSelectedItem().toString().split(" ")[0]);
-            case "TYPE_VOLATILITY": return String.format("%s 前黄金波幅超过 %s%%", endStr, p1);
-            case "TYPE_VOLUME": return String.format("%s 当日成交量 %s %s 吨", endStr, safeOperatorText(), p1);
-            case "TYPE_TOUCH": return String.format("周期内金价触及 %s USD", p1);
-            case "TYPE_TECHNICAL": return String.format("指标 %s 触发 %s %s", spinnerIndicator.getSelectedItem(), spinnerOperator.getSelectedItem(), p1);
-            case "TYPE_RELATIVE": return String.format("黄金收益率跑赢 %s", p1);
-            case "TYPE_PRICE_THRESHOLD": return String.format("截止 %s 金价 %s %s USD", endStr, safeOperatorText(), p1);
-            case "TYPE_EVENT": return String.format("「%s」是否发生", p1);
-            default: return templateTitle;
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+            return bindBenchmarkView(position, convertView, parent);
         }
-    }
 
-    private String generateConditionString(String p1) {
-        String period = (startSelected ? "从 " + dateFormat.format(startCalendar.getTime()) + " 到 " : "截至 ") + dateFormat.format(endCalendar.getTime());
-        switch (templateType != null ? templateType : "") {
-            case "TYPE_PRICE": return String.format("黄金价格在 %s 相对基准 %s", period, spinnerDirection.getSelectedItem());
-            case "TYPE_VOLATILITY": return String.format("周期内波幅 >= %s%% (%s)", p1, period);
-            case "TYPE_VOLUME": return String.format("指定日成交量 %s %s 吨 (%s)", spinnerOperator.getSelectedItem(), p1, dateFormat.format(endCalendar.getTime()));
-            case "TYPE_TECHNICAL": return String.format("指标 %s %s %s (%s)", spinnerIndicator.getSelectedItem(), spinnerOperator.getSelectedItem(), p1, period);
-            case "TYPE_TOUCH": return String.format("金价曾触及 %s USD (%s)", p1, period);
-            case "TYPE_RELATIVE": return String.format("黄金收益率跑赢 %s (%s)", p1, period);
-            case "TYPE_PRICE_THRESHOLD": return String.format("黄金价格 %s %s USD (%s)", safeOperatorText(), p1, period);
-            case "TYPE_EVENT": return String.format("事件「%s」是否发生 (%s)", p1, period);
-            default: return "自定义: " + p1;
+        @Override
+        public View getDropDownView(int position, View convertView, ViewGroup parent) {
+            return bindBenchmarkView(position, convertView, parent);
+        }
+
+        private View bindBenchmarkView(int position, View convertView, ViewGroup parent) {
+            View view = convertView == null
+                    ? LayoutInflater.from(GoldCreateCustomActivity.this).inflate(
+                    R.layout.item_gold_benchmark_spinner, parent, false)
+                    : convertView;
+            GoldBenchmarkCatalog.Benchmark benchmark = getItem(position);
+            TextView icon = view.findViewById(R.id.tv_benchmark_icon);
+            TextView label = view.findViewById(R.id.tv_benchmark_name);
+            GradientDrawable badge = new GradientDrawable();
+            badge.setShape(GradientDrawable.OVAL);
+            badge.setColor(benchmark.color);
+            icon.setBackground(badge);
+            icon.setText(benchmark.glyph);
+            icon.setContentDescription(benchmark.symbol + " icon");
+            label.setText(benchmark.symbol + " · " + benchmark.name);
+            return view;
         }
     }
 }

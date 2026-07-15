@@ -16,6 +16,7 @@ public final class GoldBackendClient {
     public static final class Quote {
         public double priceUsd;
         public double change24h;
+        public boolean changeAvailable;
         public String source;
         public String updatedAt;
     }
@@ -44,6 +45,8 @@ public final class GoldBackendClient {
             Quote quote = new Quote();
             quote.priceUsd = json.get("price_usd").getAsDouble();
             quote.change24h = json.has("change_24h") ? json.get("change_24h").getAsDouble() : 0;
+            quote.changeAvailable = json.has("change_available")
+                    && json.get("change_available").getAsBoolean();
             quote.source = json.has("source") && !json.get("source").isJsonNull()
                     ? json.get("source").getAsString().trim() : "";
             quote.updatedAt = json.has("updated_at") && !json.get("updated_at").isJsonNull()

@@ -20,6 +20,9 @@ public final class GoldMarketCardPresenter {
     private static final Pattern PERCENT_PATTERN = Pattern.compile("(\\d+(?:\\.\\d+)?)\\s*%");
     private static final Pattern USD_PATTERN =
             Pattern.compile("(\\d+(?:\\.\\d+)?)\\s*(USD|USDT|美元|美金)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern USD_RANGE_PATTERN = Pattern.compile(
+            "(\\d+(?:\\.\\d+)?)\\s*[-~至到]\\s*(\\d+(?:\\.\\d+)?)\\s*(?:USD|USDT|美元|美金)",
+            Pattern.CASE_INSENSITIVE);
     private static final Pattern TON_PATTERN = Pattern.compile("(\\d+(?:\\.\\d+)?)\\s*吨");
     private static final Pattern INDICATOR_PATTERN =
             Pattern.compile("\\b(RSI|MACD|KDJ|BOLL)\\b", Pattern.CASE_INSENSITIVE);
@@ -64,6 +67,15 @@ public final class GoldMarketCardPresenter {
         String raw = rawTitle == null ? "" : rawTitle;
         String combined = raw + " " + (condition == null ? "" : condition);
 
+        String streak = streakTitle(combined);
+        if (!streak.isEmpty()) return streak;
+
+        String returnThreshold = returnThresholdTitle(combined);
+        if (!returnThreshold.isEmpty()) return returnThreshold;
+
+        String range = priceRangeTitle(combined);
+        if (!range.isEmpty()) return range;
+
         String directional = directionalTitle(combined);
         if (!directional.isEmpty()) {
             String days = durationSuffixDays(raw);
@@ -93,6 +105,31 @@ public final class GoldMarketCardPresenter {
         return thresholdTitle(combined);
     }
 
+    private static String streakTitle(String text) {
+        if (!containsAny(text, "连续") || !containsAny(text, "上涨", "下跌")) return "";
+        Matcher days = DAY_PATTERN.matcher(text);
+        if (!days.find()) return "";
+        String direction = containsAny(text, "下跌") ? "下跌" : "上涨";
+        return "黄金价格 连续" + direction + " " + days.group(1) + "天";
+    }
+
+    private static String returnThresholdTitle(String text) {
+        if (!containsAny(text, "涨跌幅")) return "";
+        Matcher amount = PERCENT_PATTERN.matcher(text);
+        if (!amount.find()) return "";
+        return "黄金涨跌幅 " + comparatorFor(text, "大于等于")
+                + " " + amount.group(1) + "%";
+    }
+
+    private static String priceRangeTitle(String text) {
+        if (!containsAny(text, "位于", "不在", "区间")) return "";
+        Matcher range = USD_RANGE_PATTERN.matcher(text);
+        if (!range.find()) return "";
+        String relation = containsAny(text, "不在") ? "不在" : "位于";
+        return "黄金价格 " + relation + " " + range.group(1) + "-"
+                + range.group(2) + "USD/盎司";
+    }
+
     private static String eventTitle(String rawTitle) {
         String normalized = normalize(rawTitle);
         int eventIndex = normalized.indexOf("发生");
@@ -120,6 +157,9 @@ public final class GoldMarketCardPresenter {
 
     private static String benchmarkName(String text) {
         if (containsAny(text, "比特币", "BTC", "Bitcoin")) return "BTC";
+        if (containsAny(text, "以太坊", "ETH", "Ethereum")) return "ETH";
+        if (containsAny(text, "SOL", "Solana")) return "SOL";
+        if (containsAny(text, "BNB", "Binance Coin")) return "BNB";
         if (containsAny(text, "标普500", "S&P 500", "S&P")) return "标普500";
         if (containsAny(text, "白银")) return "白银";
         return text.replaceFirst("^[：:「“\\s]+", "")
@@ -165,6 +205,8 @@ public final class GoldMarketCardPresenter {
     }
 
     private static String comparatorFor(String text, String fallback) {
+        if (containsAny(text, "小于等于", "不高于")) return "小于等于";
+        if (containsAny(text, "大于等于", "不低于")) return "大于等于";
         if (containsAny(text, "小于", "低于", "below", "less than")) return "小于";
         if (containsAny(text, "等于", "equal")) return "等于";
         if (containsAny(text, "大于", "高于", "超过", "above", "greater than", "达到")) return "大于";

@@ -96,6 +96,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
+                android:ellipsize="end"
+                android:maxLines="1"
                 android:text="行情源加载中"
                 android:textColor="#666666"
                 android:textSize="12sp" />
@@ -105,9 +107,9 @@
             android:id="@+id/tv_gold_change"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:minWidth="72dp"
+            android:minWidth="92dp"
             android:gravity="end"
-            android:text="--.--%"
+                android:text="24h --"
             android:textColor="#666666"
             android:textSize="15sp"
             android:textStyle="bold" />

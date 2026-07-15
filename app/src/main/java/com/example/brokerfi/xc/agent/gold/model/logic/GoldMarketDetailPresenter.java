@@ -8,13 +8,18 @@ import java.util.regex.Pattern;
 
 public final class GoldMarketDetailPresenter {
     private static final Pattern DATE_TIME_PATTERN =
-            Pattern.compile("(?:\\d{4}-)?\\d{2}-\\d{2}(?:\\s+\\d{1,2}:\\d{2})?");
+            Pattern.compile("(?<!\\d)(?:\\d{4}-)?\\d{2}-\\d{2}"
+                    + "(?:\\s+\\d{1,2}:\\d{2})?(?!\\d)");
     private static final Pattern AMOUNT_PATTERN =
             Pattern.compile("(?i)(?:[$¥￥]\\s*)?\\d+(?:\\.\\d+)?\\s*(?:(?:USD|USDT|美元|美金)(?:/盎司)?|BKC|%|天|吨|盎司|克|kg|g|tons?)");
+    private static final Pattern PRICE_RANGE_AMOUNT_PATTERN = Pattern.compile(
+            "(?i)(?:[$¥￥]\\s*)?\\d+(?:\\.\\d+)?\\s*[-~至到]\\s*"
+                    + "\\d+(?:\\.\\d+)?\\s*(?:(?:USD|USDT|美元|美金)(?:/盎司)?)");
     private static final Pattern NUMBER_PATTERN = Pattern.compile("\\d+(?:\\.\\d+)?");
     private static final Pattern SPACE_PATTERN = Pattern.compile("\\s+");
     private static final String[] NOUNS = {
-            "美联储降息", "成交量", "收益率", "价格", "金价", "波动", "BTC", "比特币", "Bitcoin",
+            "美联储降息", "成交量", "收益率", "涨跌幅", "价格区间", "价格", "金价", "波动",
+            "BTC", "比特币", "Bitcoin", "ETH", "以太坊", "SOL", "Solana", "BNB",
             "标普500", "S&P 500", "白银", "RSI", "MACD", "KDJ", "BOLL", "指标"
     };
     private static final String[] TIME_WORDS = {
@@ -22,7 +27,7 @@ public final class GoldMarketDetailPresenter {
     };
     private static final String[] COMPARATORS = {
             "greater than", "less than", "not below", "not above", "大于等于", "小于等于",
-            "不低于", "不高于", "高于", "低于", "大于", "小于", "等于", "超过",
+            "不低于", "不高于", "高于", "低于", "大于", "小于", "等于", "超过", "位于", "不在",
             "持平", "above", "below", "equal"
     };
     private static final String[] UP_TRENDS = {
@@ -78,11 +83,57 @@ public final class GoldMarketDetailPresenter {
         addKeywordParts(parts, text, TIME_WORDS, Role.TIME);
         addKeywordParts(parts, text, NOUNS, Role.NOUN);
         addKeywordParts(parts, text, COMPARATORS, Role.COMPARATOR);
+        // Match a complete price interval before individual numbers so the lower
+        // bound, separator, upper bound, and unit always share one color.
+        addPatternParts(parts, text, PRICE_RANGE_AMOUNT_PATTERN, Role.AMOUNT);
         addPatternParts(parts, text, AMOUNT_PATTERN, Role.AMOUNT);
         addPatternParts(parts, text, NUMBER_PATTERN, Role.AMOUNT);
         addKeywordParts(parts, text, UP_TRENDS, Role.TREND_UP);
         addKeywordParts(parts, text, DOWN_TRENDS, Role.TREND_DOWN);
         return parts;
+    }
+
+    /** Converts the metadata condition into a compact, scannable rule card. */
+    public static String formatResolutionRule(String condition) {
+        String normalized = condition == null ? "" : condition.trim();
+        if (normalized.isEmpty()) return "判定条件\n暂无";
+
+        String[] clauses = normalized.replace('\r', '\n').split("[；;]");
+        List<String> sections = new ArrayList<>();
+        for (String rawClause : clauses) {
+            String clause = rawClause.trim().replaceFirst("[。.]$", "");
+            if (clause.isEmpty()) continue;
+            if (clause.startsWith("北京时间")) {
+                sections.add("观察周期\n" + clause);
+                continue;
+            }
+            if (clause.startsWith("信源为")) {
+                String sourceAndPolicy = clause.substring("信源为".length()).trim();
+                int separator = sourceAndPolicy.indexOf('，');
+                if (separator < 0) separator = sourceAndPolicy.indexOf(',');
+                if (separator >= 0) {
+                    String source = sourceAndPolicy.substring(0, separator).trim();
+                    String policy = sourceAndPolicy.substring(separator + 1).trim();
+                    sections.add("数据来源\n" + source);
+                    if (!policy.isEmpty()) sections.add("取价规则\n" + policy);
+                } else {
+                    sections.add("数据来源\n" + sourceAndPolicy);
+                }
+                continue;
+            }
+            sections.add("判定条件\n" + clause);
+        }
+        if (sections.isEmpty()) return "判定条件\n" + normalized;
+        return joinSections(sections);
+    }
+
+    private static String joinSections(List<String> sections) {
+        StringBuilder result = new StringBuilder();
+        for (String section : sections) {
+            if (result.length() > 0) result.append("\n\n");
+            result.append(section);
+        }
+        return result.toString();
     }
 
     public static int colorForRole(Role role) {

@@ -220,7 +220,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
     private void updateUI() {
         if (currentGame == null) return;
         String title = currentGame.desc != null && !currentGame.desc.isEmpty() ? currentGame.desc : "博弈池 #" + currentGame.id;
-        String condition = "判定逻辑: " + (currentGame.condition != null ? currentGame.condition : "暂无");
+        String condition = GoldMarketDetailPresenter.formatResolutionRule(currentGame.condition);
         tvMarketDesc.setText(styleMarketText(
                 GoldMarketCardPresenter.displayTitle(title, currentGame.condition, currentGame.deadlineSec), true));
         tvMarketTime.setText("");

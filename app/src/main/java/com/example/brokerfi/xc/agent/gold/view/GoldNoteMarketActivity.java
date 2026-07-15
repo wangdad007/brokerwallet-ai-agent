@@ -17,6 +17,7 @@ import com.example.brokerfi.R;
 import com.example.brokerfi.xc.StorageUtil;
 import com.example.brokerfi.xc.agent.ai.DeepSeekClient;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldAdvisoryManager;
+import com.example.brokerfi.xc.agent.gold.model.logic.GoldQuotePresenter;
 import com.example.brokerfi.xc.agent.gold.viewmodel.GoldNoteMarketViewModel;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
@@ -109,11 +110,13 @@ public class GoldNoteMarketActivity extends AppCompatActivity {
         }
         hasValidQuote = true;
         tvGoldPrice.setText(String.format(Locale.getDefault(), "XAU $%,.2f/oz", quote.priceUsd));
-        tvGoldChange.setText(String.format(Locale.getDefault(), "%+.2f%%", quote.change24h));
-        String source = quote.quoteSource == null || quote.quoteSource.trim().isEmpty()
-                ? "行情服务" : quote.quoteSource.trim();
-        String updatedAt = quote.quoteUpdatedAt == null ? "" : quote.quoteUpdatedAt.trim();
-        tvGoldQuoteMeta.setText(updatedAt.isEmpty() ? "来源 " + source : "来源 " + source + " · " + updatedAt);
+        tvGoldChange.setText(GoldQuotePresenter.dailyChange(
+                quote.change24h, quote.changeAvailable));
+        tvGoldChange.setTextColor(!quote.changeAvailable ? 0xFF64748B
+                : quote.change24h > 0 ? 0xFF059669
+                : quote.change24h < 0 ? 0xFFE11D48 : 0xFF64748B);
+        tvGoldQuoteMeta.setText(GoldQuotePresenter.quoteMeta(
+                quote.quoteSource, quote.quoteUpdatedAt, quote.quoteDelayed));
     }
 
     public static String formatShareAmount(BigInteger value) {
