@@ -80,6 +80,19 @@ public class GoldMarketDetailPresenterTest {
     }
 
     @Test
+    public void tickerKeywordDoesNotColorEthereumDataSourcePrefix() {
+        List<GoldMarketDetailPresenter.Part> sourceParts =
+                GoldMarketDetailPresenter.highlightParts(
+                        "数据来源\nEthereum Chainlink Data Feed");
+        org.junit.Assert.assertFalse(
+                contains(sourceParts, GoldMarketDetailPresenter.Role.NOUN, "Eth"));
+
+        List<GoldMarketDetailPresenter.Part> tickerParts =
+                GoldMarketDetailPresenter.highlightParts("黄金跑赢 ETH");
+        assertTrue(contains(tickerParts, GoldMarketDetailPresenter.Role.NOUN, "ETH"));
+    }
+
+    @Test
     public void highlightPartsDistinguishesTechnicalIndicatorAndSignalDirection() {
         List<GoldMarketDetailPresenter.Part> parts = GoldMarketDetailPresenter.highlightParts(
                 "黄金 MACD 上穿信号线");

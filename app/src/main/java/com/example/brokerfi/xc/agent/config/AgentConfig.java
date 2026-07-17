@@ -29,7 +29,7 @@ public final class AgentConfig {
     public static final int IPFS_CONNECT_TIMEOUT_MS = 5000;
     public static final int IPFS_READ_TIMEOUT_MS = 5000;
     public static final int AI_CONNECT_TIMEOUT_MS = 15000;
-    public static final int AI_READ_TIMEOUT_MS = 45000;
+    public static final int AI_READ_TIMEOUT_MS = 600000;
     public static final int MARKET_DATA_TIMEOUT_MS = 5000;
 
     private AgentConfig() {}

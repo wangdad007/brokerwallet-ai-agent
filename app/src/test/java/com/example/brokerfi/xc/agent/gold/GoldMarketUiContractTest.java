@@ -33,6 +33,8 @@ public class GoldMarketUiContractTest {
                     + "GoldPositionDetailActivity.java";
     private static final String POSITION_DETAIL_LAYOUT_PATH =
             "app/src/main/res/layout/activity_gold_position_detail.xml";
+    private static final String AI_CHAT_FRAGMENT_PATH =
+            "app/src/main/java/com/example/brokerfi/xc/agent/gold/view/AIChatFragment.java";
 
     @Test
     public void chatDisplaysExistingSummaryAndUsesSavedContextForFollowUps() throws Exception {
@@ -69,6 +71,20 @@ public class GoldMarketUiContractTest {
                                 + "TextUtils\\.isEmpty\\(value\\).*?"
                                 + "value\\.trim\\(\\)\\.isEmpty\\(\\)",
                         Pattern.DOTALL).matcher(source).find());
+    }
+
+    @Test
+    public void globalResearchChatRefreshesQuoteAndPoolSnapshotBeforeEveryQuestion()
+            throws Exception {
+        String source = readUtf8(AI_CHAT_FRAGMENT_PATH);
+        String refresh = blockAfter(source, "private void loadLiveContextAndAsk");
+        assertTrue(refresh.contains("GoldAdvisoryManager.fetchPrice"));
+        String pools = blockAfter(source, "private void loadMarketsAndAsk");
+        assertTrue(pools.contains("marketRepository.getAllGamesInfo"));
+        assertTrue(pools.contains("GoldMarketResearchPromptBuilder.buildMarketOverview"));
+        assertTrue(pools.contains("askWithCurrentContext"));
+        String submit = blockAfter(source, "private void submitQuestion");
+        assertInOrder(submit, "beginLoading", "loadLiveContextAndAsk");
     }
 
     @Test

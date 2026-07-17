@@ -28,6 +28,7 @@ public class DeepSeekClient {
     private static final String KEY_API_KEY = "api_key";
     private static final int CONNECT_TIMEOUT_MS = AgentConfig.AI_CONNECT_TIMEOUT_MS;
     private static final int READ_TIMEOUT_MS = AgentConfig.AI_READ_TIMEOUT_MS;
+    private static final int MAX_DIRECT_SEGMENTS = 3;
 
     private static Context appContext;
     private static final Gson gson = new Gson();
@@ -72,7 +73,7 @@ public class DeepSeekClient {
         request.model = AgentConfig.DEEPSEEK_MODEL;
         request.messages = messages;
         request.temperature = 0.7;
-        request.maxTokens = 1024;
+        request.maxTokens = 8192;
 
         executeChat(request, callback);
     }
@@ -92,7 +93,7 @@ public class DeepSeekClient {
         request.model = AgentConfig.DEEPSEEK_MODEL;
         request.messages = messages;
         request.temperature = 0.1;
-        request.maxTokens = 2048;
+        request.maxTokens = 4096;
         request.responseFormat = new ResponseFormat("json_object");
 
         executeChat(request, callback);
@@ -127,6 +128,24 @@ public class DeepSeekClient {
     }
 
     private static String executeDirect(ChatRequest request, String apiKey) throws Exception {
+        StringBuilder complete = new StringBuilder();
+        for (int segment = 1; segment <= MAX_DIRECT_SEGMENTS; segment++) {
+            ChatResponse response = executeDirectOnce(request, apiKey);
+            String content = extractContent(response);
+            if (complete.length() > 0) complete.append('\n');
+            complete.append(content);
+            if (!isLengthLimited(response)) return complete.toString().trim();
+            if (request.responseFormat != null) {
+                throw new IllegalStateException("DeepSeek structured response was truncated");
+            }
+            request.messages.add(new Message("assistant", content));
+            request.messages.add(new Message("user",
+                    "上一段因长度中断。请严格从中断处继续，不要重复；完成剩余内容并闭合所有Markdown标记。"));
+        }
+        throw new IllegalStateException("DeepSeek response remained truncated after continuation");
+    }
+
+    private static ChatResponse executeDirectOnce(ChatRequest request, String apiKey) throws Exception {
         HttpURLConnection conn = null;
         try {
             String json = gson.toJson(request);
@@ -147,10 +166,16 @@ public class DeepSeekClient {
             if (code < 200 || code >= 300) {
                 throw new IOException(buildHttpError(code, body));
             }
-            return extractContent(gson.fromJson(body, ChatResponse.class));
+            return gson.fromJson(body, ChatResponse.class);
         } finally {
             if (conn != null) conn.disconnect();
         }
+    }
+
+    private static boolean isLengthLimited(ChatResponse response) {
+        return response != null && response.choices != null && !response.choices.isEmpty()
+                && response.choices.get(0) != null
+                && "length".equalsIgnoreCase(response.choices.get(0).finishReason);
     }
 
     private static String messageContent(ChatRequest request, String role) {
@@ -231,5 +256,7 @@ public class DeepSeekClient {
 
     static class Choice {
         Message message;
+        @SerializedName("finish_reason")
+        String finishReason;
     }
 }

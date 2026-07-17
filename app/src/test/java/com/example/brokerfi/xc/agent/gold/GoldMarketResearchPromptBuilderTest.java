@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -142,6 +143,47 @@ public class GoldMarketResearchPromptBuilderTest {
         assertContains(
                 GoldMarketResearchPromptBuilder.buildContext(game, NOW_MILLIS, quote),
                 "行情数据不可用");
+    }
+
+    @Test
+    public void marketOverviewCarriesLiveQuoteAndPrioritizesActivePools() {
+        GoldMarketRepository.GameModel resolved = completeGame();
+        resolved.id = 1;
+        resolved.desc = "已经结束的池子";
+        resolved.isResolved = true;
+        GoldMarketRepository.GameModel active = completeGame();
+        active.id = 2;
+        active.desc = "黄金能否站上 2400";
+
+        String context = GoldMarketResearchPromptBuilder.buildMarketOverview(
+                Arrays.asList(resolved, active), NOW_MILLIS, completeQuote());
+
+        assertContains(context,
+                "【联网黄金行情】",
+                "黄金现价: 2388.50 USD",
+                "【链上博弈池快照】",
+                "博弈池 #2",
+                "黄金能否站上 2400",
+                "YES 概率: 60.0%",
+                "剩余时间: 1天 1小时 1分钟 1秒",
+                "博弈池 #1");
+        assertTrue(context.indexOf("博弈池 #2") < context.indexOf("博弈池 #1"));
+    }
+
+    @Test
+    public void marketOverviewIsBoundedAndReportsHiddenPoolCount() {
+        List<GoldMarketRepository.GameModel> games = new java.util.ArrayList<>();
+        for (int id = 1; id <= 14; id++) {
+            GoldMarketRepository.GameModel game = completeGame();
+            game.id = id;
+            games.add(game);
+        }
+
+        String context = GoldMarketResearchPromptBuilder.buildMarketOverview(
+                games, NOW_MILLIS, completeQuote());
+
+        assertContains(context, "博弈池 #1", "博弈池 #12", "其余博弈池: 2 个");
+        assertFalse(context.contains("博弈池 #13"));
     }
 
     @Test

@@ -158,10 +158,39 @@ public final class GoldMarketDetailPresenter {
             String key = keyword.toLowerCase(Locale.US);
             int start = lower.indexOf(key);
             while (start >= 0) {
-                addPart(parts, text, start, start + keyword.length(), role);
+                int end = start + keyword.length();
+                if (!isEmbeddedAsciiKeyword(text, keyword, start, end)) {
+                    addPart(parts, text, start, end, role);
+                }
                 start = lower.indexOf(key, start + key.length());
             }
         }
+    }
+
+    // Short ticker symbols such as ETH must not color the prefix of a longer
+    // English word such as Ethereum. Chinese text is intentionally not treated
+    // as an ASCII word character, so "ETH价格" remains a valid ticker match.
+    private static boolean isEmbeddedAsciiKeyword(
+            String text, String keyword, int start, int end) {
+        if (!isAsciiWord(keyword)) return false;
+        boolean joinedOnLeft = start > 0 && isAsciiWordChar(text.charAt(start - 1));
+        boolean joinedOnRight = end < text.length() && isAsciiWordChar(text.charAt(end));
+        return joinedOnLeft || joinedOnRight;
+    }
+
+    private static boolean isAsciiWord(String value) {
+        if (value == null || value.isEmpty()) return false;
+        for (int index = 0; index < value.length(); index++) {
+            if (!isAsciiWordChar(value.charAt(index))) return false;
+        }
+        return true;
+    }
+
+    private static boolean isAsciiWordChar(char value) {
+        return value >= 'A' && value <= 'Z'
+                || value >= 'a' && value <= 'z'
+                || value >= '0' && value <= '9'
+                || value == '_';
     }
 
     private static void addPart(List<Part> parts, String text, int start, int end, Role role) {

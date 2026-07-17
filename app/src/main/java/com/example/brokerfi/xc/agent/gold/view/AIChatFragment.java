@@ -21,10 +21,15 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.example.brokerfi.R;
+import com.example.brokerfi.xc.StorageUtil;
 import com.example.brokerfi.xc.agent.ai.AgentManager;
 import com.example.brokerfi.xc.agent.ai.DeepSeekClient;
+import com.example.brokerfi.xc.agent.gold.model.data.GoldMarketRepository;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldAdvisoryManager;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketResearchPromptBuilder;
+
+import java.util.Collections;
+import java.util.List;
 
 import io.noties.markwon.Markwon;
 
@@ -44,6 +49,7 @@ public class AIChatFragment extends Fragment {
     private volatile boolean destroyed = false;
     private boolean requestInFlight = false;
     private String marketContext = "";
+    private GoldMarketRepository marketRepository;
 
     @Nullable
     @Override
@@ -56,7 +62,13 @@ public class AIChatFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        destroyed = false;
+        requestInFlight = false;
         DeepSeekClient.init(requireContext());
+        String privateKey = StorageUtil.getCurrentPrivatekey(requireContext());
+        if (!TextUtils.isEmpty(privateKey)) {
+            marketRepository = new GoldMarketRepository(requireContext(), privateKey);
+        }
         markwon = Markwon.create(requireContext());
         showWelcomeMessage();
         loadAiAdvice();
@@ -87,9 +99,17 @@ public class AIChatFragment extends Fragment {
     }
 
     private void loadInitialGoldAdvice() {
+        if (!ensureIdle()) return;
         String initialQuestion = "请给出当前黄金的购买建议，包括趋势分析和风险提示。";
-        int loadingIndex = beginLoading("分析黄金走势中...");
-        AgentManager.getInstance().askGoldResearch(initialQuestion, new AgentManager.AnalysisCallback() {
+        int loadingIndex = beginLoading("正在联网获取金价与博弈池快照…");
+        loadLiveContextAndAsk(initialQuestion, loadingIndex);
+    }
+
+    private void askWithCurrentContext(String question, int loadingIndex) {
+        if (destroyed || !isAdded()) return;
+        String questionForAi = GoldMarketResearchPromptBuilder.withFollowUp(
+                marketContext, question);
+        AgentManager.getInstance().askGoldResearch(questionForAi, new AgentManager.AnalysisCallback() {
             @Override
             public void onBrokerReport(AgentManager.BrokerReport report) {
                 finishLoading(loadingIndex, report == null ? "" : report.rawAnalysis);
@@ -107,9 +127,64 @@ public class AIChatFragment extends Fragment {
         });
     }
 
+    private void loadLiveContextAndAsk(String question, int loadingIndex) {
+        GoldAdvisoryManager.fetchPrice(new GoldAdvisoryManager.AdvisoryCallback() {
+            @Override
+            public void onSuccess(GoldAdvisoryManager.Advisory quote) {
+                loadMarketsAndAsk(question, loadingIndex, quote, "");
+            }
+
+            @Override
+            public void onError(String error) {
+                loadMarketsAndAsk(question, loadingIndex, null,
+                        "实时金价获取失败: " + safeText(error));
+            }
+        });
+    }
+
+    private void loadMarketsAndAsk(
+            String question,
+            int loadingIndex,
+            GoldAdvisoryManager.Advisory quote,
+            String quoteWarning) {
+        if (destroyed || !isAdded()) return;
+        if (marketRepository == null) {
+            marketContext = GoldMarketResearchPromptBuilder.buildMarketOverview(
+                    Collections.emptyList(), System.currentTimeMillis(), quote);
+            if (!TextUtils.isEmpty(quoteWarning)) marketContext += "\n" + quoteWarning;
+            marketContext += "\n博弈池读取状态: 当前钱包未初始化";
+            askWithCurrentContext(question, loadingIndex);
+            return;
+        }
+        marketRepository.getAllGamesInfo(
+                new GoldMarketRepository.DataCallback<List<GoldMarketRepository.GameModel>>() {
+                    @Override
+                    public void onSuccess(List<GoldMarketRepository.GameModel> games) {
+                        marketContext = GoldMarketResearchPromptBuilder.buildMarketOverview(
+                                games, System.currentTimeMillis(), quote);
+                        if (!TextUtils.isEmpty(quoteWarning)) {
+                            marketContext += "\n" + quoteWarning;
+                        }
+                        askWithCurrentContext(question, loadingIndex);
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        marketContext = GoldMarketResearchPromptBuilder.buildMarketOverview(
+                                Collections.emptyList(), System.currentTimeMillis(), quote);
+                        if (!TextUtils.isEmpty(quoteWarning)) {
+                            marketContext += "\n" + quoteWarning;
+                        }
+                        marketContext += "\n博弈池读取失败: " + safeText(error);
+                        askWithCurrentContext(question, loadingIndex);
+                    }
+                });
+    }
+
     private void showWelcomeMessage() {
         addMessage("AI", "你好！我是 BrokerChain 黄金投研助手。\n\n" +
                 "我会基于金价、链上预测池和你的问题，给出黄金票据交易建议。\n" +
+                "每次提问都会重新联网获取金价与博弈池快照。\n" +
                 "请不要输入私钥或助记词。\n\n" +
                 (DeepSeekClient.isConfigured() ?
                         "AI 投研服务已就绪，可以直接询问。" :
@@ -164,25 +239,8 @@ public class AIChatFragment extends Fragment {
             return;
         }
 
-        int loadingIndex = beginLoading("思考中...");
-        String questionForAi = GoldMarketResearchPromptBuilder.withFollowUp(marketContext, text);
-
-        AgentManager.getInstance().askGoldResearch(questionForAi, new AgentManager.AnalysisCallback() {
-            @Override
-            public void onBrokerReport(AgentManager.BrokerReport report) {
-                finishLoading(loadingIndex, report == null ? "" : report.rawAnalysis);
-            }
-
-            @Override
-            public void onGeneralAdvice(String question, String answer) {
-                finishLoading(loadingIndex, answer);
-            }
-
-            @Override
-            public void onError(String error) {
-                finishLoading(loadingIndex, formatAiError(error));
-            }
-        });
+        int loadingIndex = beginLoading("正在联网获取金价与博弈池快照…");
+        loadLiveContextAndAsk(text, loadingIndex);
     }
 
     @Override

@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Locale;
 
 public final class GoldMarketResearchPromptBuilder {
+    private static final int MAX_OVERVIEW_MARKETS = 12;
     private static final BigDecimal TOKEN_UNIT = new BigDecimal("1000000000000000000");
     private static final BigInteger MIN_DISPLAYABLE_SHARE_WEI =
             new BigInteger("1000000000000");
@@ -78,12 +79,79 @@ public final class GoldMarketResearchPromptBuilder {
         return safe(context) + "\n\n" + SUMMARY_CONTRACT;
     }
 
+    /** Builds a bounded live snapshot for the global AI research tab. */
+    public static String buildMarketOverview(
+            List<GoldMarketRepository.GameModel> games,
+            long nowMillis,
+            GoldAdvisoryManager.Advisory quote) {
+        List<String> lines = new ArrayList<>();
+        lines.add("【联网黄金行情】");
+        addQuote(lines, quote);
+        lines.add("");
+        lines.add("【链上博弈池快照】");
+        lines.add(UNTRUSTED_MARKET_DATA_WARNING);
+
+        List<GoldMarketRepository.GameModel> selected = selectOverviewMarkets(games);
+        if (selected.isEmpty()) {
+            lines.add("当前没有可用的博弈池数据");
+            return joinLines(lines);
+        }
+        for (GoldMarketRepository.GameModel game : selected) {
+            lines.add("");
+            addOverviewGame(lines, game, nowMillis);
+        }
+        if (games != null && games.size() > selected.size()) {
+            lines.add("");
+            lines.add("其余博弈池: " + (games.size() - selected.size())
+                    + " 个（为控制投研上下文长度未展开）");
+        }
+        return joinLines(lines);
+    }
+
     public static String withFollowUp(String context, String question) {
         String safeQuestion = safe(question);
         if (context == null || context.trim().isEmpty()) {
             return safeQuestion;
         }
         return context + "\n\n【用户追问】\n" + safeQuestion;
+    }
+
+    private static List<GoldMarketRepository.GameModel> selectOverviewMarkets(
+            List<GoldMarketRepository.GameModel> games) {
+        List<GoldMarketRepository.GameModel> result = new ArrayList<>();
+        if (games == null) return result;
+        for (GoldMarketRepository.GameModel game : games) {
+            if (game != null && !game.isResolved && !game.isRefunded) {
+                result.add(game);
+                if (result.size() == MAX_OVERVIEW_MARKETS) return result;
+            }
+        }
+        for (GoldMarketRepository.GameModel game : games) {
+            if (game != null && (game.isResolved || game.isRefunded)) {
+                result.add(game);
+                if (result.size() == MAX_OVERVIEW_MARKETS) return result;
+            }
+        }
+        return result;
+    }
+
+    private static void addOverviewGame(
+            List<String> lines,
+            GoldMarketRepository.GameModel game,
+            long nowMillis) {
+        lines.add("博弈池 #" + game.id);
+        addIfPresent(lines, "标题/描述: ", game.desc);
+        addIfPresent(lines, "结算条件: ", game.condition);
+        addOptions(lines, game.optionNames);
+        addProbabilities(lines, game.virtualReserves);
+        lines.add("总池子: " + (game.totalPool == null
+                ? "数据不可用" : formatBkc(game.totalPool) + " BKC"));
+        long remaining = game.deadlineSec <= 0
+                ? -1 : remainingSeconds(game.deadlineSec, nowMillis);
+        lines.add("市场状态: " + marketStatus(game, remaining));
+        lines.add("剩余时间: " + (game.deadlineSec <= 0
+                ? "数据不可用" : formatRemainingTime(remaining)));
+        addHoldings(lines, game.optionNames, game.myShares);
     }
 
     private static void addIfPresent(
