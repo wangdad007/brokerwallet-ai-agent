@@ -60,6 +60,11 @@ public final class GoldQuotePresenter {
             } catch (ParseException ignored) {
             }
         }
+        // gold-api.com may already return a compact human-readable value such
+        // as "a few seconds ago".  These strings are 17 characters long; the
+        // old unconditional substring(0, 16) silently removed the final "o".
+        String lower = value.toLowerCase(Locale.US);
+        if (lower.endsWith(" ago") || "just now".equals(lower)) return value;
         return value.length() > 16 ? value.substring(0, 16) : value;
     }
 }

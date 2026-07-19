@@ -24,4 +24,14 @@ public class GoldQuotePresenterTest {
         assertEquals("24h --", GoldQuotePresenter.dailyChange(0, false));
         assertEquals("24h +0.00%", GoldQuotePresenter.dailyChange(0, true));
     }
+
+    @Test
+    public void relativeGoldApiTimestampKeepsTheFinalCharacter() {
+        assertEquals(
+                "gold-api.com · a few seconds ago 更新",
+                GoldQuotePresenter.quoteMeta("gold-api.com", "a few seconds ago", false));
+        assertEquals(
+                "gold-api.com · a few minutes ago 更新",
+                GoldQuotePresenter.quoteMeta("gold-api.com", "a few minutes ago", false));
+    }
 }
