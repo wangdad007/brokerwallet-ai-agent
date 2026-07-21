@@ -88,11 +88,6 @@ public class GoldMarketListFragment extends Fragment {
             if (err != null) Toast.makeText(requireContext(), "Error: " + err, Toast.LENGTH_SHORT).show();
         });
 
-        viewModel.getDebugToast().observe(getViewLifecycleOwner(), msg -> {
-            if (msg != null && !msg.isEmpty()) {
-                Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show();
-            }
-        });
     }
 
     @Override
@@ -121,7 +116,7 @@ public class GoldMarketListFragment extends Fragment {
             View card = inflater.inflate(R.layout.item_gold_market_card, marketListContainer, false);
             TextView tvTitle = card.findViewById(R.id.tv_market_title);
             ImageView ivIcon = card.findViewById(R.id.iv_market_icon);
-            String rawTitle = game.desc != null && !game.desc.isEmpty() ? game.desc : "博弈池 #" + game.id;
+            String rawTitle = game.desc != null && !game.desc.isEmpty() ? game.desc : "Market #" + game.id;
             tvTitle.setText(GoldMarketTextStyler.style(
                     GoldMarketCardPresenter.displayTitle(rawTitle, game.condition, game.deadlineSec), true));
 
@@ -160,8 +155,8 @@ public class GoldMarketListFragment extends Fragment {
                     LinearLayout.LayoutParams lpNo = (LinearLayout.LayoutParams) barNo.getLayoutParams();
                     lpNo.weight = noRatio;
                     barNo.setLayoutParams(lpNo);
-                    ((TextView) card.findViewById(R.id.tv_yes_pct)).setText(GoldMarketOptionText.probabilityLabel(0, yesRatio));
-                    ((TextView) card.findViewById(R.id.tv_no_pct)).setText(GoldMarketOptionText.probabilityLabel(1, noRatio));
+                    ((TextView) card.findViewById(R.id.tv_yes_pct)).setText(GoldMarketOptionText.shareLabel(0, yesRatio));
+                    ((TextView) card.findViewById(R.id.tv_no_pct)).setText(GoldMarketOptionText.shareLabel(1, noRatio));
                 }
             }
             card.setOnClickListener(v -> {

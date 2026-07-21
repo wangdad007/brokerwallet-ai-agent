@@ -1,9 +1,9 @@
 -- Merging decision tree log ---
 manifest
-ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:2:1-223:12
-INJECTED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:2:1-223:12
-INJECTED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:2:1-223:12
-INJECTED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:2:1-223:12
+ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:2:1-226:12
+INJECTED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:2:1-226:12
+INJECTED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:2:1-226:12
+INJECTED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:2:1-226:12
 MERGED from [com.google.android.material:material:1.8.0] /Users/tangyucinder/.gradle/caches/9.4.1/transforms/764d73bc57c62dc8eb6b0e7a4982bc3d/transformed/material-1.8.0/AndroidManifest.xml:17:1-26:12
 MERGED from [androidx.constraintlayout:constraintlayout:2.1.4] /Users/tangyucinder/.gradle/caches/9.4.1/transforms/07515a76d47644565a09c488ad0a51d2/transformed/constraintlayout-2.1.4/AndroidManifest.xml:2:1-11:12
 MERGED from [androidx.appcompat:appcompat-resources:1.6.1] /Users/tangyucinder/.gradle/caches/9.4.1/transforms/84c68328ce030a673fa162fd97ec0c4b/transformed/appcompat-resources-1.6.1/AndroidManifest.xml:17:1-22:12
@@ -110,8 +110,8 @@ ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/m
 	android:name
 		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:19:23-71
 application
-ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:23:5-221:19
-INJECTED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:23:5-221:19
+ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:23:5-224:19
+INJECTED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:23:5-224:19
 MERGED from [com.google.android.material:material:1.8.0] /Users/tangyucinder/.gradle/caches/9.4.1/transforms/764d73bc57c62dc8eb6b0e7a4982bc3d/transformed/material-1.8.0/AndroidManifest.xml:24:5-20
 MERGED from [com.google.android.material:material:1.8.0] /Users/tangyucinder/.gradle/caches/9.4.1/transforms/764d73bc57c62dc8eb6b0e7a4982bc3d/transformed/material-1.8.0/AndroidManifest.xml:24:5-20
 MERGED from [androidx.constraintlayout:constraintlayout:2.1.4] /Users/tangyucinder/.gradle/caches/9.4.1/transforms/07515a76d47644565a09c488ad0a51d2/transformed/constraintlayout-2.1.4/AndroidManifest.xml:9:5-20
@@ -404,118 +404,124 @@ ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/m
 		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:159:13-37
 	android:name
 		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:158:13-72
-activity#com.example.brokerfi.xc.agent.gold.view.GoldCreateCustomActivity
+activity#com.example.brokerfi.xc.agent.gold.view.GoldAiManagedSettingsActivity
 ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:160:9-162:40
 	android:exported
 		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:162:13-37
 	android:name
-		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:161:13-72
-activity#com.example.brokerfi.xc.agent.gold.view.GoldPositionDetailActivity
+		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:161:13-77
+activity#com.example.brokerfi.xc.agent.gold.view.GoldCreateCustomActivity
 ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:163:9-165:40
 	android:exported
 		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:165:13-37
 	android:name
-		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:164:13-74
+		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:164:13-72
+activity#com.example.brokerfi.xc.agent.gold.view.GoldPositionDetailActivity
+ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:166:9-168:40
+	android:exported
+		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:168:13-37
+	android:name
+		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:167:13-74
 activity#com.example.brokerfi.xc.WelcomeActivity
-ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:166:9-174:20
+ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:169:9-177:20
 	android:exported
-		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:168:13-36
+		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:171:13-36
 	android:name
-		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:167:13-47
+		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:170:13-47
 intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
-ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:169:13-173:29
+ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:172:13-176:29
 action#android.intent.action.MAIN
-ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:170:17-69
+ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:173:17-69
 	android:name
-		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:170:25-66
+		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:173:25-66
 category#android.intent.category.LAUNCHER
-ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:172:17-77
+ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:175:17-77
 	android:name
-		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:172:27-74
+		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:175:27-74
 activity#com.example.brokerfi.xc.MedalRankingActivity
-ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:175:9-177:40
-	android:exported
-		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:177:13-37
-	android:name
-		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:176:13-52
-activity#com.example.brokerfi.xc.GlobalStatsActivity
 ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:178:9-180:40
 	android:exported
 		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:180:13-37
 	android:name
-		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:179:13-51
-activity#com.example.brokerfi.xc.ProofSubmissionActivity
+		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:179:13-52
+activity#com.example.brokerfi.xc.GlobalStatsActivity
 ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:181:9-183:40
 	android:exported
 		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:183:13-37
 	android:name
-		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:182:13-55
-activity#com.example.brokerfi.xc.NFTMintingActivity
+		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:182:13-51
+activity#com.example.brokerfi.xc.ProofSubmissionActivity
 ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:184:9-186:40
 	android:exported
 		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:186:13-37
 	android:name
-		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:185:13-50
-activity#com.example.brokerfi.xc.NFTViewActivity
+		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:185:13-55
+activity#com.example.brokerfi.xc.NFTMintingActivity
 ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:187:9-189:40
 	android:exported
 		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:189:13-37
 	android:name
-		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:188:13-47
-activity#com.example.brokerfi.xc.ProofAndNFTActivity
+		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:188:13-50
+activity#com.example.brokerfi.xc.NFTViewActivity
 ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:190:9-192:40
 	android:exported
 		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:192:13-37
 	android:name
-		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:191:13-51
-activity#com.example.brokerfi.xc.SubmissionHistoryActivity
+		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:191:13-47
+activity#com.example.brokerfi.xc.ProofAndNFTActivity
 ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:193:9-195:40
 	android:exported
 		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:195:13-37
 	android:name
-		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:194:13-57
-activity#com.example.brokerfi.xc.SubmissionDetailActivity
+		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:194:13-51
+activity#com.example.brokerfi.xc.SubmissionHistoryActivity
 ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:196:9-198:40
 	android:exported
 		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:198:13-37
 	android:name
-		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:197:13-56
-activity#com.example.brokerfi.xc.MyCenterActivity
+		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:197:13-57
+activity#com.example.brokerfi.xc.SubmissionDetailActivity
 ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:199:9-201:40
 	android:exported
 		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:201:13-37
 	android:name
-		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:200:13-48
-activity#com.example.brokerfi.xc.AIAssistantActivity
-ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:202:9-205:62
+		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:200:13-56
+activity#com.example.brokerfi.xc.MyCenterActivity
+ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:202:9-204:40
 	android:exported
 		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:204:13-37
-	android:configChanges
-		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:205:13-59
 	android:name
-		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:203:13-51
-provider#androidx.core.content.FileProvider
-ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:208:9-216:20
-	android:grantUriPermissions
-		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:212:13-47
-	android:authorities
-		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:210:13-68
+		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:203:13-48
+activity#com.example.brokerfi.xc.AIAssistantActivity
+ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:205:9-208:62
 	android:exported
-		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:211:13-37
+		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:207:13-37
+	android:configChanges
+		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:208:13-59
 	android:name
-		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:209:13-62
+		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:206:13-51
+provider#androidx.core.content.FileProvider
+ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:211:9-219:20
+	android:grantUriPermissions
+		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:215:13-47
+	android:authorities
+		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:213:13-68
+	android:exported
+		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:214:13-37
+	android:name
+		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:212:13-62
 meta-data#android.support.FILE_PROVIDER_PATHS
-ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:213:13-215:54
+ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:216:13-218:54
 	android:resource
-		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:215:17-51
+		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:218:17-51
 	android:name
-		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:214:17-67
+		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:217:17-67
 meta-data#preloaded_fonts
-ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:218:9-220:57
+ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:221:9-223:57
 	android:resource
-		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:220:13-54
+		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:223:13-54
 	android:name
-		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:219:13-43
+		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:222:13-43
 uses-sdk
 INJECTED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml

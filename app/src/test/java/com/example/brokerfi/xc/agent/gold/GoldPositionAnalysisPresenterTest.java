@@ -37,38 +37,38 @@ public class GoldPositionAnalysisPresenterTest {
         String prompt = GoldPositionAnalysisPresenter.buildPrompt(
                 game, Arrays.asList(buy, sell), 1_700_000_000_000L);
 
-        assertTrue(prompt.contains("累计买入: 10 BKC"));
-        assertTrue(prompt.contains("累计卖出: 2 BKC"));
-        assertTrue(prompt.contains("净现金投入: 8 BKC"));
-        assertTrue(prompt.contains("其中 AI 托管交易数: 1"));
-        assertTrue(prompt.contains("当前估值:"));
+        assertTrue(prompt.contains("Total buys: 10 BKC"));
+        assertTrue(prompt.contains("Total sells: 2 BKC"));
+        assertTrue(prompt.contains("Net cash invested: 8 BKC"));
+        assertTrue(prompt.contains("AI-managed trades: 1"));
+        assertTrue(prompt.contains("Current value:"));
         assertFalse(prompt.contains(buy.txHash));
         assertFalse(prompt.toLowerCase().contains("private_key"));
     }
 
     @Test
     public void parsesStructuredAnalysisIntoCardSections() {
-        String response = "```json\n{\"stance\":\"偏向YES\",\"risk_level\":\"中\","
-                + "\"summary\":\"仓位集中在YES，需关注截止时间。\","
-                + "\"drivers\":[\"YES概率60%\",\"净投入8 BKC\"],"
-                + "\"actions\":[\"控制新增仓位\",\"临近截止前复核\"],"
-                + "\"disclaimer\":\"仅供风险管理参考\"}\n```";
+        String response = "```json\n{\"stance\":\"Lean YES\",\"risk_level\":\"Medium\","
+                + "\"summary\":\"The position is concentrated in YES; monitor the deadline.\","
+                + "\"drivers\":[\"YES share 60%\",\"Net investment 8 BKC\"],"
+                + "\"actions\":[\"Limit additional exposure\",\"Review before the deadline\"],"
+                + "\"disclaimer\":\"For risk management reference only\"}\n```";
         GoldPositionAnalysisPresenter.Analysis analysis =
                 GoldPositionAnalysisPresenter.parse(response);
 
-        assertEquals("偏向YES", analysis.stance);
-        assertEquals("中", analysis.riskLevel);
-        assertTrue(analysis.drivers.contains("• YES概率60%"));
-        assertTrue(analysis.actions.contains("临近截止前复核"));
+        assertEquals("Lean YES", analysis.stance);
+        assertEquals("Medium", analysis.riskLevel);
+        assertTrue(analysis.drivers.contains("• YES share 60%"));
+        assertTrue(analysis.actions.contains("Review before the deadline"));
     }
 
     @Test
     public void plainTextResponseFallsBackWithoutCrashing() {
         GoldPositionAnalysisPresenter.Analysis analysis =
-                GoldPositionAnalysisPresenter.parse("当前仓位较集中，请注意风险。");
-        assertEquals("待观察", analysis.stance);
-        assertEquals("待评估", analysis.riskLevel);
-        assertTrue(analysis.summary.contains("仓位较集中"));
+                GoldPositionAnalysisPresenter.parse("The position is concentrated; monitor risk.");
+        assertEquals("Watch", analysis.stance);
+        assertEquals("Pending", analysis.riskLevel);
+        assertTrue(analysis.summary.contains("position is concentrated"));
     }
 
     private static BackendApiClient.TradeDTO trade(String type, String bkc, boolean managed) {

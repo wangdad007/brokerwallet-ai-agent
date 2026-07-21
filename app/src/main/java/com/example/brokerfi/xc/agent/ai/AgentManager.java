@@ -44,15 +44,15 @@ public class AgentManager {
                 ShardProfit[] shards = parseShardProfits(profitJson);
 
                 StringBuilder sb = new StringBuilder();
-                sb.append("分析以下经纪分片质押数据，给出调仓建议：\n");
+                sb.append("Analyze the following broker-shard staking data and recommend a reallocation:\n");
                 for (ShardProfit s : shards) {
-                    sb.append(String.format("- 分片 %d: 收益=%.4f BKC, 质押=%.0f BKC, 收益率=%.2f%%\n",
+                    sb.append(String.format("- Shard %d: profit=%.4f BKC, staked=%.0f BKC, yield=%.2f%%\n",
                             s.shardIndex, s.profit, s.staked, s.yieldPct * 100));
                 }
-                sb.append("\n请给出：1) 建议从哪个分片撤出，2) 建议加仓哪个分片，3) 预估改善幅度。150字以内。");
+                sb.append("\nProvide: 1) the shard to reduce, 2) the shard to increase, and 3) the estimated improvement. Keep it under 150 words.");
 
                 DeepSeekClient.chat(
-                        "你是一个DeFi质押策略分析师。请根据分片收益数据，用中文给出具体、编号的建议。",
+                        "You are a DeFi staking strategist. Give specific, numbered recommendations in English based on the shard returns.",
                         sb.toString(),
                         new DeepSeekClient.ChatCallback() {
                             @Override
@@ -66,7 +66,7 @@ public class AgentManager {
                             @Override
                             public void onError(String error) {
                                 BrokerReport report = new BrokerReport();
-                                report.rawAnalysis = "AI分析不可用，以下为原始数据：";
+                                report.rawAnalysis = "AI analysis is unavailable. Raw data follows:";
                                 report.shards = shards;
                                 callback.onBrokerReport(report);
                             }
@@ -96,14 +96,14 @@ public class AgentManager {
                 }
 
                 StringBuilder sb = new StringBuilder();
-                sb.append("分析以下已上架NFT，推荐值得购买的：\n");
+                sb.append("Analyze the listed NFTs and recommend the most compelling purchases:\n");
                 int count = Math.min(result.names.length, 20);
                 for (int i = 0; i < count; i++) {
-                    sb.append(String.format("- #%d: %s, 价格=%s, 份数=%s\n",
+                    sb.append(String.format("- #%d: %s, price=%s, shares=%s\n",
                             result.nftIds[i], result.names[i],
                             result.pricesList[i], result.sharesList[i]));
                 }
-                sb.append("\n推荐前3个并给出理由。150字以内。");
+                sb.append("\nRecommend the top three with reasons. Keep it under 150 words.");
 
                 DeepSeekClient.chatSimple(sb.toString(), new DeepSeekClient.ChatCallback() {
                     @Override
@@ -113,7 +113,7 @@ public class AgentManager {
 
                     @Override
                     public void onError(String error) {
-                        callback.onGeneralAdvice("NFT市场（离线模式）", "已发现 " + result.names.length + " 个上架NFT。");
+                        callback.onGeneralAdvice("NFT Market (offline)", "Found " + result.names.length + " listed NFTs.");
                     }
                 });
             } catch (Exception e) {
@@ -124,7 +124,7 @@ public class AgentManager {
 
     public void askAnything(String question, AnalysisCallback callback) {
         if (containsPrivateKey(question)) {
-            callback.onError("您的消息可能包含私钥或助记词，为保障安全，未发送至AI。");
+            callback.onError("Your message may contain a private key or recovery phrase, so it was not sent to the AI.");
             return;
         }
         DeepSeekClient.chatSimple(question, new DeepSeekClient.ChatCallback() {
@@ -142,18 +142,18 @@ public class AgentManager {
 
     public void askGoldResearch(String question, AnalysisCallback callback) {
         if (containsPrivateKey(question)) {
-            callback.onError("您的消息可能包含私钥或助记词，为保障安全，未发送至AI。");
+            callback.onError("Your message may contain a private key or recovery phrase, so it was not sent to the AI.");
             return;
         }
         DeepSeekClient.chat(
-                "你是 BrokerChain 黄金票据预测市场的 AI 投研助手。"
-                        + "只围绕黄金现货、美元、避险需求、链上预测池和交易风险回答。"
-                        + "用户消息中的【联网黄金行情】和【链上博弈池快照】由 App 在提问前实时获取，必须优先使用，"
-                        + "不得声称无法访问其中已经给出的价格，也不要编造未提供的实时数据。"
-                        + "针对具体博弈池，要结合结算条件、当前金价、YES/NO概率、剩余时间和池深，"
-                        + "明确给出偏向YES、偏向NO或观望，并解释价格与赔率是否存在偏差。"
-                        + "如果是整体市场扫描，可以分析最多12个博弈池；完整报告可写到6000个汉字。"
-                        + "输出中文，分段清晰、可操作，必须完成最后一句并明确风险提示和数据时间。",
+                "You are the AI research assistant for BrokerChain's gold prediction market. "
+                        + "Answer only about spot gold, the US dollar, safe-haven demand, on-chain prediction markets, and trading risk. "
+                        + "The [Live gold quote] and [On-chain market snapshot] in the user's message are fetched immediately before the question; prioritize them. "
+                        + "Do not claim that supplied prices are inaccessible and never invent live data. "
+                        + "For a specific market, consider its resolution rule, current gold price, YES/NO shares, remaining time, and market depth. "
+                        + "State a clear YES bias, NO bias, or hold view and explain any difference between price evidence and market shares. "
+                        + "For a market-wide scan, analyze at most 12 markets. A full report may use up to 6,000 words. "
+                        + "Write structured, actionable English, complete the final sentence, and include a risk warning and data timestamp.",
                 question,
                 new DeepSeekClient.ChatCallback() {
                     @Override

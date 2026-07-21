@@ -66,7 +66,7 @@ public class PinataClient {
 
         int responseCode = conn.getResponseCode();
         if (responseCode != 200) {
-            throw new Exception("IPFS 上传失败: HTTP " + responseCode);
+            throw new Exception("IPFS upload failed: HTTP " + responseCode);
         }
 
         try (Scanner scanner = new Scanner(conn.getInputStream(), "UTF-8")) {
@@ -89,12 +89,12 @@ public class PinataClient {
         conn.setReadTimeout(AgentConfig.IPFS_READ_TIMEOUT_MS);
 
         if (conn.getResponseCode() != 200) {
-            throw new Exception("本地 IPFS 读取失败: HTTP " + conn.getResponseCode());
+            throw new Exception("Local IPFS read failed: HTTP " + conn.getResponseCode());
         }
 
         try (Scanner scanner = new Scanner(conn.getInputStream(), "UTF-8")) {
             String result = scanner.useDelimiter("\\A").next();
-            Log.d(TAG, "本地节点读取成功, CID: " + cid);
+            Log.d(TAG, "Local node read succeeded, CID: " + cid);
             return result;
         }
     }

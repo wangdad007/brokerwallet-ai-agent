@@ -66,7 +66,7 @@ public class GoldCreatePoolFragment extends Fragment {
                 + "4. TYPE_PRICE_RANGE: end-boundary XAU price in or outside a closed interval. param1=lower, param2=upper, operatorIdx 0=inside, 1=outside.\n"
                 + "5. TYPE_RELATIVE: XAU return strictly greater than a crypto benchmark. param1 must be BTC, ETH, SOL, or BNB.\n"
                 + "6. TYPE_STREAK: XAU rises or falls at every consecutive Beijing-day boundary. directionIdx 0=UP, 1=DOWN.\n"
-                + "All markets use Ethereum Chainlink Data Feed, Beijing midnight boundaries, and 1-4 whole days. "
+                + "All markets use the Chainlink XAU/USD Data Feed on Ethereum, Beijing midnight boundaries, and observation periods of 1–4 full days. "
                 + "startDaysFromNow must be 0 or greater; durationDays must be 1-4. "
                 + "If the request cannot be represented exactly, set confidence below 0.7.\n"
                 + "Output schema: {\"type\":\"TYPE_...\",\"param1\":\"\",\"param2\":\"\","
@@ -77,11 +77,11 @@ public class GoldCreatePoolFragment extends Fragment {
     private void performAiAnalysis() {
         String input = etAiInput.getText().toString().trim();
         if (input.isEmpty()) {
-            Toast.makeText(getContext(), "请输入明确的黄金博弈条件", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "Describe a clear gold market question", Toast.LENGTH_SHORT).show();
             return;
         }
         btnAiAnalyze.setEnabled(false);
-        btnAiAnalyze.setText("AI 正在解析...");
+        btnAiAnalyze.setText("Preparing market setup…");
         String prompt = buildAiParserPrompt(dateFormat.format(new Date()));
         DeepSeekClient.chatForParsing(prompt, input, new DeepSeekClient.ChatCallback() {
             @Override
@@ -98,7 +98,8 @@ public class GoldCreatePoolFragment extends Fragment {
                 if (getActivity() == null) return;
                 getActivity().runOnUiThread(() -> {
                     resetAnalyzeButton();
-                    Toast.makeText(getContext(), "AI 解析失败: " + error, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), "Unable to generate market setup: " + error,
+                            Toast.LENGTH_SHORT).show();
                 });
             }
         });
@@ -106,7 +107,7 @@ public class GoldCreatePoolFragment extends Fragment {
 
     private void resetAnalyzeButton() {
         btnAiAnalyze.setEnabled(true);
-        btnAiAnalyze.setText("智能解析并进入配置");
+        btnAiAnalyze.setText("Generate Market Setup");
     }
 
     private void handleAiResponse(String response) {
@@ -115,10 +116,10 @@ public class GoldCreatePoolFragment extends Fragment {
             String type = json.optString("type", "").trim();
             double confidence = json.optDouble("confidence", 0d);
             if (!GoldMarketTemplateCatalog.isCreatable(type)) {
-                throw new IllegalArgumentException("AI 返回了不支持的博弈类型");
+                throw new IllegalArgumentException("AI returned an unsupported market type");
             }
             if (confidence < CONFIDENCE_THRESHOLD) {
-                throw new IllegalArgumentException("描述不够明确，请补充数值、方向和整日观察期");
+                throw new IllegalArgumentException("Add a value, direction and full-day observation period");
             }
             String validation = validateTemplateFields(type, json);
             if (validation != null) throw new IllegalArgumentException(validation);
@@ -137,28 +138,28 @@ public class GoldCreatePoolFragment extends Fragment {
     private String validateTemplateFields(String type, JSONObject json) {
         int startDays = json.optInt("startDaysFromNow", -1);
         int durationDays = json.optInt("durationDays", -1);
-        if (startDays < 0) return "开始日期偏移必须大于等于 0";
-        if (durationDays < 1 || durationDays > 4) return "观察期必须为 1 至 4 个整天";
+        if (startDays < 0) return "Start-day offset must be zero or greater";
+        if (durationDays < 1 || durationDays > 4) return "Observation period must be 1–4 full days";
         String param1 = json.optString("param1", "").trim();
         String param2 = json.optString("param2", "").trim();
         int direction = json.optInt("directionIdx", -1);
         int operator = json.optInt("operatorIdx", -1);
 
         if (GoldMarketTemplateCatalog.TYPE_PRICE.equals(type)) {
-            return direction >= 0 && direction <= 2 ? null : "请选择上涨、下跌或持平";
+            return direction >= 0 && direction <= 2 ? null : "Select Up, Down or Flat";
         }
         if (GoldMarketTemplateCatalog.TYPE_STREAK.equals(type)) {
-            return direction >= 0 && direction <= 1 ? null : "连续涨跌只支持上涨或下跌";
+            return direction >= 0 && direction <= 1 ? null : "A streak supports only Up or Down";
         }
         if (GoldMarketTemplateCatalog.TYPE_RELATIVE.equals(type)) {
             return GoldMarketCreationPolicy.isSupportedBenchmark(param1)
-                    ? null : "跑赢率标的仅支持 BTC、ETH、SOL 或 BNB";
+                    ? null : "Outperformance benchmarks support BTC, ETH, SOL or BNB";
         }
-        if (operator < 0 || operator > 1) return "比较方式只能为大于等于或小于等于";
-        if (!isPositiveNumber(param1)) return "AI 未提取有效的正数参数";
+        if (operator < 0 || operator > 1) return "Comparison must be At Least or At Most";
+        if (!isPositiveNumber(param1)) return "AI did not extract a valid positive number";
         if (GoldMarketTemplateCatalog.TYPE_PRICE_RANGE.equals(type)) {
-            if (!isPositiveNumber(param2)) return "AI 未提取价格区间上限";
-            if (Double.parseDouble(param2) <= Double.parseDouble(param1)) return "价格区间上限必须大于下限";
+            if (!isPositiveNumber(param2)) return "AI did not extract an upper range bound";
+            if (Double.parseDouble(param2) <= Double.parseDouble(param1)) return "Upper bound must exceed the lower bound";
         }
         return null;
     }
@@ -176,7 +177,7 @@ public class GoldCreatePoolFragment extends Fragment {
         String cleaned = response == null ? "" : response.trim();
         int start = cleaned.indexOf('{');
         int end = cleaned.lastIndexOf('}');
-        if (start < 0 || end <= start) throw new Exception("AI 未返回有效 JSON");
+        if (start < 0 || end <= start) throw new Exception("AI did not return valid JSON");
         return cleaned.substring(start, end + 1);
     }
 

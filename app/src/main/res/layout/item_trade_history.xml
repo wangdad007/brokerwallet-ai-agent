@@ -50,7 +50,7 @@
                 android:layout_marginStart="8dp"
                 android:paddingHorizontal="8dp"
                 android:paddingVertical="2dp"
-                android:text="AI托管"
+                android:text="AI-managed"
                 android:textColor="#7C3AED"
                 android:textSize="11sp"
                 android:background="@drawable/bg_badge_ai" />
@@ -86,7 +86,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
-            android:text="12.50 份额"
+            android:text="12.50 shares"
             android:textColor="#666666"
             android:textSize="12sp" />
     </LinearLayout>

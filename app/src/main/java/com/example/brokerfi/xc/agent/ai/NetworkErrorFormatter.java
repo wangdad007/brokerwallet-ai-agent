@@ -11,13 +11,13 @@ public final class NetworkErrorFormatter {
         Throwable current = error;
         while (current != null) {
             if (current instanceof UnknownHostException) {
-                return "网络域名解析失败，请检查模拟器网络后重试";
+                return "Unable to resolve the network host. Check the device connection and retry.";
             }
             if (current instanceof SocketTimeoutException) {
-                return "AI 服务响应超时，请稍后重试";
+                return "The AI service timed out. Please retry shortly.";
             }
             if (current instanceof ConnectException) {
-                return "无法连接本地后端，请确认 PredictionMarket 已启动";
+                return "Unable to reach the backend. Confirm that PredictionMarket is running.";
             }
             current = current.getCause();
         }
@@ -27,20 +27,20 @@ public final class NetworkErrorFormatter {
     public static String forRawError(String rawError) {
         String value = rawError == null ? "" : rawError;
         if (value.contains("NO_API_KEY")) {
-            return "AI 服务尚未配置，请检查后端 API Key";
+            return "The AI service is not configured. Check the backend API key.";
         }
         if (value.contains("401") || value.contains("403")) {
-            return "AI 服务认证失败，请检查后端 API Key";
+            return "AI authentication failed. Check the backend API key.";
         }
         if (value.contains("429")) {
-            return "AI 服务繁忙，请稍后重试";
+            return "The AI service is busy. Please retry shortly.";
         }
         if (value.contains("UnknownHostException") || value.toLowerCase().contains("unable to resolve host")) {
-            return "网络域名解析失败，请检查模拟器网络后重试";
+            return "Unable to resolve the network host. Check the device connection and retry.";
         }
         if (value.toLowerCase().contains("timeout")) {
-            return "AI 服务响应超时，请稍后重试";
+            return "The AI service timed out. Please retry shortly.";
         }
-        return "AI 服务暂时不可用，请稍后重试";
+        return "The AI service is temporarily unavailable. Please retry shortly.";
     }
 }

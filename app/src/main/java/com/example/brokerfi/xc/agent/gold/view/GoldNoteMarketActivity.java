@@ -48,7 +48,7 @@ public class GoldNoteMarketActivity extends AppCompatActivity {
         setContentView(R.layout.activity_gold_note_market);
         destroyed = false;
         DeepSeekClient.init(this);
-        if (StorageUtil.getCurrentPrivatekey(this) == null) { Toast.makeText(this, "请先登录", Toast.LENGTH_SHORT).show(); finish(); return; }
+        if (StorageUtil.getCurrentPrivatekey(this) == null) { Toast.makeText(this, "Please sign in first", Toast.LENGTH_SHORT).show(); finish(); return; }
         viewModel = new ViewModelProvider(this).get(GoldNoteMarketViewModel.class);
         initViews();
         observeViewModel();
@@ -62,7 +62,7 @@ public class GoldNoteMarketActivity extends AppCompatActivity {
             if (err != null && !hasValidQuote) {
                 tvGoldPrice.setText("XAU $---.--/oz");
                 tvGoldChange.setText("--.--%");
-                tvGoldQuoteMeta.setText("行情暂不可用，正在自动重试");
+                tvGoldQuoteMeta.setText("Quote unavailable · retrying automatically");
             }
         });
     }
@@ -95,17 +95,17 @@ public class GoldNoteMarketActivity extends AppCompatActivity {
         });
         new TabLayoutMediator(tabLayout, viewPager, (tab, position) -> {
             switch (position) {
-                case 0: tab.setText("博弈市场"); break;
-                case 1: tab.setText("个人持有"); break;
-                case 2: tab.setText("创建博弈"); break;
-                case 3: tab.setText("AI投研"); break;
+                case 0: tab.setText("Markets"); break;
+                case 1: tab.setText("Positions"); break;
+                case 2: tab.setText("Create"); break;
+                case 3: tab.setText("AI Research"); break;
             }
         }).attach();
     }
 
     private void updateGoldPriceUI(GoldAdvisoryManager.Advisory quote) {
         if (quote == null || quote.priceUsd <= 0) {
-            if (!hasValidQuote) tvGoldQuoteMeta.setText("行情暂不可用，正在自动重试");
+            if (!hasValidQuote) tvGoldQuoteMeta.setText("Quote unavailable · retrying automatically");
             return;
         }
         hasValidQuote = true;
@@ -127,25 +127,25 @@ public class GoldNoteMarketActivity extends AppCompatActivity {
     }
 
     public static String formatRemainingTime(long rem) {
-        if (rem < 0) return "截止时间待同步";
-        if (rem == 0) return "已截止";
+        if (rem < 0) return "Syncing deadline";
+        if (rem == 0) return "Ended";
         long days = rem / 86400;
         long hours = (rem % 86400) / 3600;
         long minutes = (rem % 3600) / 60;
         if (days > 0) {
             return hours > 0
-                    ? String.format(Locale.getDefault(), "距结束 %d天%d小时", days, hours)
-                    : String.format(Locale.getDefault(), "距结束 %d天", days);
+                    ? String.format(Locale.US, "Ends in %dd %dh", days, hours)
+                    : String.format(Locale.US, "Ends in %dd", days);
         }
         if (hours > 0) {
             return minutes > 0
-                    ? String.format(Locale.getDefault(), "距结束 %d小时%d分钟", hours, minutes)
-                    : String.format(Locale.getDefault(), "距结束 %d小时", hours);
+                    ? String.format(Locale.US, "Ends in %dh %dm", hours, minutes)
+                    : String.format(Locale.US, "Ends in %dh", hours);
         }
         if (minutes > 0) {
-            return String.format(Locale.getDefault(), "距结束 %d分钟", minutes);
+            return String.format(Locale.US, "Ends in %dm", minutes);
         }
-        return String.format(Locale.getDefault(), "距结束 %d秒", rem);
+        return String.format(Locale.US, "Ends in %ds", rem);
     }
 
     public static String formatBkc(BigInteger value) {
@@ -166,8 +166,8 @@ public class GoldNoteMarketActivity extends AppCompatActivity {
     }
 
     public static String formatMarketStatus(long remainingSeconds) {
-        if (remainingSeconds < 0) return "同步中";
-        return remainingSeconds > 0 ? "进行中" : "已到期";
+        if (remainingSeconds < 0) return "Syncing";
+        return remainingSeconds > 0 ? "Active" : "Ended";
     }
 
     private static long normalizeDeadlineMillis(long raw) {

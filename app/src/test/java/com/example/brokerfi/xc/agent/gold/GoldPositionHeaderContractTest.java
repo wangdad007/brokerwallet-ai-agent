@@ -19,11 +19,18 @@ public class GoldPositionHeaderContractTest {
 
         assertTrue(source.contains("GoldMarketTextStyler.style"));
         assertTrue(source.contains("GoldMarketCardPresenter.displayTitle("));
-        assertTrue(source.contains("rawTitle, condition, currentGame.deadlineSec"));
-        assertTrue(source.contains("判断逻辑："));
-        assertTrue(layout.contains("androidx.constraintlayout.widget.ConstraintLayout"));
+        assertTrue(source.contains("rawTitle, rawCondition, currentGame.deadlineSec"));
+        assertTrue(source.contains("GoldMarketDetailPresenter.formatResolutionRule(rawCondition)"));
+        assertTrue(layout.contains("@drawable/bg_gold_detail_hero"));
+        assertTrue(layout.contains("@drawable/bg_gold_condition_strip"));
+
+        String titleTag = openingTag(layout, "TextView", "tv_pool_desc");
+        assertTrue(titleTag.contains("android:layout_width=\"match_parent\""));
+        assertFalse(titleTag.contains("android:maxLines"));
+        assertFalse(titleTag.contains("android:ellipsize"));
 
         String conditionTag = openingTag(layout, "TextView", "tv_pool_condition");
+        assertTrue(conditionTag.contains("android:layout_width=\"match_parent\""));
         assertFalse(conditionTag.contains("android:maxLines"));
         assertFalse(conditionTag.contains("android:ellipsize"));
     }

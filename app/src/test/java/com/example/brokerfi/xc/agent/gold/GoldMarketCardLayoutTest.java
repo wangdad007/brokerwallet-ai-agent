@@ -7,28 +7,32 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class GoldMarketCardLayoutTest {
     @Test
-    public void marketCardKeepsTitleOnOneAdaptiveLineAndMovesStatusToMetadataRow()
+    public void marketCardGivesTitleRoomAndKeepsStatusInsideMetadataRow()
             throws Exception {
         String layout = read("app/src/main/res/layout/item_gold_market_card.xml");
-        String titleTag = openingTag(layout, "TextView", "tv_market_title");
+        String titleTag = openingTag(
+                layout, "androidx.appcompat.widget.AppCompatTextView", "tv_market_title");
         String statusTag = openingTag(layout, "TextView", "tv_market_status");
 
         assertTrue(titleTag.contains("android:maxLines=\"1\""));
-        assertFalse(titleTag.contains("android:ellipsize"));
-        assertFalse(titleTag.contains("android:singleLine"));
+        assertTrue(titleTag.contains("android:singleLine=\"true\""));
+        assertTrue(titleTag.contains("android:ellipsize=\"end\""));
         assertTrue(titleTag.contains("app:autoSizeTextType=\"uniform\""));
+        assertTrue(titleTag.contains("app:autoSizeMinTextSize=\"10sp\""));
         assertTrue(titleTag.contains("app:layout_constraintEnd_toEndOf=\"parent\""));
+        assertTrue(statusTag.contains(
+                "app:layout_constraintStart_toEndOf=\"@+id/tv_total_pool\""));
+        assertTrue(statusTag.contains(
+                "app:layout_constraintEnd_toStartOf=\"@+id/tv_deadline\""));
         assertTrue(statusTag.contains(
                 "app:layout_constraintTop_toTopOf=\"@+id/tv_total_pool\""));
         assertTrue(statusTag.contains(
                 "app:layout_constraintBottom_toBottomOf=\"@+id/tv_total_pool\""));
-        assertTrue(statusTag.contains(
-                "app:layout_constraintEnd_toStartOf=\"@+id/tv_deadline\""));
+        assertTrue(statusTag.contains("android:maxLines=\"1\""));
     }
 
     private static String read(String relativePath) throws Exception {

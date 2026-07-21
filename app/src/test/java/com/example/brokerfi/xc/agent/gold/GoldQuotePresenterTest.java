@@ -14,7 +14,7 @@ public class GoldQuotePresenterTest {
                 "Chainlink XAU/USD feed=0x214eD9D round=922337",
                 "2026-07-15T01:40:59Z", false);
 
-        assertEquals("Chainlink XAU/USD · 07-15 09:40 更新", label);
+        assertEquals("Chainlink XAU/USD · updated 07-15 09:40", label);
         assertFalse(label.contains("0x"));
         assertFalse(label.contains("round"));
     }
@@ -28,10 +28,10 @@ public class GoldQuotePresenterTest {
     @Test
     public void relativeGoldApiTimestampKeepsTheFinalCharacter() {
         assertEquals(
-                "gold-api.com · a few seconds ago 更新",
+                "gold-api.com · updated a few seconds ago",
                 GoldQuotePresenter.quoteMeta("gold-api.com", "a few seconds ago", false));
         assertEquals(
-                "gold-api.com · a few minutes ago 更新",
+                "gold-api.com · updated a few minutes ago",
                 GoldQuotePresenter.quoteMeta("gold-api.com", "a few minutes ago", false));
     }
 }

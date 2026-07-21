@@ -25,7 +25,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
-            android:text="博弈池定制"
+            android:text="Customize Market"
             android:textColor="#000000"
             android:textSize="18sp"
             android:textStyle="bold" />
@@ -47,7 +47,7 @@
                 android:id="@+id/tv_template_name"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="模版名称"
+                android:text="Template"
                 android:textColor="#000000"
                 android:textSize="22sp"
                 android:textStyle="bold" />
@@ -57,7 +57,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="模版详细说明文字加载中..."
+                android:text="Loading template details…"
                 android:textColor="#666666"
                 android:textSize="14sp"
                 android:lineSpacingExtra="4dp" />
@@ -67,7 +67,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
-                android:text="定制博弈池图片"
+                android:text="Market Cover Image"
                 android:textColor="#1A1A1A"
                 android:textSize="16sp"
                 android:textStyle="bold" />
@@ -100,7 +100,7 @@
                     android:layout_marginStart="16dp"
                     android:background="@drawable/custom_button_bg_white"
                     android:paddingHorizontal="20dp"
-                    android:text="上传封面"
+                    android:text="Upload Image"
                     android:textAllCaps="false"
                     android:textColor="#3B82F6"
                     android:textSize="14sp"
@@ -118,7 +118,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
-                android:text="判定规则设置"
+                android:text="Resolution Rule"
                 android:textColor="#1A1A1A"
                 android:textSize="16sp"
                 android:textStyle="bold" />
@@ -134,7 +134,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="预测涨跌方向"
+                    android:text="Price Direction"
                     android:textSize="13sp"
                     android:textColor="#888888" />
                 <Spinner
@@ -156,7 +156,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="选择对比标的"
+                    android:text="Benchmark Asset"
                     android:textColor="#888888"
                     android:textSize="13sp" />
 
@@ -180,7 +180,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="比较方式"
+                    android:text="Comparison"
                     android:textSize="13sp"
                     android:textColor="#888888" />
                 <Spinner
@@ -197,7 +197,7 @@
                 android:layout_height="56dp"
                 android:layout_marginTop="12dp"
                 android:background="@drawable/custom_edittext_background"
-                android:hint="输入数值或参数"
+                android:hint="Enter a value or parameter"
                 android:padding="16dp"
                 android:textSize="15sp"
                 android:inputType="text"
@@ -209,7 +209,7 @@
                 android:layout_height="56dp"
                 android:layout_marginTop="12dp"
                 android:background="@drawable/custom_edittext_background"
-                android:hint="输入第二个数值"
+                android:hint="Enter the second value"
                 android:padding="16dp"
                 android:textSize="15sp"
                 android:inputType="numberDecimal"
@@ -221,7 +221,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
-                android:text="结算周期"
+                android:text="Observation Period"
                 android:textColor="#1A1A1A"
                 android:textSize="16sp"
                 android:textStyle="bold" />
@@ -235,7 +235,7 @@
                 android:gravity="start|center_vertical"
                 android:paddingStart="16dp"
                 android:paddingEnd="16dp"
-                android:text="开始日期: 立即开始"
+                android:text="Start: Immediately"
                 android:textAllCaps="false"
                 android:textColor="#000000"
                 android:textSize="15sp" />
@@ -249,7 +249,7 @@
                 android:gravity="start|center_vertical"
                 android:paddingStart="16dp"
                 android:paddingEnd="16dp"
-                android:text="截止日期: 未选择"
+                android:text="End: Not selected"
                 android:textAllCaps="false"
                 android:textColor="#000000"
                 android:textSize="15sp" />
@@ -258,7 +258,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="观察期仅支持 1–4 个整日；修改开始日期后将自动校正截止日期"
+                android:text="The observation period must be 1–4 full days. Changing the start date adjusts the end date automatically."
                 android:textColor="#8B96A9"
                 android:textSize="13sp" />
 
@@ -267,7 +267,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
-                android:text="初始流动性注入 (BKC)"
+                android:text="Initial Liquidity (BKC)"
                 android:textColor="#1A1A1A"
                 android:textSize="16sp"
                 android:textStyle="bold" />
@@ -278,7 +278,7 @@
                 android:layout_height="56dp"
                 android:layout_marginTop="12dp"
                 android:background="@drawable/custom_edittext_background"
-                android:hint="建议 100 BKC 以上"
+                android:hint="Recommended: 100 BKC or more"
                 android:inputType="numberDecimal"
                 android:padding="16dp"
                 android:textSize="15sp"
@@ -287,8 +287,16 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:text="* 博弈判定使用 Ethereum Chainlink Data Feed 与北京时间整日边界"
+                android:layout_marginTop="10dp"
+                android:text="Seeds equal virtual YES and NO reserves at a 50/50 starting share. This liquidity does not create a personal position and remains locked until resolution."
+                android:textColor="#64748B"
+                android:textSize="12sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="7dp"
+                android:text="* Resolution uses verified market data and full-day observation periods based on Beijing time."
                 android:textColor="#999999"
                 android:textSize="12sp" />
 
@@ -301,7 +309,7 @@
         android:layout_height="56dp"
         android:layout_margin="20dp"
         android:background="@drawable/custom_button_background"
-        android:text="提交部署博弈池"
+        android:text="Deploy Market"
         android:textAllCaps="false"
         android:textColor="#FFFFFF"
         android:textSize="16sp"

@@ -122,11 +122,6 @@ public class GoldMyPositionsFragment extends Fragment {
             if (err != null) Toast.makeText(requireContext(), "Error: " + err, Toast.LENGTH_SHORT).show();
         });
 
-        viewModel.getDebugToast().observe(getViewLifecycleOwner(), msg -> {
-            if (msg != null && !msg.isEmpty()) {
-                Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show();
-            }
-        });
         viewModel.getPortfolioHistory().observe(getViewLifecycleOwner(), points -> {
             savedPortfolioHistory.clear();
             if (points != null) savedPortfolioHistory.addAll(points);
@@ -160,7 +155,7 @@ public class GoldMyPositionsFragment extends Fragment {
             View card = inflater.inflate(R.layout.item_gold_position_card, positionsContainer, false);
             TextView tvTitle = card.findViewById(R.id.tv_position_title);
             ImageView ivIcon = card.findViewById(R.id.iv_position_icon);
-            String rawTitle = game.desc != null && !game.desc.isEmpty() ? game.desc : "博弈池 #" + game.id;
+            String rawTitle = game.desc != null && !game.desc.isEmpty() ? game.desc : "Market #" + game.id;
             tvTitle.setText(stylePositionTitle(rawTitle, game.condition, game.deadlineSec));
 
             int templateIcon = GoldMarketTemplateIcon.forMarket(
@@ -187,16 +182,16 @@ public class GoldMyPositionsFragment extends Fragment {
                     String sideName = GoldMarketOptionText.holdingLabel(i);
                     heldOptionIndexes.add(i);
                     if (shareText.length() > 0) shareText.append('\n');
-                    shareText.append(sideName).append(": ").append(GoldNoteMarketActivity.formatShareAmount(shares)).append(" 份额");
+                    shareText.append(sideName).append(": ").append(GoldNoteMarketActivity.formatShareAmount(shares)).append(" shares");
                 }
             }
             tvSide.setText(sideBadgeText(heldOptionIndexes));
             tvSide.setTextColor(resolveSideColor(heldOptionIndexes));
             tvSide.setBackground(makeRoundedBackground(resolveSideBackground(heldOptionIndexes), 999));
-            tvShares.setText(shareText.length() == 0 ? "暂无份额" : styleShareText(shareText.toString()));
+            tvShares.setText(shareText.length() == 0 ? "No shares" : styleShareText(shareText.toString()));
 
             GoldPositionValuation.MarketValue marketValue = GoldPositionValuation.calculateMarket(game);
-            tvCurrentValue.setText(marketValue.isComplete() ? GoldNoteMarketActivity.formatBkc(marketValue.getValueWei()) + " BKC" : "暂不可估值");
+            tvCurrentValue.setText(marketValue.isComplete() ? GoldNoteMarketActivity.formatBkc(marketValue.getValueWei()) + " BKC" : "Value unavailable");
             long remaining = GoldNoteMarketActivity.remainingSecondsUntilDeadline(game.deadlineSec, System.currentTimeMillis());
             GoldMarketStatusStyle status = GoldMarketStatusStyle.forMarket(game.isResolved, game.isRefunded, remaining);
             tvProfit.setText(status.label);
@@ -229,9 +224,11 @@ public class GoldMyPositionsFragment extends Fragment {
         GoldPositionValuation.PortfolioValue portfolio = GoldPositionValuation.calculatePortfolio(myPositions);
         BigDecimal totalBkc = new BigDecimal(portfolio.getValueWei()).divide(new BigDecimal("1000000000000000000"), 6, RoundingMode.HALF_UP);
         animateBalance(totalBkc.doubleValue());
-        String subtitle = String.format(Locale.getDefault(), "累计参与 %d 个博弈池", myPositions.size());
+        int marketCount = myPositions.size();
+        String subtitle = marketCount == 1 ? "1 market held"
+                : String.format(Locale.US, "%d markets held", marketCount);
         if (portfolio.getUnavailableMarketCount() > 0) {
-            subtitle += String.format(Locale.getDefault(), " · %d 个持有暂未计入估值", portfolio.getUnavailableMarketCount());
+            subtitle += String.format(Locale.US, " · %d excluded from valuation", portfolio.getUnavailableMarketCount());
         }
         tvTotalPnl.setText(subtitle);
         viewModel.saveAndLoadPortfolioHistory(portfolio.getValueWei(), myPositions.size());
@@ -242,7 +239,7 @@ public class GoldMyPositionsFragment extends Fragment {
         if (heldOptionIndexes.isEmpty()) return "--";
         boolean hasYes = heldOptionIndexes.contains(0);
         boolean hasNo = heldOptionIndexes.contains(1);
-        if (hasYes && hasNo) return "双向持有";
+        if (hasYes && hasNo) return "Holding Both";
         return GoldMarketOptionText.holdingLabel(hasNo ? 1 : 0);
     }
 

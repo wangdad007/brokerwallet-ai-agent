@@ -186,7 +186,7 @@ public class BrokerChainClient {
     public static Boolean getTransactionReceiptStatus(String privateKey, String txHash) throws Exception {
         String normalizedHash = txHash == null ? "" : txHash.trim();
         if (normalizedHash.startsWith("0x")) normalizedHash = normalizedHash.substring(2);
-        if (normalizedHash.isEmpty()) throw new IOException("交易哈希为空");
+        if (normalizedHash.isEmpty()) throw new IOException("Transaction hash is empty");
 
         String uuid = UUID.randomUUID().toString();
         String[] sign = signECDSA(privateKey, uuid + normalizedHash);

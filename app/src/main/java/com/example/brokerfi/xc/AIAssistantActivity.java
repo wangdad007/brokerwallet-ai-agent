@@ -53,12 +53,12 @@ public class AIAssistantActivity extends AppCompatActivity {
         DeepSeekClient.init(this);
 
         // 欢迎消息
-        addMessage("AI", "你好！我是 BrokerChain 黄金票据投研助手。\n\n" +
-                "我会基于 App 页面传入的金价、链上预测池和你的问题，给出黄金票据交易建议。\n" +
-                "请不要输入私钥或助记词。\n\n" +
+        addMessage("AI", "Hello! I am the BrokerChain Gold Research Assistant.\n\n" +
+                "I use the live gold quote, on-chain market snapshot and your question to provide research insights.\n" +
+                "Never enter a private key or recovery phrase.\n\n" +
                 (DeepSeekClient.isConfigured() ?
-                        "DeepSeek AI 已就绪，可以直接询问黄金票据走势。" :
-                        "尚未配置 DeepSeek API Key，点击右上角齿轮图标配置。"));
+                        "DeepSeek AI is ready. Ask about gold markets at any time." :
+                        "DeepSeek API key is not configured. Use the settings icon to add one."));
 
         backBtn.setOnClickListener(v -> finish());
 
@@ -92,14 +92,14 @@ public class AIAssistantActivity extends AppCompatActivity {
             legacyInitialPromptInFlight = false;
             return;
         }
-        addMessage("你", text);
+        addMessage("You", text);
         if (!DeepSeekClient.isConfigured()) {
             legacyInitialPromptInFlight = false;
-            addMessage("AI", "请先配置 DeepSeek API Key（点击齿轮图标）。");
+            addMessage("AI", "Configure a DeepSeek API key from the settings icon first.");
             return;
         }
 
-        int loadingIndex = beginLoading("思考中...");
+        int loadingIndex = beginLoading("Analyzing...");
         String questionForAi = buildQuestionForAi(text);
 
         AgentManager.getInstance().askGoldResearch(questionForAi, new AgentManager.AnalysisCallback() {
@@ -203,7 +203,7 @@ public class AIAssistantActivity extends AppCompatActivity {
 
     private boolean ensureIdle() {
         if (requestInFlight) {
-            addMessage("AI", "上一条请求还在处理，请稍后再试。");
+            addMessage("AI", "The previous request is still running. Please wait a moment.");
             return false;
         }
         return true;
@@ -232,37 +232,37 @@ public class AIAssistantActivity extends AppCompatActivity {
 
     private String safeText(String text) {
         if (TextUtils.isEmpty(text)) {
-            return "AI 暂时没有返回内容，请稍后重试。";
+            return "The AI returned no content. Please retry shortly.";
         }
         return text;
     }
 
     private String formatAiError(String error) {
         if (TextUtils.isEmpty(error)) {
-            return "AI 请求失败：没有收到错误详情，请检查网络或稍后重试。";
+            return "The AI request failed without error details. Check the network and retry.";
         }
         String lower = error.toLowerCase();
         if (lower.contains("401") || lower.contains("unauthorized") || lower.contains("invalid api key")) {
-            return "AI 请求失败：DeepSeek API Key 无效或已过期，请点击右上角齿轮重新配置。";
+            return "The DeepSeek API key is invalid or expired. Reconfigure it in settings.";
         }
         if (lower.contains("timeout") || lower.contains("timed out")) {
-            return "AI 请求超时：请检查模拟器/手机网络，或稍后再试。";
+            return "The AI request timed out. Check the device network and retry.";
         }
         if (lower.contains("no account selected")) {
-            return "当前钱包未选择账户，请先在钱包页面选择或导入账户。";
+            return "No wallet account is selected. Select or import an account first.";
         }
         if (lower.contains("not configured") || lower.contains("no_api_key")) {
-            return "请先配置 DeepSeek API Key（点击右上角齿轮图标）。";
+            return "Configure a DeepSeek API key from the settings icon first.";
         }
         if (error.length() > 300) {
             error = error.substring(0, 300) + "...";
         }
-        return "AI 请求失败：" + error;
+        return "AI request failed: " + error;
     }
 
     private void showApiKeyDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("配置 DeepSeek API Key");
+        builder.setTitle("Configure DeepSeek API Key");
 
         EditText input = new EditText(this);
         input.setHint("sk-...");
@@ -273,20 +273,20 @@ public class AIAssistantActivity extends AppCompatActivity {
         }
         builder.setView(input);
 
-        builder.setPositiveButton("保存", (dialog, which) -> {
+        builder.setPositiveButton("Save", (dialog, which) -> {
             String key = input.getText().toString().trim();
             if (key.startsWith("sk-") && key.length() > 10) {
                 boolean saved = DeepSeekClient.setApiKey(key);
                 if (saved) {
-                    addMessage("AI", "API Key 已保存，DeepSeek AI 已就绪。");
+                    addMessage("AI", "API key saved. DeepSeek AI is ready.");
                 } else {
-                    addMessage("AI", "保存失败，请重启应用后重试。");
+                    addMessage("AI", "Unable to save the key. Restart the app and retry.");
                 }
             } else {
-                addMessage("AI", "格式无效，DeepSeek Key 以 sk- 开头。");
+                addMessage("AI", "Invalid format. A DeepSeek key must start with sk-.");
             }
         });
-        builder.setNegativeButton("取消", null);
+        builder.setNegativeButton("Cancel", null);
         builder.show();
     }
 }

@@ -53,9 +53,9 @@ public final class GoldMarketCreationPolicy {
 
     public static Window normalizeWindow(Calendar now, int startDaysFromNow,
                                          int durationDays, boolean streak) {
-        if (startDaysFromNow < 0) throw new IllegalArgumentException("开始日期不能早于当前日期");
+        if (startDaysFromNow < 0) throw new IllegalArgumentException("Start date cannot be earlier than today");
         if (durationDays < 1 || durationDays > 4) {
-            throw new IllegalArgumentException("观察期必须为 1 至 4 个整天");
+            throw new IllegalArgumentException("Observation period must be 1–4 full days");
         }
         Calendar requested = Calendar.getInstance(BEIJING);
         requested.setTimeInMillis(now.getTimeInMillis());
@@ -85,14 +85,14 @@ public final class GoldMarketCreationPolicy {
                                                 boolean streak) {
         Calendar start = normalizeSelectedDate(selectedStart);
         Calendar end = normalizeSelectedDate(selectedEnd);
-        if (!end.after(start)) throw new IllegalArgumentException("截止日期必须晚于开始日期");
+        if (!end.after(start)) throw new IllegalArgumentException("End date must be later than the start date");
         int days = wholeDays(start, end);
-        if (days < 1 || days > 4) throw new IllegalArgumentException("观察期必须为 1 至 4 个整天");
+        if (days < 1 || days > 4) throw new IllegalArgumentException("Observation period must be 1–4 full days");
         if (streak) {
             Calendar cursor = (Calendar) start.clone();
             for (int i = 0; i <= days; i++) {
                 if (!isSettlementWeekday(cursor.get(Calendar.DAY_OF_WEEK))) {
-                    throw new IllegalArgumentException("连续涨跌观察期不能跨越周日或周一");
+                    throw new IllegalArgumentException("A direction streak cannot cross Sunday or Monday");
                 }
                 cursor.add(Calendar.DAY_OF_YEAR, 1);
             }
@@ -122,7 +122,7 @@ public final class GoldMarketCreationPolicy {
                 // Try another duration that still falls within the 1–4 day rule.
             }
         }
-        throw new IllegalArgumentException("所选开始日期无法生成 1 至 4 个整天的观察期");
+        throw new IllegalArgumentException("The selected start date cannot form a 1–4 day observation period");
     }
 
     public static boolean isValidBoundary(Calendar value) {
@@ -144,7 +144,7 @@ public final class GoldMarketCreationPolicy {
                                                       int directionIdx, int operatorIdx,
                                                       Calendar start, Calendar end) {
         if (!GoldMarketTemplateCatalog.isCreatable(type)) {
-            throw new IllegalArgumentException("不支持的博弈池类型: " + type);
+            throw new IllegalArgumentException("Unsupported market type: " + type);
         }
         Window window = validateSelectedWindow(start, end,
                 GoldMarketTemplateCatalog.TYPE_STREAK.equals(type));
@@ -164,14 +164,14 @@ public final class GoldMarketCreationPolicy {
             rule.put("flat_tolerance_percent", 0.05d);
         } else if (GoldMarketTemplateCatalog.TYPE_RETURN_THRESHOLD.equals(type)) {
             rule.put("operator", orderedOperator(operatorIdx));
-            rule.put("threshold", positiveNumber(param1, "涨跌幅阈值"));
+            rule.put("threshold", positiveNumber(param1, "Return threshold"));
         } else if (GoldMarketTemplateCatalog.TYPE_PRICE_THRESHOLD.equals(type)) {
             rule.put("operator", orderedOperator(operatorIdx));
-            rule.put("threshold", positiveNumber(param1, "目标价格"));
+            rule.put("threshold", positiveNumber(param1, "Target price"));
         } else if (GoldMarketTemplateCatalog.TYPE_PRICE_RANGE.equals(type)) {
-            double lower = positiveNumber(param1, "区间下限");
-            double upper = positiveNumber(param2, "区间上限");
-            if (upper <= lower) throw new IllegalArgumentException("区间上限必须大于下限");
+            double lower = positiveNumber(param1, "Lower bound");
+            double upper = positiveNumber(param2, "Upper bound");
+            if (upper <= lower) throw new IllegalArgumentException("Upper bound must exceed the lower bound");
             rule.put("operator", operatorIdx == 1 ? "OUTSIDE_RANGE" : "IN_RANGE");
             rule.put("lower_threshold", lower);
             rule.put("upper_threshold", upper);
@@ -190,38 +190,45 @@ public final class GoldMarketCreationPolicy {
                                     int directionIdx, int operatorIdx, Window window) {
         int days = window.durationDays();
         if (GoldMarketTemplateCatalog.TYPE_PRICE.equals(type)) {
-            return "黄金价格 " + directionText(directionIdx) + " " + days + "天";
+            return "Gold Price " + directionText(directionIdx) + " Over " + days + " "
+                    + (days == 1 ? "Day" : "Days");
         }
         if (GoldMarketTemplateCatalog.TYPE_RETURN_THRESHOLD.equals(type)) {
-            return "黄金涨跌幅 " + operatorText(operatorIdx) + " " + cleanNumber(param1) + "%";
+            return "Gold Absolute Return " + operatorText(operatorIdx) + " "
+                    + cleanNumber(param1) + "%";
         }
         if (GoldMarketTemplateCatalog.TYPE_PRICE_THRESHOLD.equals(type)) {
-            return "黄金价格 " + operatorText(operatorIdx) + " " + cleanNumber(param1) + "USD/盎司";
+            return "Gold Price " + operatorText(operatorIdx) + " " + cleanNumber(param1) + " USD/oz";
         }
         if (GoldMarketTemplateCatalog.TYPE_PRICE_RANGE.equals(type)) {
-            String relation = operatorIdx == 1 ? "不在" : "位于";
-            return "黄金价格 " + relation + " " + cleanNumber(param1) + "-" + cleanNumber(param2) + "USD/盎司";
+            if (operatorIdx == 1) {
+                return "Gold Price Outside " + cleanNumber(param1) + "–"
+                        + cleanNumber(param2) + " USD/oz";
+            }
+            return "Gold Price Between " + cleanNumber(param1) + " and "
+                    + cleanNumber(param2) + " USD/oz";
         }
         if (GoldMarketTemplateCatalog.TYPE_RELATIVE.equals(type)) {
-            return "黄金 跑赢 " + requireBenchmark(param1).symbol;
+            return "Gold Outperforms " + requireBenchmark(param1).symbol;
         }
         if (GoldMarketTemplateCatalog.TYPE_STREAK.equals(type)) {
-            return "黄金价格 连续" + directionText(directionIdx) + " " + days + "天";
+            return "Gold Price " + directionText(directionIdx) + " for " + days
+                    + (days == 1 ? " Day" : " Days");
         }
-        throw new IllegalArgumentException("不支持的博弈池类型: " + type);
+        throw new IllegalArgumentException("Unsupported market type: " + type);
     }
 
     public static String buildCondition(String type, String param1, String param2,
                                         int directionIdx, int operatorIdx, Window window) {
         return buildTitle(type, param1, param2, directionIdx, operatorIdx, window)
-                + "；北京时间 " + formatDate(window.start) + " 00:00 至 "
-                + formatDate(window.end) + " 00:00；信源为 Ethereum Chainlink Data Feed，"
-                + "取边界时刻之前最后一轮有效报价。";
+                + "; Beijing time " + formatDate(window.start) + " 00:00 to "
+                + formatDate(window.end) + " 00:00; source: Chainlink XAU/USD Data Feed on Ethereum; "
+                + "use the final valid quote at or before each boundary.";
     }
 
     public static long contractDurationSeconds(Calendar now, Calendar end) {
         long duration = (end.getTimeInMillis() - now.getTimeInMillis()) / 1000L;
-        if (duration <= 0) throw new IllegalArgumentException("截止日期必须晚于当前时间");
+        if (duration <= 0) throw new IllegalArgumentException("End date must be later than the current time");
         return duration;
     }
 
@@ -247,23 +254,23 @@ public final class GoldMarketCreationPolicy {
         if (index == 1) return "DOWN";
         if (allowFlat && index == 2) return "FLAT";
         if (index == 0) return "UP";
-        throw new IllegalArgumentException("涨跌方向无效");
+        throw new IllegalArgumentException("Invalid price direction");
     }
 
     private static String directionText(int index) {
-        if (index == 1) return "下跌";
-        if (index == 2) return "持平";
-        return "上涨";
+        if (index == 1) return "Falls";
+        if (index == 2) return "Remains Flat";
+        return "Rises";
     }
 
     private static String orderedOperator(int index) {
         if (index == 0) return "GTE";
         if (index == 1) return "LTE";
-        throw new IllegalArgumentException("比较方式只能为大于等于或小于等于");
+        throw new IllegalArgumentException("Comparison must be At Least or At Most");
     }
 
     private static String operatorText(int index) {
-        return index == 1 ? "小于等于" : "大于等于";
+        return index == 1 ? "At Most" : "At Least";
     }
 
     private static double positiveNumber(String value, String label) {
@@ -272,7 +279,7 @@ public final class GoldMarketCreationPolicy {
             if (parsed <= 0 || Double.isInfinite(parsed) || Double.isNaN(parsed)) throw new NumberFormatException();
             return parsed;
         } catch (NumberFormatException error) {
-            throw new IllegalArgumentException(label + "必须为正数");
+            throw new IllegalArgumentException(label + " must be a positive number");
         }
     }
 
@@ -287,7 +294,7 @@ public final class GoldMarketCreationPolicy {
     private static GoldBenchmarkCatalog.Benchmark requireBenchmark(String symbol) {
         GoldBenchmarkCatalog.Benchmark benchmark = GoldBenchmarkCatalog.forSymbol(symbol);
         if (benchmark == null) {
-            throw new IllegalArgumentException("跑赢率标的仅支持 BTC、ETH、SOL 或 BNB");
+            throw new IllegalArgumentException("Outperformance supports BTC, ETH, SOL or BNB");
         }
         return benchmark;
     }

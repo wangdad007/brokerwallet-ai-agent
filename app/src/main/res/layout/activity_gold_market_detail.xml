@@ -27,7 +27,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
-            android:text="博弈详情"
+            android:text="Market Details"
             android:textColor="#000000"
             android:textSize="18sp"
             android:textStyle="bold" />
@@ -83,7 +83,7 @@
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:lineSpacingExtra="5dp"
-                                android:text="黄金价格 上涨"
+                                android:text="Market"
                                 android:textColor="#111827"
                                 android:textSize="27sp"
                                 android:textStyle="bold" />
@@ -93,7 +93,7 @@
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="8dp"
-                                android:text="2026-07-04 16:40 - 2026-07-23 04:25"
+                                android:text="--"
                                 android:textColor="#64748B"
                                 android:textSize="17sp"
                                 android:textStyle="bold" />
@@ -109,7 +109,7 @@
                         android:lineSpacingExtra="5dp"
                         android:paddingHorizontal="16dp"
                         android:paddingVertical="14dp"
-                        android:text="判定逻辑: 金价截至日期相对基准上涨"
+                        android:text="Resolution details unavailable"
                         android:textColor="#475569"
                         android:textSize="15sp" />
                 </LinearLayout>
@@ -127,7 +127,7 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="当前市场"
+                        android:text="Market Overview"
                         android:textColor="#0F172A"
                         android:textSize="17sp"
                         android:textStyle="bold" />
@@ -153,7 +153,7 @@
                                 android:id="@+id/tv_up_label"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="YES"
+                                android:text="YES Share"
                                 android:textColor="#047857"
                                 android:textSize="13sp"
                                 android:textStyle="bold" />
@@ -184,7 +184,7 @@
                                 android:id="@+id/tv_down_label"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="NO"
+                                android:text="NO Share"
                                 android:textColor="#E11D48"
                                 android:textSize="13sp"
                                 android:textStyle="bold" />
@@ -240,7 +240,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="流动性"
+                                android:text="Liquidity"
                                 android:textColor="#94A3B8"
                                 android:textSize="12sp"
                                 android:textStyle="bold" />
@@ -266,7 +266,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="市场状态"
+                                android:text="Market Status"
                                 android:textColor="#94A3B8"
                                 android:textSize="12sp"
                                 android:textStyle="bold" />
@@ -276,7 +276,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="4dp"
-                                android:text="距结束 0天"
+                                android:text="Ends in --"
                                 android:textColor="#64748B"
                                 android:textSize="15sp"
                                 android:textStyle="bold" />
@@ -284,7 +284,7 @@
                     </LinearLayout>
                 </LinearLayout>
 
-                <!-- [新增] 历史折线图 -->
+                <!-- Market share history -->
                 <LinearLayout
                     android:id="@+id/layout_chart_container"
                     android:layout_width="match_parent"
@@ -296,18 +296,175 @@
                     android:padding="18dp"
                     android:visibility="gone">
 
-                    <TextView
-                        android:layout_width="wrap_content"
+                    <LinearLayout
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="YES/NO份额走势"
-                        android:textColor="#0F172A"
-                        android:textSize="17sp"
-                        android:textStyle="bold" />
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="YES/NO Share Trend"
+                            android:textColor="#0F172A"
+                            android:textSize="17sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="● YES Share"
+                            android:textColor="#059669"
+                            android:textSize="11sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="10dp"
+                            android:text="● NO Share"
+                            android:textColor="#E11D48"
+                            android:textSize="11sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="9dp"
+                        android:background="@drawable/bg_gold_condition_strip"
+                        android:orientation="vertical"
+                        android:paddingHorizontal="11dp"
+                        android:paddingVertical="9dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Your Purchase Markers"
+                                android:textColor="#0F172A"
+                                android:textSize="12sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/tv_trade_bucket_hint"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="1D · 2 hours per marker"
+                                android:textColor="#64748B"
+                                android:textSize="10sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="7dp"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:layout_width="22dp"
+                                android:layout_height="22dp"
+                                android:background="@drawable/bg_chart_manual_marker"
+                                android:gravity="center"
+                                android:text="M"
+                                android:textColor="#FFFFFF"
+                                android:textSize="8sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="6dp"
+                                android:text="Manual"
+                                android:textColor="#475569"
+                                android:textSize="11sp" />
+
+                            <TextView
+                                android:layout_width="22dp"
+                                android:layout_height="22dp"
+                                android:layout_marginStart="18dp"
+                                android:background="@drawable/bg_chart_deepseek_marker"
+                                android:gravity="center"
+                                android:text="DS"
+                                android:textColor="#FFFFFF"
+                                android:textSize="8sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="6dp"
+                                android:text="DeepSeek-managed"
+                                android:textColor="#475569"
+                                android:textSize="11sp" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/layout_chart_ranges"
+                        android:layout_width="match_parent"
+                        android:layout_height="36dp"
+                        android:layout_marginTop="10dp"
+                        android:background="#F8FAFC"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:padding="3dp">
+
+                        <TextView
+                            android:id="@+id/chart_range_1h"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:text="1H"
+                            android:textSize="11sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/chart_range_1d"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:text="1D"
+                            android:textSize="11sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/chart_range_1w"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:text="1W"
+                            android:textSize="11sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/chart_range_all"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:text="ALL"
+                            android:textSize="11sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
                     <com.github.mikephil.charting.charts.LineChart
                         android:id="@+id/line_chart"
                         android:layout_width="match_parent"
-                        android:layout_height="220dp"
-                        android:layout_marginTop="14dp" />
+                        android:layout_height="250dp"
+                        android:layout_marginTop="10dp" />
                 </LinearLayout>
 
                 <!-- AI Section -->
@@ -350,7 +507,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="AI 投研分析"
+                                android:text="AI Market Research"
                                 android:textColor="#0F172A"
                                 android:textSize="17sp"
                                 android:textStyle="bold" />
@@ -358,7 +515,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="2dp"
-                                android:text="结合行情、赔率、信源与时间风险"
+                                android:text="Market data, share balance, sources, and time risk"
                                 android:textColor="#64748B"
                                 android:textSize="12sp" />
                         </LinearLayout>
@@ -378,7 +535,7 @@
                             android:background="@drawable/bg_position_ai_chip"
                             android:paddingHorizontal="10dp"
                             android:paddingVertical="5dp"
-                            android:text="点击分析 ›"
+                            android:text="Analyze ›"
                             android:textColor="#4F46E5"
                             android:textSize="11sp"
                             android:textStyle="bold" />
@@ -389,7 +546,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="15dp"
-                        android:text="点击卡片生成结构化 AI 投研分析"
+                        android:text="Tap to generate a structured AI market report"
                         android:textColor="#1E293B"
                         android:textSize="15sp"
                         android:textStyle="bold"
@@ -411,7 +568,7 @@
                             android:background="@drawable/bg_position_ai_chip"
                             android:paddingHorizontal="11dp"
                             android:paddingVertical="6dp"
-                            android:text="待观察"
+                            android:text="Watch"
                             android:textColor="#4338CA"
                             android:textSize="12sp"
                             android:textStyle="bold" />
@@ -423,7 +580,7 @@
                             android:layout_marginStart="8dp"
                             android:paddingHorizontal="11dp"
                             android:paddingVertical="6dp"
-                            android:text="风险待评估"
+                                android:text="Risk Assessment Pending"
                             android:textColor="#475569"
                             android:textSize="12sp"
                             android:textStyle="bold" />
@@ -446,7 +603,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="关键信号"
+                            android:text="Key Signals"
                             android:textColor="#475569"
                             android:textSize="12sp"
                             android:textStyle="bold" />
@@ -464,7 +621,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="14dp"
-                            android:text="研判与风险管理"
+                            android:text="Assessment &amp; Risk Management"
                             android:textColor="#475569"
                             android:textSize="12sp"
                             android:textStyle="bold" />
@@ -490,7 +647,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="AI 投研仅供参考"
+                                android:text="AI analysis is for reference only."
                                 android:textColor="#94A3B8"
                                 android:textSize="11sp" />
 
@@ -502,7 +659,7 @@
                                 android:gravity="center"
                                 android:minWidth="72dp"
                                 android:paddingHorizontal="8dp"
-                                android:text="重新分析"
+                                android:text="Analyze Again"
                                 android:textColor="#4F46E5"
                                 android:textSize="12sp"
                                 android:textStyle="bold" />
@@ -516,39 +673,60 @@
                         android:layout_marginBottom="12dp"
                         android:background="#DDE5F5" />
 
-                    <RelativeLayout
+                    <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content">
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <RelativeLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content">
 
                         <LinearLayout
-                            android:layout_width="wrap_content"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:layout_alignParentStart="true">
+                            android:layout_alignParentStart="true"
+                            android:layout_toStartOf="@+id/switch_ai_managed"
+                            android:layout_marginEnd="12dp"
+                            android:orientation="vertical">
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="AI 自动托管 (Beta)"
+                                android:text="AI-Managed Trading (Beta)"
                                 android:textColor="#334155"
                                 android:textSize="14sp"
                                 android:textStyle="bold" />
                             <TextView
+                                android:id="@+id/tv_ai_managed_summary"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="2dp"
-                                android:text="根据投研信号自动执行既定策略"
+                                android:text="Configure order size, confidence, and risk limits"
                                 android:textColor="#94A3B8"
                                 android:textSize="11sp" />
                         </LinearLayout>
 
                         <androidx.appcompat.widget.SwitchCompat
-                            android:id="@+id/switch_ai_managed"
+                            android:id="@id/switch_ai_managed"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_alignParentEnd="true"
                             android:layout_centerVertical="true"
                             android:theme="@style/Widget.AppCompat.CompoundButton.Switch" />
-                    </RelativeLayout>
+                        </RelativeLayout>
+
+                        <TextView
+                            android:id="@+id/btn_ai_managed_settings"
+                            android:layout_width="match_parent"
+                            android:layout_height="44dp"
+                            android:layout_marginTop="12dp"
+                            android:background="@drawable/bg_ai_strategy_preset"
+                            android:gravity="center"
+                            android:text="Configure AI strategy ›"
+                            android:textColor="#4F46E5"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
                 </LinearLayout>
 
                 <!-- Trading Actions -->
@@ -556,7 +734,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="32dp"
-                    android:text="立即下注"
+                    android:text="Trade Now"
                     android:textColor="#000000"
                     android:textSize="17sp"
                     android:textStyle="bold" />
@@ -575,7 +753,7 @@
                         android:layout_weight="1"
                         android:layout_marginEnd="8dp"
                         android:background="@drawable/bg_bet_yes"
-                        android:text="买入YES"
+                        android:text="Buy YES"
                         android:textAllCaps="false"
                         android:textColor="#FFFFFF"
                         android:textSize="17sp"
@@ -589,7 +767,7 @@
                         android:layout_weight="1"
                         android:layout_marginStart="8dp"
                         android:background="@drawable/bg_bet_no"
-                        android:text="买入NO"
+                        android:text="Buy NO"
                         android:textAllCaps="false"
                         android:textColor="#FFFFFF"
                         android:textSize="17sp"
@@ -602,7 +780,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="32dp"
-                    android:text="个人持有"
+                    android:text="Your Position"
                     android:textColor="#000000"
                     android:textSize="17sp"
                     android:textStyle="bold" />
@@ -621,7 +799,7 @@
                         android:layout_height="wrap_content"
                         android:background="@drawable/bg_gold_market_panel"
                         android:padding="20dp"
-                        android:text="暂无持有"
+                        android:text="No position"
                         android:textColor="#94A3B8"
                         android:textSize="14sp"
                         android:gravity="center"
@@ -656,7 +834,7 @@
                             android:id="@+id/tv_holding_yes_amount"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="0.00 份额"
+                            android:text="0.00 shares"
                             android:textColor="#059669"
                             android:textSize="15sp"
                             android:textStyle="bold" />
@@ -690,7 +868,7 @@
                             android:id="@+id/tv_holding_no_amount"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="0.00 份额"
+                            android:text="0.00 shares"
                             android:textColor="#E11D48"
                             android:textSize="15sp"
                             android:textStyle="bold" />
@@ -703,7 +881,7 @@
                     android:layout_height="60dp"
                     android:layout_marginTop="24dp"
                     android:background="@drawable/bg_bet_yes"
-                    android:text="领取收益"
+                    android:text="Claim Payout"
                     android:textAllCaps="false"
                     android:textColor="#FFFFFF"
                     android:textSize="18sp"

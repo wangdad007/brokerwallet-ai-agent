@@ -328,7 +328,7 @@ public class GoldMarketRepository {
                     AppExecutors.getInstance().mainThread().execute(() -> callback.onConfirmed(successMsg));
                 }
             } catch (Exception e) {
-                postError(callback, describeTradeFailure("提交交易", e.getMessage()));
+                postError(callback, describeTradeFailure("Submit transaction", e.getMessage()));
             }
         });
     }
@@ -344,10 +344,10 @@ public class GoldMarketRepository {
                 + " data=" + data.substring(0, Math.min(66, data.length())) + "...");
         EthSendTransaction resp = web3j.ethSendTransaction(txn).send();
         if (resp.hasError()) {
-            postError(callback, describeTradeFailure("提交交易", resp.getError().getMessage()));
+            postError(callback, describeTradeFailure("Submit transaction", resp.getError().getMessage()));
             return null;
         } else if (resp.getTransactionHash() == null || resp.getTransactionHash().isEmpty()) {
-            postError(callback, "本地 RPC 未返回交易哈希，交易未确认提交");
+            postError(callback, "RPC returned no transaction hash; submission is unconfirmed");
             return null;
         }
         String txHash = resp.getTransactionHash();
@@ -375,7 +375,7 @@ public class GoldMarketRepository {
         Log.d(TAG, "brokerChainSendTx response: " + (response != null ? response.substring(0, Math.min(200, response.length())) : "null"));
 
         if (response == null || response.trim().isEmpty()) {
-            throw new IOException("BrokerChain 未返回内容，交易状态暂时未知");
+            throw new IOException("BrokerChain returned no response; transaction status is unknown");
         }
 
         String rpcError = describeBrokerChainTxError(response);
@@ -385,7 +385,7 @@ public class GoldMarketRepository {
 
         String txHash = extractBrokerChainTxHash(response);
         if (txHash == null || txHash.isEmpty()) {
-            throw new IOException("BrokerChain 未返回交易哈希，交易状态暂时未知");
+            throw new IOException("BrokerChain returned no transaction hash; status is unknown");
         }
         return txHash;
     }
@@ -405,7 +405,7 @@ public class GoldMarketRepository {
 
     private String describeBrokerChainTxError(String response) {
         String trimmed = response == null ? "" : response.trim();
-        if (trimmed.isEmpty()) return "BrokerChain 返回空响应";
+        if (trimmed.isEmpty()) return "BrokerChain returned an empty response";
 
         try {
             JSONObject root = new JSONObject(trimmed);
@@ -438,31 +438,31 @@ public class GoldMarketRepository {
             if (matcher.find()) {
                 BigInteger requiredWei = new BigInteger(matcher.group(1));
                 BigInteger balanceWei = new BigInteger(matcher.group(2));
-                return "账户余额不足。本次创建大约需要 "
-                        + formatBkc(requiredWei) + " BKC，当前余额约 "
+                return "Insufficient balance. This market requires about "
+                        + formatBkc(requiredWei) + " BKC; current balance is about "
                         + formatBkc(balanceWei)
-                        + " BKC。请把“初始流动性注入”调低到 1 BKC 左右，或先充值后重试。";
+                        + " BKC. Reduce initial liquidity to about 1 BKC or fund the wallet and retry.";
             }
-            return "账户余额不足，无法提交链上交易。请降低初始流动性或先充值后重试。";
+            return "Insufficient balance for the on-chain transaction. Reduce initial liquidity or fund the wallet.";
         }
 
         if (lower.contains("invalid sign") || lower.contains("replay attack")) {
-            return "交易签名被服务器判定为重复或已失效。请不要连续重复点击创建，等待几秒后重新提交一次。";
+            return "The transaction signature is duplicate or expired. Wait a few seconds before submitting again.";
         }
 
         if (lower.contains("nonce")) {
-            return "链上交易序号异常，可能有交易仍在排队。请稍等片刻后重试，避免连续重复提交。";
+            return "The on-chain nonce is out of sequence, possibly because another transaction is pending. Wait and retry once.";
         }
 
         if (lower.contains("execution reverted") || lower.contains("revert")) {
-            return "链上合约拒绝了这笔交易。技术信息：" + msg;
+            return "The smart contract rejected this transaction. Technical details: " + msg;
         }
 
         if (code != Integer.MIN_VALUE) {
-            return "BrokerChain RPC 返回错误（code=" + code + "）："
+            return "BrokerChain RPC error (code=" + code + "): "
                     + (msg.isEmpty() ? rawResponse : msg);
         }
-        return "交易失败：" + (msg.isEmpty() ? rawResponse : msg);
+        return "Transaction failed: " + (msg.isEmpty() ? rawResponse : msg);
     }
 
     private String describeTradeFailure(String stage, String rawMessage) {
@@ -470,36 +470,36 @@ public class GoldMarketRepository {
         String lower = msg.toLowerCase(Locale.ROOT);
 
         if (lower.contains("past deadline")) {
-            return stage + "失败：该博弈池已过截止时间，链上拒绝了本次购买。\n\n"
-                    + "可能原因：\n"
-                    + "1. 该池子确实已到期；\n"
-                    + "2. 链上 deadline 时间单位异常；\n"
-                    + "3. 后端缓存的市场状态还没同步到最新。\n\n"
-                    + "技术信息：Past deadline";
+            return stage + " failed: the market deadline has passed and the purchase was rejected.\n\n"
+                    + "Possible causes:\n"
+                    + "1. The market has ended;\n"
+                    + "2. The on-chain deadline uses an invalid time unit;\n"
+                    + "3. Cached market status is not current.\n\n"
+                    + "Technical details: Past deadline";
         }
         if (lower.contains("game already ended") || lower.contains("already ended")) {
-            return stage + "失败：该博弈池当前已结束或已退款，暂时不能继续购买。\n\n"
-                    + "技术信息：" + msg;
+            return stage + " failed: this market is ended or refunded and no longer accepts purchases.\n\n"
+                    + "Technical details: " + msg;
         }
         if (lower.contains("insufficient funds")) {
-            return stage + "失败：账户余额不足，无法完成本次下单或支付 Gas。\n\n"
-                    + "技术信息：" + msg;
+            return stage + " failed: insufficient balance for the trade or gas.\n\n"
+                    + "Technical details: " + msg;
         }
         if (lower.contains("nonce")) {
-            return stage + "失败：链上交易序号异常，可能有交易还在排队。\n\n"
-                    + "建议稍等几秒后再试一次。\n\n技术信息：" + msg;
+            return stage + " failed: the on-chain nonce is out of sequence and another transaction may be pending.\n\n"
+                    + "Wait a few seconds and try once more.\n\nTechnical details: " + msg;
         }
         if (lower.contains("replay attack") || lower.contains("invalid sign")) {
-            return stage + "失败：交易签名被判定为重复或失效。\n\n"
-                    + "建议不要连续重复点击，稍等几秒后重试。\n\n技术信息：" + msg;
+            return stage + " failed: the transaction signature is duplicate or expired.\n\n"
+                    + "Avoid repeated taps; wait a few seconds and retry.\n\nTechnical details: " + msg;
         }
         if (lower.contains("execution reverted") || lower.contains("revert")) {
-            return stage + "失败：链上合约拒绝了这笔交易。\n\n技术信息：" + msg;
+            return stage + " failed: the smart contract rejected this transaction.\n\nTechnical details: " + msg;
         }
         if (msg.isEmpty()) {
-            return stage + "失败：未收到明确的错误详情，请稍后重试。";
+            return stage + " failed without error details. Please try again later.";
         }
-        return stage + "失败：\n\n" + msg;
+        return stage + " failed:\n\n" + msg;
     }
 
     private String formatBkc(BigInteger wei) {
@@ -556,7 +556,7 @@ public class GoldMarketRepository {
             state.mySharesNO = sharesArray.get(1).getValue().toString();
             return state;
         } catch (Exception e) {
-            Log.w(TAG, "queryPreTradeShareState 异常: gameId=" + gameId
+            Log.w(TAG, "queryPreTradeShareState failed: gameId=" + gameId
                     + " - " + e.getMessage());
             return null;
         }
@@ -597,7 +597,7 @@ public class GoldMarketRepository {
             String hexExtra = ethCall(fExtra);
 
             if (hexInfo == null || hexInfo.equals("0x")) {
-                Log.w(TAG, "queryPostTxState: getGameInfo 返回空, gameId=" + gameId);
+                Log.w(TAG, "queryPostTxState: getGameInfo returned empty, gameId=" + gameId);
                 return null;
             }
 
@@ -629,18 +629,18 @@ public class GoldMarketRepository {
                         }
                     }
                 } catch (Exception e) {
-                    Log.w(TAG, "queryPostTxState: getGameExtraData 解析失败 - " + e.getMessage());
+                    Log.w(TAG, "queryPostTxState: unable to parse getGameExtraData - " + e.getMessage());
                 }
             }
 
-            Log.d(TAG, "queryPostTxState 成功: gameId=" + gameId
+            Log.d(TAG, "queryPostTxState succeeded: gameId=" + gameId
                     + " totalPool=" + state.totalPool
                     + " isResolved=" + state.isResolved
                     + " deadlineSec=" + state.deadlineSec
                     + " mySharesYES=" + state.mySharesYES);
             return state;
         } catch (Exception e) {
-            Log.w(TAG, "queryPostTxState 异常: gameId=" + gameId + " - " + e.getMessage());
+            Log.w(TAG, "queryPostTxState failed: gameId=" + gameId + " - " + e.getMessage());
             return null;
         }
     }
@@ -674,6 +674,7 @@ public class GoldMarketRepository {
             tradeReq.txHash = txHash;
             tradeReq.isSuccess = true;
             tradeReq.isAiManaged = tradeInfo.isAiManaged;
+            tradeReq.timestampSec = System.currentTimeMillis() / 1000L;
             tradeReq.shareAmountWei = resolveTradeShareAmountWei(tradeInfo, preState, postState);
             if (postState != null) {
                 tradeReq.totalPoolAfter = postState.totalPool;
@@ -689,9 +690,9 @@ public class GoldMarketRepository {
                 tradeReq.mySharesNOAfter = tradeInfo.mySharesNOAfter;
             }
             BackendApiClient.syncTrade(tradeReq);
-            Log.d(TAG, "后端交易同步成功: gameId=" + gameId + " type=" + tradeInfo.tradeType);
+            Log.d(TAG, "Backend trade sync succeeded: gameId=" + gameId + " type=" + tradeInfo.tradeType);
         } catch (Exception e) {
-            Log.w(TAG, "后端交易同步失败（非关键）: gameId=" + gameId + " - " + e.getMessage());
+            Log.w(TAG, "Backend trade sync failed (non-critical): gameId=" + gameId + " - " + e.getMessage());
         }
 
         // 历史点和完整状态只是缓存补全，不再阻塞 UI 的交易成功反馈。
@@ -721,10 +722,10 @@ public class GoldMarketRepository {
                 }
                 point.totalPool = totalPool;
                 BackendApiClient.addHistoryPoint(gameId, point);
-                Log.d(TAG, "后端历史数据同步成功: gameId=" + gameId);
+                Log.d(TAG, "Backend history sync succeeded: gameId=" + gameId);
             }
         } catch (Exception e) {
-            Log.w(TAG, "后端历史数据同步失败（非关键）: gameId=" + gameId + " - " + e.getMessage());
+            Log.w(TAG, "Backend history sync failed (non-critical): gameId=" + gameId + " - " + e.getMessage());
         }
 
         // ── 3. 同步完整链上状态缓存 ──
@@ -752,12 +753,12 @@ public class GoldMarketRepository {
                 chainReq.mySharesNO = tradeInfo.mySharesNOAfter;
             }
             BackendApiClient.syncChainState(gameId, chainReq);
-            Log.d(TAG, "后端链上状态同步成功: gameId=" + gameId
+            Log.d(TAG, "Backend chain-state sync succeeded: gameId=" + gameId
                     + " totalPool=" + chainReq.totalPool
                     + " isResolved=" + chainReq.isResolved
                     + " deadlineSec=" + chainReq.deadlineSec);
         } catch (Exception e) {
-            Log.w(TAG, "后端链上状态同步失败（非关键）: gameId=" + gameId + " - " + e.getMessage());
+            Log.w(TAG, "Backend chain-state sync failed (non-critical): gameId=" + gameId + " - " + e.getMessage());
         }
     }
 
@@ -801,13 +802,13 @@ public class GoldMarketRepository {
             if (receipt != null) {
                 String status = receipt.getStatus();
                 if ("0x0".equals(status)) {
-                    throw new Exception("交易执行失败，链上 receipt status=0x0");
+                    throw new Exception("Transaction execution failed: receipt status=0x0");
                 }
                 Log.d(TAG, "local tx confirmed: " + txHash + " status=" + status);
                 return;
             }
         }
-        throw new Exception("交易已提交但 30 秒内未确认，请稍后手动刷新");
+        throw new Exception("Transaction was submitted but not confirmed within 30 seconds. Refresh later");
     }
 
     private void waitForBrokerChainReceipt(String txHash) throws Exception {
@@ -819,7 +820,7 @@ public class GoldMarketRepository {
                         BrokerChainClient.getTransactionReceiptStatus(privateKey, txHash);
                 if (success == null) continue;
                 if (!success) {
-                    throw new Exception("交易执行失败，链上 receipt status=0x0");
+                    throw new Exception("Transaction execution failed: receipt status=0x0");
                 }
                 Log.d(TAG, "BrokerChain tx confirmed: " + txHash);
                 return;
@@ -828,12 +829,12 @@ public class GoldMarketRepository {
                     throw e;
                 }
                 lastQueryError = e;
-                Log.w(TAG, "BrokerChain receipt 查询暂时失败，第 " + (i + 1)
-                        + " 次: " + e.getMessage());
+                Log.w(TAG, "BrokerChain receipt query failed, attempt " + (i + 1)
+                        + ": " + e.getMessage());
             }
         }
-        String detail = lastQueryError == null ? "" : "，最后一次查询：" + lastQueryError.getMessage();
-        throw new Exception("交易已提交但 30 秒内未确认，请稍后手动刷新" + detail);
+        String detail = lastQueryError == null ? "" : "; last query: " + lastQueryError.getMessage();
+        throw new Exception("Transaction was submitted but not confirmed within 30 seconds. Refresh later" + detail);
     }
 
     private String extractHexResult(String responseJson) {
@@ -860,7 +861,7 @@ public class GoldMarketRepository {
         m.id = meta.gameId;
         m.contractAddress = meta.contractAddress;
         m.ipfsCID = meta.ipfsCid;
-        m.desc = meta.desc != null && !meta.desc.isEmpty() ? meta.desc : ("博弈池 #" + meta.gameId);
+        m.desc = meta.desc != null && !meta.desc.isEmpty() ? meta.desc : ("Market #" + meta.gameId);
         m.condition = meta.condition != null ? meta.condition : "";
         m.avatarUrl = meta.avatarUrl != null ? meta.avatarUrl : "";
         m.detailedInfo = meta.detailedInfo != null ? meta.detailedInfo : "";
@@ -1035,7 +1036,7 @@ public class GoldMarketRepository {
 
     private void enrichFromIPFS(GameModel model) {
         if (model.ipfsCID == null || model.ipfsCID.isEmpty()) {
-            model.desc = "博弈池 #" + model.id;
+            model.desc = "Market #" + model.id;
             model.history = generateMockHistory(model.virtualReserves);
             return;
         }
@@ -1043,7 +1044,7 @@ public class GoldMarketRepository {
             String json = PinataClient.downloadJsonFromIPFS(model.ipfsCID);
             if (json != null && !json.isEmpty()) {
                 JSONObject obj = new JSONObject(json);
-                model.desc = obj.optString("desc", "博弈池 #" + model.id);
+                model.desc = obj.optString("desc", "Market #" + model.id);
                 model.condition = obj.optString("condition", "");
                 model.avatarUrl = obj.optString("avatarUrl", "");
                 model.detailedInfo = obj.optString("detailedInfo", "");
@@ -1067,12 +1068,12 @@ public class GoldMarketRepository {
                     model.history = generateMockHistory(model.virtualReserves);
                 }
             } else {
-                model.desc = "博弈池 #" + model.id;
+                model.desc = "Market #" + model.id;
                 model.history = generateMockHistory(model.virtualReserves);
             }
         } catch (Exception e) {
             Log.e(TAG, "IPFS enrich failed for game " + model.id + ": " + e.getMessage());
-            model.desc = "博弈池 #" + model.id;
+            model.desc = "Market #" + model.id;
             model.history = generateMockHistory(model.virtualReserves);
         }
     }
@@ -1088,13 +1089,13 @@ public class GoldMarketRepository {
                 String hex = ethCall(function);
                 List<Type> result = FunctionReturnDecoder.decode(hex, function.getOutputParameters());
                 if (result.isEmpty()) {
-                    postError(callback, "市场数量解析为空");
+                    postError(callback, "Market count response was empty");
                     return;
                 }
                 int count = ((Uint256) result.get(0)).getValue().intValue();
                 AppExecutors.getInstance().mainThread().execute(() -> callback.onSuccess(count));
             } catch (Exception e) {
-                postError(callback, "获取市场数量异常: " + e.getMessage());
+                postError(callback, "Unable to load market count: " + e.getMessage());
             }
         });
     }
@@ -1125,33 +1126,33 @@ public class GoldMarketRepository {
                 }
                 long backendEnd = System.currentTimeMillis();
                 long backendMs = backendEnd - backendStart;
-                Log.d("时延", "getGameInfo - 后端DB加载: " + backendMs + "ms");
+                Log.d("Latency", "getGameInfo - backend DB: " + backendMs + "ms");
                 AppExecutors.getInstance().mainThread().execute(() ->
-                    callback.onTiming("数据库+IPFS", backendMs, false));
+                    callback.onTiming("Database + IPFS", backendMs, false));
 
                 GameModel model = buildModelFromBackend(meta, state);
 
                 // 如果后端元数据不完整（缺少 desc 等），从 IPFS 补充
-                if (isEmpty(model.desc) || model.desc.startsWith("博弈池 #")) {
+                if (isEmpty(model.desc) || model.desc.startsWith("Market #") || model.desc.startsWith("博弈池 #")) {
                     long ipfsStart = System.currentTimeMillis();
                     enrichFromIPFS(model);
                     long ipfsEnd = System.currentTimeMillis();
-                    Log.d("时延", "getGameInfo - IPFS补充加载: " + (ipfsEnd - ipfsStart) + "ms");
+                    Log.d("Latency", "getGameInfo - supplemental IPFS: " + (ipfsEnd - ipfsStart) + "ms");
                 }
 
                 long totalMs = System.currentTimeMillis() - totalStart;
-                Log.d("时延", "getGameInfo - 总耗时(后端优先): " + totalMs + "ms");
+                Log.d("Latency", "getGameInfo - total (backend first): " + totalMs + "ms");
                 final long finalTotalMs = totalMs;
                 AppExecutors.getInstance().mainThread().execute(() -> {
-                    callback.onTiming("数据库读取成功", finalTotalMs, false);
+                    callback.onTiming("Database read succeeded", finalTotalMs, false);
                     callback.onSuccess(model);
                 });
                 return;
             } catch (Exception backendErr) {
                 long failMs = System.currentTimeMillis() - totalStart;
-                Log.w(TAG, "后端DB读取失败，回退到链上+IPFS: " + backendErr.getMessage());
+                Log.w(TAG, "Backend DB read failed; falling back to chain + IPFS: " + backendErr.getMessage());
                 AppExecutors.getInstance().mainThread().execute(() ->
-                    callback.onTiming("数据库失败，回退链上直读...", failMs, true));
+                    callback.onTiming("Database failed; reading directly from chain…", failMs, true));
             }
 
             // ---- 策略 2: 回退到链上 + IPFS（可靠路径） ----
@@ -1184,17 +1185,17 @@ public class GoldMarketRepository {
 
                 long chainEnd = System.currentTimeMillis();
                 long chainMs = chainEnd - chainStart;
-                Log.d("时延", "getGameInfo - 链上数据加载(回退): " + chainMs + "ms");
+                Log.d("Latency", "getGameInfo - chain fallback: " + chainMs + "ms");
                 AppExecutors.getInstance().mainThread().execute(() ->
-                    callback.onTiming("链上 eth_call", chainMs, true));
+                    callback.onTiming("On-chain eth_call", chainMs, true));
 
                 if (hexResults[0] == null || hexResults[0].equals("0x") || hexResults[0].startsWith("Error")) {
-                    postError(callback, "链上数据读取失败: " + hexResults[0]);
+                    postError(callback, "On-chain data read failed: " + hexResults[0]);
                     return;
                 }
 
                 List<Type> res = FunctionReturnDecoder.decode(hexResults[0], fInfo.getOutputParameters());
-                if (res.isEmpty()) { postError(callback, "基础数据解析为空"); return; }
+                if (res.isEmpty()) { postError(callback, "Base data response was empty"); return; }
 
                 GameModel model = new GameModel();
                 model.id = id;
@@ -1236,20 +1237,20 @@ public class GoldMarketRepository {
                 enrichFromIPFS(model);
                 long ipfsEnd = System.currentTimeMillis();
                 long ipfsMs = ipfsEnd - ipfsStart;
-                Log.d("时延", "getGameInfo - IPFS加载(回退): " + ipfsMs + "ms");
+                Log.d("Latency", "getGameInfo - IPFS fallback: " + ipfsMs + "ms");
                 long totalMs = ipfsEnd - totalStart;
-                Log.d("时延", "getGameInfo - 总耗时(回退): " + totalMs + "ms");
+                Log.d("Latency", "getGameInfo - total fallback: " + totalMs + "ms");
                 AppExecutors.getInstance().mainThread().execute(() ->
-                    callback.onTiming("IPFS 元数据(回退)", ipfsMs, true));
+                    callback.onTiming("IPFS metadata (fallback)", ipfsMs, true));
 
                 final long finalTotalMs = totalMs;
                 AppExecutors.getInstance().mainThread().execute(() -> {
-                    callback.onTiming("回退链上+IPFS完成", finalTotalMs, true);
+                    callback.onTiming("Chain + IPFS fallback complete", finalTotalMs, true);
                     callback.onSuccess(model);
                 });
             } catch (Exception e) {
-                Log.d("时延", "getGameInfo - 失败，总耗时: " + (System.currentTimeMillis() - totalStart) + "ms");
-                postError(callback, "获取详情异常: " + e.getMessage());
+                Log.d("Latency", "getGameInfo - failed, total: " + (System.currentTimeMillis() - totalStart) + "ms");
+                postError(callback, "Unable to load market details: " + e.getMessage());
             }
         });
     }
@@ -1271,9 +1272,9 @@ public class GoldMarketRepository {
                 List<BackendApiClient.ChainStateDTO> states = BackendApiClient.fetchAllChainStates(getWalletAddress());
                 long backendEnd = System.currentTimeMillis();
                 long backendMs = backendEnd - backendStart;
-                Log.d("时延", "getAllGamesInfo - 后端DB加载: " + backendMs + "ms");
+                Log.d("Latency", "getAllGamesInfo - backend DB: " + backendMs + "ms");
                 AppExecutors.getInstance().mainThread().execute(() ->
-                    callback.onTiming("数据库批量加载", backendMs, false));
+                    callback.onTiming("Database batch load", backendMs, false));
 
                 // 建立 contractAddress + gameId → ChainStateDTO 的映射；兼容旧接口缺少 contractAddress 的情况。
                 java.util.Map<String, BackendApiClient.ChainStateDTO> stateMap = new java.util.HashMap<>();
@@ -1308,18 +1309,18 @@ public class GoldMarketRepository {
                 }
 
                 long totalMs = System.currentTimeMillis() - totalStart;
-                Log.d("时延", "getAllGamesInfo - 总耗时(后端优先): " + totalMs + "ms (共 " + models.size() + " 个)");
+                Log.d("Latency", "getAllGamesInfo - total (backend first): " + totalMs + "ms (" + models.size() + " markets)");
                 final long finalTotalMs = totalMs;
                 AppExecutors.getInstance().mainThread().execute(() -> {
-                    callback.onTiming("数据库批量完成(" + models.size() + "个)", finalTotalMs, false);
+                    callback.onTiming("Database batch complete (" + models.size() + ")", finalTotalMs, false);
                     callback.onSuccess(models);
                 });
                 return;
             } catch (Exception backendErr) {
                 long failMs = System.currentTimeMillis() - totalStart;
-                Log.w(TAG, "后端DB批量读取失败，回退到链上+IPFS: " + backendErr.getMessage());
+                Log.w(TAG, "Backend DB batch read failed; falling back to chain + IPFS: " + backendErr.getMessage());
                 AppExecutors.getInstance().mainThread().execute(() ->
-                    callback.onTiming("数据库失败，回退链上批量读...", failMs, true));
+                    callback.onTiming("Database failed; reading chain batch…", failMs, true));
             }
 
             // ---- 策略 2: 回退到链上 + IPFS（可靠路径） ----
@@ -1356,16 +1357,16 @@ public class GoldMarketRepository {
 
                 long chainEnd = System.currentTimeMillis();
                 long chainMs = chainEnd - chainStart;
-                Log.d("时延", "getAllGamesInfo - 链上数据加载(回退): " + chainMs + "ms");
+                Log.d("Latency", "getAllGamesInfo - chain fallback: " + chainMs + "ms");
 
-                if (hexResults[0] == null || hexResults[0].equals("0x")) { postError(callback, "基础数据读取失败"); return; }
+                if (hexResults[0] == null || hexResults[0].equals("0x")) { postError(callback, "Unable to read base market data"); return; }
 
                 List<Type> res = FunctionReturnDecoder.decode(hexResults[0], fAll.getOutputParameters());
                 List<Uint256> ids = ((DynamicArray<Uint256>) res.get(0)).getValue();
                 List<Utf8String> cids = ((DynamicArray<Utf8String>) res.get(1)).getValue();
 
                 AppExecutors.getInstance().mainThread().execute(() ->
-                    callback.onTiming("链上 eth_call 批量(" + ids.size() + "个)", chainMs, true));
+                    callback.onTiming("On-chain eth_call batch (" + ids.size() + ")", chainMs, true));
                 List<Uint256> pools = ((DynamicArray<Uint256>) res.get(2)).getValue();
                 List<Uint256> deadlines = ((DynamicArray<Uint256>) res.get(3)).getValue();
                 List<Bool> isResolveds = ((DynamicArray<Bool>) res.get(4)).getValue();
@@ -1416,17 +1417,17 @@ public class GoldMarketRepository {
                                 String json = PinataClient.downloadJsonFromIPFS(m.ipfsCID);
                                 if (json != null && !json.isEmpty()) {
                                     JSONObject obj = new JSONObject(json);
-                                    m.desc = obj.optString("desc", "博弈池 #" + m.id);
+                                    m.desc = obj.optString("desc", "Market #" + m.id);
                                     m.condition = obj.optString("condition", "");
                                     m.avatarUrl = obj.optString("avatarUrl", "");
                                     m.detailedInfo = obj.optString("detailedInfo", "");
                                     m.optionNames = Arrays.asList(obj.optString("optionYES", "YES"), obj.optString("optionNO", "NO"));
                                     m.optionCount = 2;
                                 } else {
-                                    m.desc = "博弈池 #" + m.id;
+                                    m.desc = "Market #" + m.id;
                                 }
                             } catch (Exception e) {
-                                m.desc = "博弈池 #" + m.id;
+                                m.desc = "Market #" + m.id;
                             } finally {
                                 ipfsLatch.countDown();
                             }
@@ -1436,21 +1437,21 @@ public class GoldMarketRepository {
                 }
                 long ipfsEnd = System.currentTimeMillis();
                 long ipfsMs = ipfsEnd - ipfsStart;
-                Log.d("时延", "getAllGamesInfo - IPFS数据加载(回退): " + ipfsMs + "ms");
+                Log.d("Latency", "getAllGamesInfo - IPFS fallback: " + ipfsMs + "ms");
                 long totalMs = ipfsEnd - totalStart;
-                Log.d("时延", "getAllGamesInfo - 总耗时(回退): " + totalMs + "ms");
+                Log.d("Latency", "getAllGamesInfo - total fallback: " + totalMs + "ms");
                 AppExecutors.getInstance().mainThread().execute(() ->
-                    callback.onTiming("IPFS 批量元数据(回退)", ipfsMs, true));
+                    callback.onTiming("IPFS metadata batch (fallback)", ipfsMs, true));
 
                 final long finalTotalMs = totalMs;
                 final int modelCount = models.size();
                 AppExecutors.getInstance().mainThread().execute(() -> {
-                    callback.onTiming("回退链上+IPFS完成(" + modelCount + "个)", finalTotalMs, true);
+                    callback.onTiming("Chain + IPFS fallback complete (" + modelCount + ")", finalTotalMs, true);
                     callback.onSuccess(models);
                 });
             } catch (Exception e) {
-                Log.d("时延", "getAllGamesInfo - 失败，总耗时: " + (System.currentTimeMillis() - totalStart) + "ms");
-                postError(callback, "批量获取市场异常: " + e.getMessage());
+                Log.d("Latency", "getAllGamesInfo - failed, total: " + (System.currentTimeMillis() - totalStart) + "ms");
+                postError(callback, "Unable to load markets: " + e.getMessage());
             }
         });
     }
@@ -1470,9 +1471,9 @@ public class GoldMarketRepository {
                 List<BackendApiClient.ChainStateDTO> allStates = BackendApiClient.fetchAllChainStates(getWalletAddress());
                 long backendEnd = System.currentTimeMillis();
                 long backendMs = backendEnd - backendStart;
-                Log.d("时延", "getMyParticipatedGames - 后端DB加载: " + backendMs + "ms");
+                Log.d("Latency", "getMyParticipatedGames - backend DB: " + backendMs + "ms");
                 AppExecutors.getInstance().mainThread().execute(() ->
-                    callback.onTiming("数据库持有查询", backendMs, false));
+                    callback.onTiming("Database position query", backendMs, false));
 
                 // 过滤出用户有持有的游戏
                 List<BackendApiClient.ChainStateDTO> myStates = new ArrayList<>();
@@ -1516,7 +1517,7 @@ public class GoldMarketRepository {
                         m.virtualReserves = Arrays.asList(parseBigInteger(state.reserveNO), parseBigInteger(state.reserveYES));
                         m.myShares = Arrays.asList(parseBigInteger(state.mySharesYES), parseBigInteger(state.mySharesNO));
                         m.optionNames = Arrays.asList("YES", "NO");
-                        m.desc = "博弈池 #" + state.gameId;
+                        m.desc = "Market #" + state.gameId;
                     }
                     if (m.history == null || m.history.isEmpty()) {
                         m.history = generateMockHistory(m.virtualReserves);
@@ -1525,18 +1526,18 @@ public class GoldMarketRepository {
                 }
 
                 long totalMs = System.currentTimeMillis() - totalStart;
-                Log.d("时延", "getMyParticipatedGames - 总耗时(后端优先): " + totalMs + "ms (共 " + models.size() + " 个项目)");
+                Log.d("Latency", "getMyParticipatedGames - total (backend first): " + totalMs + "ms (" + models.size() + " markets)");
                 final long finalTotalMs = totalMs;
                 AppExecutors.getInstance().mainThread().execute(() -> {
-                    callback.onTiming("数据库持有完成(" + models.size() + "个)", finalTotalMs, false);
+                    callback.onTiming("Database positions complete (" + models.size() + ")", finalTotalMs, false);
                     callback.onSuccess(models);
                 });
                 return;
             } catch (Exception backendErr) {
                 long failMs = System.currentTimeMillis() - totalStart;
-                Log.w(TAG, "后端DB读取持有失败，回退到链上+IPFS: " + backendErr.getMessage());
+                Log.w(TAG, "Backend position read failed; falling back to chain + IPFS: " + backendErr.getMessage());
                 AppExecutors.getInstance().mainThread().execute(() ->
-                    callback.onTiming("数据库失败，回退链上持有查询...", failMs, true));
+                    callback.onTiming("Database failed; querying on-chain positions…", failMs, true));
             }
 
             // ---- 策略 2: 回退到链上 + IPFS（可靠路径） ----
@@ -1564,9 +1565,9 @@ public class GoldMarketRepository {
                 List<ParticipatedGameDTO> dtos = ((DynamicArray<ParticipatedGameDTO>) res.get(0)).getValue();
                 long chainEnd = System.currentTimeMillis();
                 long chainMs = chainEnd - chainStart;
-                Log.d("时延", "getMyParticipatedGames - 链上数据加载(回退): " + chainMs + "ms");
+                Log.d("Latency", "getMyParticipatedGames - chain fallback: " + chainMs + "ms");
                 AppExecutors.getInstance().mainThread().execute(() ->
-                    callback.onTiming("链上持有查询(" + dtos.size() + "个)", chainMs, true));
+                    callback.onTiming("On-chain position query (" + dtos.size() + ")", chainMs, true));
 
                 List<GameModel> models = new ArrayList<>();
                 for (ParticipatedGameDTO dto : dtos) {
@@ -1597,17 +1598,17 @@ public class GoldMarketRepository {
                                 String json = PinataClient.downloadJsonFromIPFS(m.ipfsCID);
                                 if (json != null && !json.isEmpty()) {
                                     JSONObject obj = new JSONObject(json);
-                                    m.desc = obj.optString("desc", "博弈池 #" + m.id);
+                                    m.desc = obj.optString("desc", "Market #" + m.id);
                                     m.condition = obj.optString("condition", "");
                                     m.avatarUrl = obj.optString("avatarUrl", "");
                                     m.detailedInfo = obj.optString("detailedInfo", "");
                                     m.optionNames = Arrays.asList(obj.optString("optionYES", "YES"), obj.optString("optionNO", "NO"));
                                     m.optionCount = 2;
                                 } else {
-                                    m.desc = "博弈池 #" + m.id;
+                                    m.desc = "Market #" + m.id;
                                 }
                             } catch (Exception e) {
-                                m.desc = "博弈池 #" + m.id;
+                                m.desc = "Market #" + m.id;
                             } finally {
                                 ipfsLatch.countDown();
                             }
@@ -1617,21 +1618,21 @@ public class GoldMarketRepository {
                 }
                 long ipfsEnd = System.currentTimeMillis();
                 long ipfsMs = ipfsEnd - ipfsStart;
-                Log.d("时延", "getMyParticipatedGames - IPFS数据加载(回退): " + ipfsMs + "ms");
+                Log.d("Latency", "getMyParticipatedGames - IPFS fallback: " + ipfsMs + "ms");
                 long totalMs = ipfsEnd - totalStart;
-                Log.d("时延", "getMyParticipatedGames - 总耗时(回退): " + totalMs + "ms (共 " + models.size() + " 个项目)");
+                Log.d("Latency", "getMyParticipatedGames - total fallback: " + totalMs + "ms (" + models.size() + " markets)");
                 AppExecutors.getInstance().mainThread().execute(() ->
-                    callback.onTiming("IPFS 持有元数据(回退)", ipfsMs, true));
+                    callback.onTiming("IPFS position metadata (fallback)", ipfsMs, true));
 
                 final long finalTotalMs = totalMs;
                 final int modelCount = models.size();
                 AppExecutors.getInstance().mainThread().execute(() -> {
-                    callback.onTiming("回退持有完成(" + modelCount + "个)", finalTotalMs, true);
+                    callback.onTiming("Position fallback complete (" + modelCount + ")", finalTotalMs, true);
                     callback.onSuccess(models);
                 });
             } catch (Exception e) {
-                Log.d("时延", "getMyParticipatedGames - 失败，总耗时: " + (System.currentTimeMillis() - totalStart) + "ms");
-                postError(callback, "获取参与的市场异常: " + e.getMessage());
+                Log.d("Latency", "getMyParticipatedGames - failed, total: " + (System.currentTimeMillis() - totalStart) + "ms");
+                postError(callback, "Unable to load participated markets: " + e.getMessage());
             }
         });
     }
@@ -1679,7 +1680,7 @@ public class GoldMarketRepository {
         tradeInfo.optionId = optionId;
         tradeInfo.amountWei = amountWei.toString();
 
-        sendTransaction(amountWei, f, "买入成功", callback, tradeInfo);
+        sendTransaction(amountWei, f, "Purchase confirmed", callback, tradeInfo);
     }
 
     public void sellShares(int gameId, int optionId, BigInteger shareAmount, TxCallback callback) {
@@ -1695,7 +1696,7 @@ public class GoldMarketRepository {
         tradeInfo.optionId = optionId;
         tradeInfo.amountWei = shareAmount.toString();
 
-        sendTransaction(BigInteger.ZERO, f, "卖出成功", callback, tradeInfo);
+        sendTransaction(BigInteger.ZERO, f, "Sale confirmed", callback, tradeInfo);
     }
 
     /**
@@ -1721,9 +1722,9 @@ public class GoldMarketRepository {
                 if (imageData != null && imageData.length > 0) {
                     try {
                         avatarCid = PinataClient.uploadFileToIPFS(imageData, "avatar.png", "image/png");
-                        Log.d(TAG, "图片上传到IPFS成功, CID: " + avatarCid);
+                        Log.d(TAG, "Image uploaded to IPFS, CID: " + avatarCid);
                     } catch (Exception e) {
-                        Log.e(TAG, "图片上传到IPFS失败: " + e.getMessage());
+                        Log.e(TAG, "Image upload to IPFS failed: " + e.getMessage());
                     }
                 }
 
@@ -1743,7 +1744,7 @@ public class GoldMarketRepository {
                 }
 
                 metadataCid = PinataClient.uploadJsonToIPFS(metadata);
-                Log.d(TAG, "元数据上传到IPFS成功, CID: " + metadataCid);
+                Log.d(TAG, "Metadata uploaded to IPFS, CID: " + metadataCid);
 
                 // ---- 步骤 3: 发送 createGame 链上交易 ----
                 // duration 由上层按“秒”计算；如果链上的 block.timestamp 实际是毫秒，则这里补齐到链单位，
@@ -1781,7 +1782,7 @@ public class GoldMarketRepository {
                         newGameId = ((Uint256) result.get(0)).getValue().intValue();
                     }
                 } catch (Exception e) {
-                    Log.w(TAG, "获取 gameCount 失败，gameId 传 0 由后端自行解析");
+                    Log.w(TAG, "Unable to fetch gameCount; backend will resolve gameId from 0");
                 }
 
                 // 4b. 同步游戏元数据
@@ -1800,9 +1801,9 @@ public class GoldMarketRepository {
                     syncReq.durationSec = duration;
                     syncReq.initialLiquidityWei = initialLiquidityWei.toString();
                     BackendApiClient.syncGameMetadata(syncReq);
-                    Log.d(TAG, "创建博弈池 - 后端元数据同步成功: gameId=" + newGameId);
+                    Log.d(TAG, "Create market - backend metadata sync succeeded: gameId=" + newGameId);
                 } catch (Exception e) {
-                    Log.w(TAG, "创建博弈池 - 后端元数据同步失败（非关键）: " + e.getMessage());
+                    Log.w(TAG, "Create market - backend metadata sync failed (non-critical): " + e.getMessage());
                 }
 
                 // 元数据已经可供列表读取；状态和历史点作为缓存后台补齐。
@@ -1812,7 +1813,7 @@ public class GoldMarketRepository {
                             () -> syncCreatedGameSupplemental(
                                     finalGameId, initialLiquidityWei));
                 }
-                AppExecutors.getInstance().mainThread().execute(() -> callback.onConfirmed("博弈池部署成功 (ID=" + finalGameId + ")"));
+                AppExecutors.getInstance().mainThread().execute(() -> callback.onConfirmed("Market deployed (ID=" + finalGameId + ")"));
 
             } catch (Exception e) {
                 e.printStackTrace();
@@ -1822,12 +1823,12 @@ public class GoldMarketRepository {
 
                 // 按异常类型精确分类，给出可操作的错误提示
                 if (msg != null && (msg.contains("IPFS") || msg.contains("Pinata"))) {
-                    step = "IPFS 上传失败（本地 IPFS 节点不可达，请确认 IPFS daemon 已启动）";
+                    step = "IPFS upload failed (local IPFS node unreachable; confirm that the daemon is running)";
                     reason = msg;
                 } else if (msg != null && (msg.contains("Unable to resolve host")
                         || msg.contains("UnknownHost")
                         || msg.contains("resolve host"))) {
-                    step = "DNS 解析失败，无法连接本地服务。请检查本地后端和 Supervisor 是否已启动";
+                    step = "DNS resolution failed; local services are unreachable. Check the backend and Supervisor";
                     reason = msg;
                 } else if (msg != null && (msg.contains("timeout")
                         || msg.contains("TimedOut")
@@ -1835,31 +1836,31 @@ public class GoldMarketRepository {
                         || msg.contains("Connection")
                         || msg.contains("Socket")
                         || msg.contains("Network"))) {
-                    step = "网络连接失败，设备无法访问服务器，请检查网络状态";
+                    step = "Network connection failed; the device cannot reach the server";
                     reason = msg;
                 } else if (msg != null && (msg.contains("revert")
                         || msg.contains("gas")
                         || msg.contains("nonce")
                         || msg.contains("underpriced"))) {
-                    step = "链上交易被拒绝";
+                    step = "On-chain transaction rejected";
                     reason = msg;
                 } else if (msg != null && msg.contains("insufficient funds")) {
-                    step = "账户余额不足，无法支付 Gas 费";
+                    step = "Insufficient balance for gas";
                     reason = msg;
                 } else if (msg != null && (msg.contains("账户余额不足")
                         || msg.contains("交易签名")
                         || msg.contains("BrokerChain RPC")
                         || msg.contains("链上合约拒绝"))) {
-                    step = "提交交易到 BrokerChain";
+                    step = "Submit transaction to BrokerChain";
                     reason = msg;
                 } else {
-                    step = "博弈池创建失败";
+                    step = "Market creation failed";
                     reason = msg;
                 }
                 StringBuilder detail = new StringBuilder();
-                detail.append("失败步骤：").append(step);
+                detail.append("Failed step: ").append(step);
                 if (reason != null && !reason.trim().isEmpty()) {
-                    detail.append("\n\n原因：").append(reason);
+                    detail.append("\n\nReason: ").append(reason);
                 }
                 postError(callback, detail.toString());
             }
@@ -1882,11 +1883,11 @@ public class GoldMarketRepository {
                 chainReq.mySharesYES = "0";
                 chainReq.mySharesNO = "0";
                 BackendApiClient.syncChainState(gameId, chainReq);
-                Log.d(TAG, "创建博弈池 - 后端初始链上状态同步成功: gameId="
+                Log.d(TAG, "Create market - initial backend chain-state sync succeeded: gameId="
                         + gameId + " deadlineSec=" + postState.deadlineSec);
             }
         } catch (Exception e) {
-            Log.w(TAG, "创建博弈池 - 后端链上状态同步失败（非关键）: "
+            Log.w(TAG, "Create market - backend chain-state sync failed (non-critical): "
                     + e.getMessage());
         }
 
@@ -1899,9 +1900,9 @@ public class GoldMarketRepository {
             point.noPrice = 50f;
             point.totalPool = initialLiquidityWei.toString();
             BackendApiClient.addHistoryPoint(gameId, point);
-            Log.d(TAG, "创建博弈池 - 初始历史价格点同步成功: gameId=" + gameId);
+            Log.d(TAG, "Create market - initial history point sync succeeded: gameId=" + gameId);
         } catch (Exception e) {
-            Log.w(TAG, "创建博弈池 - 初始历史价格点同步失败（非关键）: "
+            Log.w(TAG, "Create market - initial history point sync failed (non-critical): "
                     + e.getMessage());
         }
     }
@@ -1922,7 +1923,7 @@ public class GoldMarketRepository {
         tradeInfo.optionId = optionId;
         tradeInfo.amountWei = "0";
 
-        sendTransaction(BigInteger.ZERO, buildClaimRewardFunction(gameId, optionId), "领取成功", callback, tradeInfo);
+        sendTransaction(BigInteger.ZERO, buildClaimRewardFunction(gameId, optionId), "Payout claimed", callback, tradeInfo);
     }
 
     public void resolveGame(int gameId, int winningOption, TxCallback callback) {
@@ -1942,7 +1943,7 @@ public class GoldMarketRepository {
         // 后端 DB 的 winning_option 与当前合约保持一致：0=YES, 1=NO
         tradeInfo.winningOption = contractOption;
 
-        sendTransaction(BigInteger.ZERO, f, "开奖成功", callback, tradeInfo);
+        sendTransaction(BigInteger.ZERO, f, "Market resolved", callback, tradeInfo);
     }
 
     // ========================================================================
@@ -1950,11 +1951,21 @@ public class GoldMarketRepository {
     // ========================================================================
 
     public void toggleAiManaged(int gameId, boolean enabled, DataCallback<Boolean> callback) {
+        configureAiManaged(gameId, enabled, null, callback);
+    }
+
+    public void configureAiManaged(int gameId, boolean enabled,
+                                   BackendApiClient.AiManagedConfig config,
+                                   DataCallback<Boolean> callback) {
         AppExecutors.getInstance().networkIO().execute(() -> {
             try {
-                boolean result = BackendApiClient.setAiManagedStatus(
-                        gameId, getWalletAddress(), enabled, contractAddress, privateKey);
-                AppExecutors.getInstance().mainThread().execute(() -> callback.onSuccess(result ? enabled : !enabled));
+                boolean result = BackendApiClient.setAiManagedConfig(
+                        gameId, getWalletAddress(), enabled, contractAddress, privateKey, config);
+                if (!result) {
+                    postError(callback, "Backend did not accept the AI strategy");
+                    return;
+                }
+                AppExecutors.getInstance().mainThread().execute(() -> callback.onSuccess(enabled));
             } catch (Exception e) {
                 // 回退到原有直连方式
                 try {
@@ -1964,6 +1975,15 @@ public class GoldMarketRepository {
                     json.put("enabled", enabled);
                     json.put("contract_address", contractAddress);
                     json.put("private_key", privateKey);
+                    if (enabled && config != null) {
+                        JSONObject strategy = new JSONObject();
+                        strategy.put("buy_amount_bkc", config.buyAmountBKC);
+                        strategy.put("confidence_min", config.confidenceMin);
+                        strategy.put("min_edge_percent", config.minEdgePercent);
+                        strategy.put("kelly_fraction", config.kellyFraction);
+                        strategy.put("adaptive_cooldown", config.adaptiveCooldown);
+                        json.put("strategy", strategy);
+                    }
 
                     URL url = new URL(BackendApiClient.getBaseUrl(null) + "/api/gold/ai-managed");
                     java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
@@ -1977,21 +1997,33 @@ public class GoldMarketRepository {
                     if (code == 200) {
                         AppExecutors.getInstance().mainThread().execute(() -> callback.onSuccess(enabled));
                     } else {
-                        postError(callback, "后端响应错误: " + code);
+                        postError(callback, "Backend response error: " + code);
                     }
                 } catch (Exception ex) {
-                    postError(callback, "通知后端失败: " + ex.getMessage());
+                    postError(callback, "Unable to notify backend: " + ex.getMessage());
                 }
             }
         });
     }
 
     public void getAiManagedStatus(int gameId, DataCallback<Boolean> callback) {
+        getAiManagedConfig(gameId, new DataCallback<BackendApiClient.AiManagedConfig>() {
+            @Override public void onSuccess(BackendApiClient.AiManagedConfig value) {
+                callback.onSuccess(value.enabled);
+            }
+            @Override public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
+
+    public void getAiManagedConfig(int gameId,
+                                   DataCallback<BackendApiClient.AiManagedConfig> callback) {
         AppExecutors.getInstance().networkIO().execute(() -> {
             try {
-                boolean enabled = BackendApiClient.getAiManagedStatus(
+                BackendApiClient.AiManagedConfig config = BackendApiClient.getAiManagedConfig(
                         gameId, getWalletAddress(), contractAddress);
-                AppExecutors.getInstance().mainThread().execute(() -> callback.onSuccess(enabled));
+                AppExecutors.getInstance().mainThread().execute(() -> callback.onSuccess(config));
             } catch (Exception e) {
                 // 回退到原有直连方式
                 try {
@@ -2003,14 +2035,30 @@ public class GoldMarketRepository {
                         try (java.util.Scanner s = new java.util.Scanner(conn.getInputStream())) {
                             String resp = s.useDelimiter("\\A").hasNext() ? s.next() : "{}";
                             JSONObject obj = new JSONObject(resp);
-                            boolean enabled = obj.optBoolean("enabled", false);
-                            AppExecutors.getInstance().mainThread().execute(() -> callback.onSuccess(enabled));
+                            BackendApiClient.AiManagedConfig config = BackendApiClient.AiManagedConfig.defaults();
+                            config.enabled = obj.optBoolean("enabled", false);
+                            JSONObject strategy = obj.optJSONObject("strategy");
+                            if (strategy != null) {
+                                config.buyAmountBKC = strategy.optString(
+                                        "buy_amount_bkc", config.buyAmountBKC);
+                                config.confidenceMin = strategy.optDouble(
+                                        "confidence_min", config.confidenceMin);
+                                config.minEdgePercent = strategy.optDouble(
+                                        "min_edge_percent", config.minEdgePercent);
+                                config.kellyFraction = strategy.optDouble(
+                                        "kelly_fraction", config.kellyFraction);
+                                config.adaptiveCooldown = strategy.optBoolean(
+                                        "adaptive_cooldown", config.adaptiveCooldown);
+                            }
+                            AppExecutors.getInstance().mainThread().execute(() -> callback.onSuccess(config));
                         }
                     } else {
-                        AppExecutors.getInstance().mainThread().execute(() -> callback.onSuccess(false));
+                        BackendApiClient.AiManagedConfig config = BackendApiClient.AiManagedConfig.defaults();
+                        AppExecutors.getInstance().mainThread().execute(() -> callback.onSuccess(config));
                     }
                 } catch (Exception ex) {
-                    AppExecutors.getInstance().mainThread().execute(() -> callback.onSuccess(false));
+                    BackendApiClient.AiManagedConfig config = BackendApiClient.AiManagedConfig.defaults();
+                    AppExecutors.getInstance().mainThread().execute(() -> callback.onSuccess(config));
                 }
             }
         });

@@ -31,45 +31,28 @@
     </androidx.cardview.widget.CardView>
 
     <!-- Market Title -->
-    <TextView
+    <androidx.appcompat.widget.AppCompatTextView
         android:id="@+id/tv_market_title"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="12dp"
         android:breakStrategy="simple"
+        android:ellipsize="end"
         android:maxLines="1"
-        android:text="黄金涨跌"
+        android:singleLine="true"
+        android:text="Market"
         android:textColor="#111827"
         android:textSize="18sp"
         android:textStyle="bold"
         app:autoSizeMaxTextSize="18sp"
-        app:autoSizeMinTextSize="14sp"
+        app:autoSizeMinTextSize="10sp"
         app:autoSizeStepGranularity="1sp"
         app:autoSizeTextType="uniform"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@+id/cv_icon_container"
         app:layout_constraintTop_toTopOf="@+id/cv_icon_container" />
 
-    <!-- Market Status -->
-    <TextView
-        android:id="@+id/tv_market_status"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:layout_marginEnd="12dp"
-        android:background="@drawable/bg_ai_analysis_content"
-        android:paddingHorizontal="8dp"
-        android:paddingVertical="3dp"
-        android:text="进行中"
-        android:textColor="#047857"
-        android:textSize="12sp"
-        android:textStyle="bold"
-        app:layout_constraintBottom_toBottomOf="@+id/tv_total_pool"
-        app:layout_constraintEnd_toStartOf="@+id/tv_deadline"
-        app:layout_constraintStart_toEndOf="@+id/tv_total_pool"
-        app:layout_constraintTop_toTopOf="@+id/tv_total_pool" />
-
-    <!-- Pool and Deadline Row -->
+    <!-- Pool, Status and Deadline Row -->
     <TextView
         android:id="@+id/tv_total_pool"
         android:layout_width="wrap_content"
@@ -82,10 +65,29 @@
         app:layout_constraintTop_toBottomOf="@+id/tv_market_title" />
 
     <TextView
+        android:id="@+id/tv_market_status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="8dp"
+        android:background="@drawable/bg_ai_analysis_content"
+        android:maxLines="1"
+        android:paddingHorizontal="8dp"
+        android:paddingVertical="3dp"
+        android:text="Active"
+        android:textColor="#047857"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toBottomOf="@+id/tv_total_pool"
+        app:layout_constraintEnd_toStartOf="@+id/tv_deadline"
+        app:layout_constraintStart_toEndOf="@+id/tv_total_pool"
+        app:layout_constraintTop_toTopOf="@+id/tv_total_pool" />
+
+    <TextView
         android:id="@+id/tv_deadline"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="截止日期: --"
+        android:maxLines="1"
+        android:text="Ends in --"
         android:textColor="#64748B"
         android:textSize="12sp"
         app:layout_constraintBottom_toBottomOf="@+id/tv_total_pool"
@@ -97,7 +99,7 @@
         android:id="@+id/ll_progress"
         android:layout_width="match_parent"
         android:layout_height="10dp"
-        android:layout_marginTop="18dp"
+        android:layout_marginTop="12dp"
         android:background="#EEF2F7"
         android:orientation="horizontal"
         android:weightSum="100"
@@ -124,7 +126,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
-        android:text="YES 50%"
+        android:text="YES Share 50%"
         android:textColor="#059669"
         android:textSize="11sp"
         android:textStyle="bold"
@@ -136,7 +138,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
-        android:text="NO 50%"
+        android:text="NO Share 50%"
         android:textColor="#E11D48"
         android:textSize="11sp"
         android:textStyle="bold"

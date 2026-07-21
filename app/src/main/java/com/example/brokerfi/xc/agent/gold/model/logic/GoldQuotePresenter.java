@@ -21,22 +21,22 @@ public final class GoldQuotePresenter {
 
     public static String sourceLabel(String rawSource) {
         String source = rawSource == null ? "" : rawSource.trim();
-        boolean cached = source.contains("缓存");
+        boolean cached = source.contains("缓存") || source.toLowerCase(Locale.US).contains("cache");
         if (source.toLowerCase(Locale.US).startsWith("chainlink")) {
-            return cached ? "Chainlink XAU/USD（缓存）" : "Chainlink XAU/USD";
+            return cached ? "Chainlink XAU/USD (cached)" : "Chainlink XAU/USD";
         }
         int feed = source.indexOf(" feed=");
         if (feed > 0) source = source.substring(0, feed).trim();
         int round = source.indexOf(" round=");
         if (round > 0) source = source.substring(0, round).trim();
-        return source.isEmpty() ? "行情服务" : source;
+        return source.isEmpty() ? "Market data" : source;
     }
 
     public static String quoteMeta(String rawSource, String rawUpdatedAt, boolean delayed) {
         String source = sourceLabel(rawSource);
         String time = compactUpdatedAt(rawUpdatedAt);
-        String suffix = delayed && !source.contains("缓存") ? " · 延迟行情" : "";
-        return time.isEmpty() ? source + suffix : source + " · " + time + " 更新" + suffix;
+        String suffix = delayed && !source.toLowerCase(Locale.US).contains("cache") ? " · delayed" : "";
+        return time.isEmpty() ? source + suffix : source + " · updated " + time + suffix;
     }
 
     public static String dailyChange(double change, boolean available) {

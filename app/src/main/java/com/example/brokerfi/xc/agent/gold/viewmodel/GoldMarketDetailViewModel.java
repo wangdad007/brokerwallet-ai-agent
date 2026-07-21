@@ -8,13 +8,18 @@ import androidx.lifecycle.MutableLiveData;
 
 import com.example.brokerfi.xc.StorageUtil;
 import com.example.brokerfi.xc.agent.ai.DeepSeekClient;
+import com.example.brokerfi.xc.agent.gold.model.data.AppExecutors;
+import com.example.brokerfi.xc.agent.gold.model.data.BackendApiClient;
 import com.example.brokerfi.xc.agent.gold.model.data.GoldMarketRepository;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldAdvisoryManager;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketResearchPromptBuilder;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketResearchAnalysisPresenter;
 
 import java.math.BigInteger;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class GoldMarketDetailViewModel extends AndroidViewModel {
     private final Application application;
@@ -27,9 +32,30 @@ public class GoldMarketDetailViewModel extends AndroidViewModel {
     private final MutableLiveData<Boolean> isLoading = new MutableLiveData<>(false);
     private final MutableLiveData<String> txStatus = new MutableLiveData<>();
     private final MutableLiveData<String> debugToast = new MutableLiveData<>();
+    private final MutableLiveData<ChartData> chartData = new MutableLiveData<>();
+    private final MutableLiveData<BackendApiClient.AiManagedConfig> aiManagedConfig =
+            new MutableLiveData<>(BackendApiClient.AiManagedConfig.defaults());
     private final AtomicBoolean gameInfoRequestInFlight = new AtomicBoolean(false);
+    private final AtomicInteger chartRequestSequence = new AtomicInteger(0);
 
     private String marketAiContext = "";
+    private String selectedChartRange = "1d";
+
+    public static final class ChartData {
+        public final int gameId;
+        public final String range;
+        public final List<BackendApiClient.HistoryPointDTO> history;
+        public final List<BackendApiClient.TradeDTO> trades;
+
+        ChartData(int gameId, String range,
+                  List<BackendApiClient.HistoryPointDTO> history,
+                  List<BackendApiClient.TradeDTO> trades) {
+            this.gameId = gameId;
+            this.range = range;
+            this.history = history;
+            this.trades = trades;
+        }
+    }
 
     public GoldMarketDetailViewModel(@NonNull Application application) {
         super(application);
@@ -52,8 +78,39 @@ public class GoldMarketDetailViewModel extends AndroidViewModel {
     public LiveData<Boolean> getIsLoading() { return isLoading; }
     public LiveData<String> getTxStatus() { return txStatus; }
     public LiveData<String> getDebugToast() { return debugToast; }
+    public LiveData<ChartData> getChartData() { return chartData; }
+    public LiveData<BackendApiClient.AiManagedConfig> getAiManagedConfig() { return aiManagedConfig; }
     public String getMarketAiContext() { return marketAiContext; }
     public String getWalletAddress() { return repository.getWalletAddress(); }
+
+    public void loadChartData(int gameId, String range) {
+        selectedChartRange = range == null || range.trim().isEmpty() ? "1d" : range;
+        final String requestRange = selectedChartRange;
+        final int requestSequence = chartRequestSequence.incrementAndGet();
+        AppExecutors.getInstance().networkIO().execute(() -> {
+            List<BackendApiClient.HistoryPointDTO> history;
+            List<BackendApiClient.TradeDTO> trades = Collections.emptyList();
+            try {
+                history = BackendApiClient.fetchHistory(gameId, requestRange);
+            } catch (Exception e) {
+                if (requestSequence == chartRequestSequence.get()) {
+                    error.postValue("Unable to load chart data: " + e.getMessage());
+                }
+                return;
+            }
+            try {
+                String wallet = getWalletAddress();
+                if (wallet != null && !wallet.trim().isEmpty()) {
+                    trades = BackendApiClient.fetchTradeHistory(gameId, wallet);
+                }
+            } catch (Exception ignored) {
+                // The market chart remains useful even when personal trade markers are unavailable.
+            }
+            if (requestSequence == chartRequestSequence.get()) {
+                chartData.postValue(new ChartData(gameId, requestRange, history, trades));
+            }
+        });
+    }
 
     public void loadGameInfo(int gameId) {
         loadGameInfo(gameId, null);
@@ -75,10 +132,14 @@ public class GoldMarketDetailViewModel extends AndroidViewModel {
             @Override
             public void onSuccess(GoldMarketRepository.GameModel model) {
                 GoldMarketRepository aiRepository = repositoryFor(model != null ? model.contractAddress : contractAddress);
-                aiRepository.getAiManagedStatus(gameId, new GoldMarketRepository.DataCallback<Boolean>() {
+                aiRepository.getAiManagedConfig(gameId,
+                        new GoldMarketRepository.DataCallback<BackendApiClient.AiManagedConfig>() {
                     @Override
-                    public void onSuccess(Boolean managed) {
-                        if (model != null) model.isManaged = managed;
+                    public void onSuccess(BackendApiClient.AiManagedConfig config) {
+                        BackendApiClient.AiManagedConfig resolved = config == null
+                                ? BackendApiClient.AiManagedConfig.defaults() : config;
+                        if (model != null) model.isManaged = resolved.enabled;
+                        aiManagedConfig.postValue(resolved);
                         finishGameInfoRequest(showLoading);
                         currentGame.postValue(model);
                     }
@@ -97,7 +158,7 @@ public class GoldMarketDetailViewModel extends AndroidViewModel {
             @Override
             public void onTiming(String source, long durationMs, boolean isFallback) {
                 if (!showLoading) return;
-                String msg = source + " | " + String.format(java.util.Locale.getDefault(), "%.2f秒", durationMs / 1000.0);
+                String msg = source + " | " + String.format(java.util.Locale.US, "%.2fs", durationMs / 1000.0);
                 debugToast.postValue(msg);
             }
         });
@@ -135,6 +196,11 @@ public class GoldMarketDetailViewModel extends AndroidViewModel {
         repositoryFor(contractAddress).toggleAiManaged(gameId, enabled, new GoldMarketRepository.DataCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean result) {
+                BackendApiClient.AiManagedConfig config = aiManagedConfig.getValue();
+                if (config == null) config = BackendApiClient.AiManagedConfig.defaults();
+                config = config.copy();
+                config.enabled = Boolean.TRUE.equals(result);
+                aiManagedConfig.postValue(config);
                 GoldMarketRepository.GameModel model = currentGame.getValue();
                 if (model != null && model.id == gameId) {
                     model.isManaged = result;
@@ -145,6 +211,34 @@ public class GoldMarketDetailViewModel extends AndroidViewModel {
             public void onError(String err) {
                 error.postValue(err);
                 // 恢复 UI 状态
+                GoldMarketRepository.GameModel model = currentGame.getValue();
+                if (model != null) currentGame.postValue(model);
+            }
+        });
+    }
+
+    public void configureAiManaged(int gameId, String contractAddress,
+                                   BackendApiClient.AiManagedConfig config) {
+        if (config == null) return;
+        BackendApiClient.AiManagedConfig requested = config.copy();
+        requested.enabled = true;
+        repositoryFor(contractAddress).configureAiManaged(gameId, true, requested,
+                new GoldMarketRepository.DataCallback<Boolean>() {
+            @Override
+            public void onSuccess(Boolean result) {
+                requested.enabled = Boolean.TRUE.equals(result);
+                aiManagedConfig.postValue(requested);
+                GoldMarketRepository.GameModel model = currentGame.getValue();
+                if (model != null && model.id == gameId) {
+                    model.isManaged = requested.enabled;
+                    currentGame.postValue(model);
+                }
+                txStatus.postValue("AI trading settings saved");
+            }
+
+            @Override
+            public void onError(String err) {
+                error.postValue(err);
                 GoldMarketRepository.GameModel model = currentGame.getValue();
                 if (model != null) currentGame.postValue(model);
             }
@@ -193,6 +287,7 @@ public class GoldMarketDetailViewModel extends AndroidViewModel {
                 txStatus.postValue("Confirmed: " + msg);
                 // 核心交易缓存已在确认回调前写入，无需再固定等待 2 秒。
                 loadGameInfo(gameId, contractAddress);
+                loadChartData(gameId, selectedChartRange);
             }
             @Override public void onError(String err) { tradeError.postValue(err); }
         });
@@ -204,12 +299,14 @@ public class GoldMarketDetailViewModel extends AndroidViewModel {
 
     public void claimReward(int gameId, String contractAddress, int optionId) {
         repositoryFor(contractAddress).claimReward(gameId, optionId, new GoldMarketRepository.TxCallback() {
-            @Override public void onTxSent(String txHash) { txStatus.postValue("Claim Sent"); }
+            @Override public void onTxSent(String txHash) {
+                txStatus.postValue("Payout claim submitted");
+            }
             @Override public void onConfirmed(String msg) {
-                txStatus.postValue("Claim Success");
+                txStatus.postValue("Payout claimed successfully");
                 loadGameInfo(gameId, contractAddress);
             }
-            @Override public void onError(String err) { tradeError.postValue("领取失败：\n\n" + err); }
+            @Override public void onError(String err) { tradeError.postValue("Claim failed:\n\n" + err); }
         });
     }
 }

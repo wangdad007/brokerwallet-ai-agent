@@ -11,7 +11,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class GoldMarketCardPresenter {
-    private static final int FALLBACK_MAX_TITLE_LENGTH = 12;
     private static final Pattern DATE_PATTERN = Pattern.compile("\\d{4}-\\d{2}-\\d{2}");
     private static final Pattern TIME_PATTERN = Pattern.compile("\\d{1,2}:\\d{2}");
     private static final Pattern DATE_TIME_PATTERN =
@@ -21,7 +20,8 @@ public final class GoldMarketCardPresenter {
     private static final Pattern USD_PATTERN =
             Pattern.compile("(\\d+(?:\\.\\d+)?)\\s*(USD|USDT|美元|美金)", Pattern.CASE_INSENSITIVE);
     private static final Pattern USD_RANGE_PATTERN = Pattern.compile(
-            "(\\d+(?:\\.\\d+)?)\\s*[-~至到]\\s*(\\d+(?:\\.\\d+)?)\\s*(?:USD|USDT|美元|美金)",
+            "(\\d+(?:\\.\\d+)?)\\s*(?:[-–—~至到]|\\band\\b)\\s*"
+                    + "(\\d+(?:\\.\\d+)?)\\s*(?:USD|USDT|美元|美金)",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern TON_PATTERN = Pattern.compile("(\\d+(?:\\.\\d+)?)\\s*吨");
     private static final Pattern INDICATOR_PATTERN =
@@ -109,15 +109,17 @@ public final class GoldMarketCardPresenter {
         if (!containsAny(text, "连续") || !containsAny(text, "上涨", "下跌")) return "";
         Matcher days = DAY_PATTERN.matcher(text);
         if (!days.find()) return "";
-        String direction = containsAny(text, "下跌") ? "下跌" : "上涨";
-        return "黄金价格 连续" + direction + " " + days.group(1) + "天";
+        String direction = containsAny(text, "下跌") ? "Falls" : "Rises";
+        String dayCount = days.group(1);
+        return "Gold Price " + direction + " for " + dayCount + " "
+                + dayUnit(dayCount);
     }
 
     private static String returnThresholdTitle(String text) {
         if (!containsAny(text, "涨跌幅")) return "";
         Matcher amount = PERCENT_PATTERN.matcher(text);
         if (!amount.find()) return "";
-        return "黄金涨跌幅 " + comparatorFor(text, "大于等于")
+        return "Gold Absolute Return " + comparatorFor(text, "At Least")
                 + " " + amount.group(1) + "%";
     }
 
@@ -125,9 +127,12 @@ public final class GoldMarketCardPresenter {
         if (!containsAny(text, "位于", "不在", "区间")) return "";
         Matcher range = USD_RANGE_PATTERN.matcher(text);
         if (!range.find()) return "";
-        String relation = containsAny(text, "不在") ? "不在" : "位于";
-        return "黄金价格 " + relation + " " + range.group(1) + "-"
-                + range.group(2) + "USD/盎司";
+        if (containsAny(text, "不在")) {
+            return "Gold Price Outside " + range.group(1) + "–"
+                    + range.group(2) + " USD/oz";
+        }
+        return "Gold Price " + range.group(1) + "–"
+                + range.group(2) + " USD/oz";
     }
 
     private static String eventTitle(String rawTitle) {
@@ -137,14 +142,17 @@ public final class GoldMarketCardPresenter {
         String event = normalized.substring(eventIndex + "发生".length())
                 .replaceFirst("^[：:「“\\s]+", "")
                 .replaceAll("[」”？?\\s]+$", "").trim();
-        return event.isEmpty() ? "" : "发生 " + event;
+        if (containsAny(event, "美联储降息")) {
+            event = "Federal Reserve Rate Cut";
+        }
+        return event.isEmpty() ? "" : "Event: " + event;
     }
 
     private static String volatilityTitle(String text) {
         if (!containsAny(text, "波幅", "波动", "波动率", "volatility")) return "";
         Matcher amount = PERCENT_PATTERN.matcher(text);
         if (!amount.find()) return "";
-        return "黄金波动 " + comparatorFor(text, "大于") + " " + amount.group(1) + "%";
+        return "Gold Volatility " + comparatorFor(text, "Above") + " " + amount.group(1) + "%";
     }
 
     private static String relativeTitle(String text) {
@@ -152,7 +160,7 @@ public final class GoldMarketCardPresenter {
         if (index < 0) return "";
         String asset = benchmarkName(text.substring(index + "跑赢".length()));
         if (asset.isEmpty()) return "";
-        return "黄金 跑赢 " + asset;
+        return "Gold Outperforms " + asset;
     }
 
     private static String benchmarkName(String text) {
@@ -160,8 +168,8 @@ public final class GoldMarketCardPresenter {
         if (containsAny(text, "以太坊", "ETH", "Ethereum")) return "ETH";
         if (containsAny(text, "SOL", "Solana")) return "SOL";
         if (containsAny(text, "BNB", "Binance Coin")) return "BNB";
-        if (containsAny(text, "标普500", "S&P 500", "S&P")) return "标普500";
-        if (containsAny(text, "白银")) return "白银";
+        if (containsAny(text, "标普500", "S&P 500", "S&P")) return "S&P 500";
+        if (containsAny(text, "白银")) return "Silver";
         return text.replaceFirst("^[：:「“\\s]+", "")
                 .replaceAll("\\s*\\(.*", "")
                 .replaceAll("[，,].*", "")
@@ -172,50 +180,51 @@ public final class GoldMarketCardPresenter {
         Matcher indicator = INDICATOR_PATTERN.matcher(text);
         if (!indicator.find()) return "";
         String name = indicator.group(1).toUpperCase(Locale.US);
-        if (containsAny(text, "上穿信号线", "上穿")) return "黄金" + name + " 上穿信号线";
-        if (containsAny(text, "交叉向上", "金叉", "cross up")) return "黄金" + name + " 交叉向上";
-        if (containsAny(text, "下穿信号线", "下穿")) return "黄金" + name + " 下穿信号线";
-        if (containsAny(text, "交叉向下", "死叉", "cross down")) return "黄金" + name + " 交叉向下";
+        if (containsAny(text, "上穿信号线", "上穿")) return "Gold " + name + " Crosses Above Signal";
+        if (containsAny(text, "交叉向上", "金叉", "cross up")) return "Gold " + name + " Bullish Cross";
+        if (containsAny(text, "下穿信号线", "下穿")) return "Gold " + name + " Crosses Below Signal";
+        if (containsAny(text, "交叉向下", "死叉", "cross down")) return "Gold " + name + " Bearish Cross";
         Matcher value = TECHNICAL_VALUE_PATTERN.matcher(text);
         if (value.find()) {
-            return "黄金" + name + " " + comparatorFor(text, "大于") + " " + value.group(1);
+            return "Gold " + name + " " + comparatorFor(text, "Above") + " " + value.group(1);
         }
-        return "黄金" + name + " 指标";
+        return "Gold " + name + " Indicator";
     }
 
     private static String touchTitle(String text) {
         if (!containsAny(text, "触及", "touch")) return "";
         Matcher amount = USD_PATTERN.matcher(text);
         if (!amount.find()) return "";
-        return "黄金价格 触及 " + amount.group(1) + "USD/盎司";
+        return "Gold Price Touches " + amount.group(1) + " USD/oz";
     }
 
     private static String volumeTitle(String text) {
         if (!containsAny(text, "成交量", "交易量", "volume")) return "";
         Matcher amount = TON_PATTERN.matcher(text);
         if (!amount.find()) return "";
-        return "黄金成交量 " + comparatorFor(text, "大于") + " " + amount.group(1) + "吨";
+        return "Gold Volume " + comparatorFor(text, "Above") + " " + amount.group(1) + " Tons";
     }
 
     private static String thresholdTitle(String text) {
         Matcher amount = USD_PATTERN.matcher(text);
         if (!amount.find() || !containsAny(text, "大于", "小于", "等于", "高于", "低于", "超过")) return "";
-        return "黄金价格 " + comparatorFor(text, "大于") + " "
-                + amount.group(1) + "USD/盎司";
+        return "Gold Price " + comparatorFor(text, "Above") + " "
+                + amount.group(1) + " USD/oz";
     }
 
     private static String comparatorFor(String text, String fallback) {
-        if (containsAny(text, "小于等于", "不高于")) return "小于等于";
-        if (containsAny(text, "大于等于", "不低于")) return "大于等于";
-        if (containsAny(text, "小于", "低于", "below", "less than")) return "小于";
-        if (containsAny(text, "等于", "equal")) return "等于";
-        if (containsAny(text, "大于", "高于", "超过", "above", "greater than", "达到")) return "大于";
+        if (containsAny(text, "小于等于", "不高于")) return "At Most";
+        if (containsAny(text, "大于等于", "不低于")) return "At Least";
+        if (containsAny(text, "小于", "低于", "below", "less than")) return "Below";
+        if (containsAny(text, "等于", "equal")) return "Equals";
+        if (containsAny(text, "大于", "高于", "超过", "above", "greater than", "达到")) return "Above";
         return fallback;
     }
 
     private static String explicitDurationDays(String title) {
         Matcher matcher = DAY_PATTERN.matcher(title == null ? "" : title);
-        return matcher.find() ? matcher.group(1) + "天" : "";
+        if (!matcher.find()) return "";
+        return "Over " + matcher.group(1) + " " + dayUnit(matcher.group(1));
     }
 
     private static String deadlineSuffixDays(long deadlineSec) {
@@ -224,43 +233,57 @@ public final class GoldMarketCardPresenter {
         if (diffMs <= 0L) return "";
         long hours = Math.max(1L, (diffMs + TimeUnit.HOURS.toMillis(1L) - 1L)
                 / TimeUnit.HOURS.toMillis(1L));
-        return ((hours + 23L) / 24L) + "天";
+        long days = (hours + 23L) / 24L;
+        return "Over " + days + (days == 1L ? " Day" : " Days");
     }
 
     private static String cleanTitle(String title) {
         if (title == null) return "";
-        return title.replaceAll("\\(\\s*\\)|（\\s*）", "").trim();
+        return title.replaceAll("\\(\\s*\\)|（\\s*）", "")
+                .replaceAll("(?i)\\s+Consecutive\\s+(?=Days?\\b)", " ")
+                .replaceAll(
+                        "(?i)\\bGold\\s+Price\\s+Between\\s+"
+                                + "(\\d+(?:\\.\\d+)?)\\s+and\\s+"
+                                + "(\\d+(?:\\.\\d+)?)\\s+USD/oz\\b",
+                        "Gold Price $1–$2 USD/oz")
+                .trim();
     }
 
     public static String compactTitle(String rawTitle) {
         String normalized = normalize(rawTitle);
         if (normalized.isEmpty()) {
-            return "黄金预测";
+            return "Gold Market";
         }
         if (normalized.startsWith("博弈池 #") || normalized.startsWith("博弈池#")) {
-            return "黄金预测";
+            return "Gold Market";
         }
 
         String lower = normalized.toLowerCase(Locale.US);
         if (containsAny(normalized, "黄金波幅", "波动率", "剧烈", "volatility")) {
-            return "黄金波动率";
+            return "Gold Volatility";
         }
         if (containsAny(normalized, "成交量", "交易量", "volume")) {
-            return "黄金成交量";
+            return "Gold Volume";
         }
         if (containsAny(normalized, "rsi", "macd", "kdj", "boll", "指标", "technical")) {
-            return "技术指标";
+            return "Technical Indicator";
+        }
+        if (containsAny(normalized, "相关性", "correlation")) {
+            return "Gold Correlation";
         }
         if (containsAny(normalized, "触及", "高于", "低于", "大于", "小于", "不低于", "不高于")
                 || lower.contains("touched")) {
-            return "黄金目标价";
+            return "Gold Price Target";
         }
         if (containsAny(normalized, "黄金价格", "金价", "黄金")
                 && containsAny(normalized, "上涨", "下跌", "涨", "跌", "up", "down")) {
-            return "黄金涨跌";
+            return "Gold Direction";
         }
 
-        return trimFallback(normalized);
+        // English titles created by the current flow are already concise and
+        // semantic. Let the two-line card layout handle overflow instead of
+        // destructively storing/displaying only the first 12 characters.
+        return containsHan(normalized) ? "Gold Market" : normalized;
     }
 
     private static boolean containsAmount(String title) {
@@ -276,15 +299,15 @@ public final class GoldMarketCardPresenter {
         if (!goldRelated) return "";
         if (text.contains("下跌") || text.contains("下降") || text.contains("price down")
                 || text.contains(" down")) {
-            return "黄金价格 下跌";
+            return "Gold Price Falls";
         }
         if (text.contains("上涨") || text.contains("上升") || text.contains("price up")
                 || text.contains(" up")) {
-            return "黄金价格 上涨";
+            return "Gold Price Rises";
         }
         if (text.contains("持平") || text.contains("横盘") || text.contains("flat")
                 || text.contains("range")) {
-            return "黄金价格 持平";
+            return "Gold Price Remains Flat";
         }
         return "";
     }
@@ -337,7 +360,7 @@ public final class GoldMarketCardPresenter {
         long hours = (minutes + 59) / 60;
         if (hours < 24) return "";
         long days = (hours + 23) / 24;
-        return days + "天";
+        return "Over " + days + (days == 1L ? " Day" : " Days");
     }
 
     private static String normalize(String title) {
@@ -368,11 +391,24 @@ public final class GoldMarketCardPresenter {
         return false;
     }
 
-    private static String trimFallback(String normalized) {
-        if (normalized.length() <= FALLBACK_MAX_TITLE_LENGTH) {
-            return normalized;
+    private static boolean containsHan(String text) {
+        if (text == null) return false;
+        for (int offset = 0; offset < text.length();) {
+            int codePoint = text.codePointAt(offset);
+            if ((codePoint >= 0x3400 && codePoint <= 0x4DBF)
+                    || (codePoint >= 0x4E00 && codePoint <= 0x9FFF)
+                    || (codePoint >= 0xF900 && codePoint <= 0xFAFF)) return true;
+            offset += Character.charCount(codePoint);
         }
-        return normalized.substring(0, FALLBACK_MAX_TITLE_LENGTH);
+        return false;
+    }
+
+    private static String dayUnit(String rawCount) {
+        try {
+            return Double.parseDouble(rawCount) == 1d ? "Day" : "Days";
+        } catch (NumberFormatException ignored) {
+            return "Days";
+        }
     }
 
     private static final class TimePoint {

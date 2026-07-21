@@ -66,14 +66,14 @@ public class BackendApiClient {
             String manual = prefs.getString(KEY_BASE_URL, null);
             if (manual != null && !manual.trim().isEmpty()) {
                 cachedBaseUrl = manual.trim();
-                Log.d(TAG, "使用手动设置的 Base URL: " + cachedBaseUrl);
+                Log.d(TAG, "Using manually configured Base URL: " + cachedBaseUrl);
                 return cachedBaseUrl;
             }
         }
 
         // 2. local 分支始终使用本地后端，避免 Release 包回退到远程服务器
         cachedBaseUrl = AgentConfig.BACKEND_BASE_URL;
-        Log.d(TAG, "Base URL 自动选择: " + cachedBaseUrl + " (local-supervisor)");
+        Log.d(TAG, "Base URL selected automatically: " + cachedBaseUrl + " (local-supervisor)");
         return cachedBaseUrl;
     }
 
@@ -86,7 +86,7 @@ public class BackendApiClient {
             ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                     .edit().putString(KEY_BASE_URL, cachedBaseUrl).apply();
         }
-        Log.d(TAG, "Base URL 已更新: " + cachedBaseUrl);
+        Log.d(TAG, "Base URL updated: " + cachedBaseUrl);
     }
 
     /**
@@ -98,7 +98,7 @@ public class BackendApiClient {
             ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                     .edit().remove(KEY_BASE_URL).apply();
         }
-        Log.d(TAG, "Base URL 已重置为自动选择");
+        Log.d(TAG, "Base URL reset to automatic selection");
     }
 
     // ==================== 内部 HTTP 工具 ====================
@@ -264,7 +264,12 @@ public class BackendApiClient {
      * Response: { "history": [ HistoryPointDTO, ... ] }
      */
     public static List<HistoryPointDTO> fetchHistory(int gameId) throws Exception {
-        String body = doGet("/games/" + gameId + "/history");
+        return fetchHistory(gameId, "all");
+    }
+
+    public static List<HistoryPointDTO> fetchHistory(int gameId, String range) throws Exception {
+        String safeRange = range == null || range.trim().isEmpty() ? "all" : range.trim();
+        String body = doGet("/games/" + gameId + "/history?range=" + safeRange);
         JSONObject json = new JSONObject(body);
         JSONArray arr = json.getJSONArray("history");
         Type listType = new TypeToken<List<HistoryPointDTO>>(){}.getType();
@@ -347,11 +352,27 @@ public class BackendApiClient {
      * GET /api/v1/gold/ai-managed?game_id=X&user_address=Y&contract_address=Z
      */
     public static boolean getAiManagedStatus(int gameId, String userAddress, String contractAddress) throws Exception {
+        return getAiManagedConfig(gameId, userAddress, contractAddress).enabled;
+    }
+
+    public static AiManagedConfig getAiManagedConfig(int gameId, String userAddress,
+                                                      String contractAddress) throws Exception {
         String path = String.format("/ai-managed?game_id=%d&user_address=%s&contract_address=%s",
                 gameId, userAddress, contractAddress);
         String body = doGet(path);
         JSONObject json = new JSONObject(body);
-        return json.optBoolean("enabled", false);
+        AiManagedConfig config = AiManagedConfig.defaults();
+        config.enabled = json.optBoolean("enabled", false);
+        JSONObject strategy = json.optJSONObject("strategy");
+        if (strategy != null) {
+            config.buyAmountBKC = strategy.optString("buy_amount_bkc", config.buyAmountBKC);
+            config.confidenceMin = strategy.optDouble("confidence_min", config.confidenceMin);
+            config.minEdgePercent = strategy.optDouble("min_edge_percent", config.minEdgePercent);
+            config.kellyFraction = strategy.optDouble("kelly_fraction", config.kellyFraction);
+            config.adaptiveCooldown = strategy.optBoolean(
+                    "adaptive_cooldown", config.adaptiveCooldown);
+        }
+        return config;
     }
 
     /**
@@ -362,15 +383,61 @@ public class BackendApiClient {
      */
     public static boolean setAiManagedStatus(int gameId, String userAddress, boolean enabled,
                                               String contractAddress, String privateKey) throws Exception {
+        return setAiManagedConfig(gameId, userAddress, enabled, contractAddress, privateKey, null);
+    }
+
+    public static boolean setAiManagedConfig(int gameId, String userAddress, boolean enabled,
+                                             String contractAddress, String privateKey,
+                                             AiManagedConfig config) throws Exception {
         JSONObject json = new JSONObject();
         json.put("game_id", gameId);
         json.put("user_address", userAddress);
         json.put("enabled", enabled);
         json.put("contract_address", contractAddress);
         json.put("private_key", privateKey);
+        if (enabled && config != null) {
+            JSONObject strategy = new JSONObject();
+            strategy.put("buy_amount_bkc", config.buyAmountBKC);
+            strategy.put("confidence_min", config.confidenceMin);
+            strategy.put("min_edge_percent", config.minEdgePercent);
+            strategy.put("kelly_fraction", config.kellyFraction);
+            strategy.put("adaptive_cooldown", config.adaptiveCooldown);
+            json.put("strategy", strategy);
+        }
         String body = doPost("/ai-managed", json.toString());
         JSONObject resp = new JSONObject(body);
         return resp.optBoolean("success", false);
+    }
+
+    public static class AiManagedConfig {
+        public boolean enabled;
+        public String buyAmountBKC;
+        public double confidenceMin;
+        public double minEdgePercent;
+        public double kellyFraction;
+        public boolean adaptiveCooldown;
+
+        public static AiManagedConfig defaults() {
+            AiManagedConfig value = new AiManagedConfig();
+            value.enabled = false;
+            value.buyAmountBKC = "1";
+            value.confidenceMin = 0.70d;
+            value.minEdgePercent = 5d;
+            value.kellyFraction = 0.25d;
+            value.adaptiveCooldown = true;
+            return value;
+        }
+
+        public AiManagedConfig copy() {
+            AiManagedConfig value = new AiManagedConfig();
+            value.enabled = enabled;
+            value.buyAmountBKC = buyAmountBKC;
+            value.confidenceMin = confidenceMin;
+            value.minEdgePercent = minEdgePercent;
+            value.kellyFraction = kellyFraction;
+            value.adaptiveCooldown = adaptiveCooldown;
+            return value;
+        }
     }
 
     // ==================== DTO 定义 ====================
@@ -594,6 +661,9 @@ public class BackendApiClient {
         @SerializedName("tx_hash")
         public String txHash;
 
+        @SerializedName("timestamp_sec")
+        public long timestampSec;
+
         @SerializedName("created_at")
         public String createdAt;
 
@@ -631,6 +701,9 @@ public class BackendApiClient {
 
         @SerializedName("is_success")
         public boolean isSuccess;
+
+        @SerializedName("timestamp_sec")
+        public long timestampSec;
 
         @SerializedName("share_amount_wei")
         public String shareAmountWei;

@@ -12,27 +12,27 @@ import static org.junit.Assert.assertFalse;
 
 public class NetworkErrorFormatterTest {
     @Test
-    public void mapsDnsFailureToChineseMessage() {
+    public void mapsDnsFailureToEnglishMessage() {
         String message = NetworkErrorFormatter.forThrowable(
                 new UnknownHostException("api.deepseek.com"));
 
-        assertEquals("网络域名解析失败，请检查模拟器网络后重试", message);
+        assertEquals("Unable to resolve the network host. Check the device connection and retry.", message);
         assertFalse(message.contains("UnknownHostException"));
     }
 
     @Test
-    public void mapsTimeoutToChineseMessage() {
-        assertEquals("AI 服务响应超时，请稍后重试",
+    public void mapsTimeoutToEnglishMessage() {
+        assertEquals("The AI service timed out. Please retry shortly.",
                 NetworkErrorFormatter.forThrowable(new SocketTimeoutException("timeout")));
     }
 
     @Test
     public void mapsKnownHttpFailuresWithoutLeakingResponseBody() {
-        assertEquals("AI 服务认证失败，请检查后端 API Key",
+        assertEquals("AI authentication failed. Check the backend API key.",
                 NetworkErrorFormatter.forRawError("HTTP 401: secret upstream response"));
-        assertEquals("AI 服务繁忙，请稍后重试",
+        assertEquals("The AI service is busy. Please retry shortly.",
                 NetworkErrorFormatter.forRawError("HTTP 429: quota details"));
-        assertEquals("AI 服务暂时不可用，请稍后重试",
+        assertEquals("The AI service is temporarily unavailable. Please retry shortly.",
                 NetworkErrorFormatter.forRawError("HTTP 502: proxy internals"));
     }
 }

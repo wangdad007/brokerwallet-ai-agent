@@ -35,6 +35,11 @@ public class GoldMarketUiContractTest {
             "app/src/main/res/layout/activity_gold_position_detail.xml";
     private static final String AI_CHAT_FRAGMENT_PATH =
             "app/src/main/java/com/example/brokerfi/xc/agent/gold/view/AIChatFragment.java";
+    private static final String AI_MANAGED_SETTINGS_PATH =
+            "app/src/main/java/com/example/brokerfi/xc/agent/gold/view/"
+                    + "GoldAiManagedSettingsActivity.java";
+    private static final String AI_MANAGED_SETTINGS_LAYOUT_PATH =
+            "app/src/main/res/layout/activity_gold_ai_managed_settings.xml";
 
     @Test
     public void chatDisplaysExistingSummaryAndUsesSavedContextForFollowUps() throws Exception {
@@ -94,7 +99,7 @@ public class GoldMarketUiContractTest {
 
         int marketPanelEnd = layout.indexOf("@+id/tv_countdown");
         int aiCard = layout.indexOf("@+id/card_market_ai");
-        int tradingHeading = layout.indexOf("android:text=\"立即下注\"");
+        int tradingHeading = layout.indexOf("android:text=\"Trade Now\"");
         assertTrue("AI card must follow the AMM market panel",
                 marketPanelEnd >= 0 && aiCard > marketPanelEnd);
         assertTrue("AI card must precede the trading section", tradingHeading > aiCard);
@@ -104,7 +109,7 @@ public class GoldMarketUiContractTest {
         assertTrue(cardTag.contains("android:focusable=\"true\""));
         assertTrue(layout.contains("@+id/tv_market_ai_status"));
         assertTrue(layout.contains("@+id/tv_market_ai_summary"));
-        assertTrue(layout.contains("AI 投研分析"));
+        assertTrue(layout.contains("AI Market Research"));
 
         assertEquals("@drawable/bg_bet_yes", buttonBackground(layout, "btn_buy_up"));
         assertEquals("@drawable/bg_bet_no", buttonBackground(layout, "btn_buy_down"));
@@ -139,7 +144,7 @@ public class GoldMarketUiContractTest {
 
         String requestCard = blockAfter(source, "private void requestMarketAiAnalysis()");
         assertInOrder(requestCard, "requestInFlight = true", "progressMarketAi.setVisibility",
-                "AI 正在核对行情、赔率、结算条件与时间风险", "viewModel.startAiAnalysis()");
+                "AI is reviewing market data, share balance, resolution rules, and time risk", "viewModel.startAiAnalysis()");
 
         String request = blockAfter(viewModel, "public void startAiAnalysis()");
         assertInOrder(request, "currentGame.getValue()", "GoldAdvisoryManager.fetchPrice");
@@ -163,13 +168,82 @@ public class GoldMarketUiContractTest {
     }
 
     @Test
+    public void detailChartKeepsMarketLinesContinuousAndSeparatesPersonalTradeMarkers()
+            throws Exception {
+        String source = readUtf8(DETAIL_ACTIVITY_PATH);
+        String viewModel = readUtf8(DETAIL_VIEW_MODEL_PATH);
+        String layout = readUtf8(DETAIL_LAYOUT_PATH);
+        String tradeRenderer = readUtf8(
+                "app/src/main/java/com/example/brokerfi/xc/agent/gold/view/"
+                        + "GoldMarketTradeRenderer.java");
+
+        assertTrue(source.contains("setYes.setMode(LineDataSet.Mode.LINEAR)"));
+        assertTrue(source.contains("setNo.setMode(LineDataSet.Mode.LINEAR)"));
+        assertTrue(source.contains("setYes.setDrawCircles(false)"));
+        assertTrue(source.contains("setNo.setDrawCircles(false)"));
+        assertTrue(source.contains("manualYes"));
+        assertTrue(source.contains("manualNo"));
+        assertTrue(source.contains("aiYes"));
+        assertTrue(source.contains("aiNo"));
+        assertTrue(source.contains("GoldMarketChartPresenter.aggregateTrades("));
+        assertTrue(source.contains("GoldMarketTradeRenderer"));
+        assertTrue(source.contains("lineChart.setExtraOffsets(2, 54, 4, 2)"));
+        assertTrue(layout.contains("android:layout_height=\"250dp\""));
+        assertTrue(tradeRenderer.contains("layoutMarkers(markers)"));
+        assertTrue(tradeRenderer.contains("DS ×"));
+        assertTrue(tradeRenderer.contains("drawConnector(canvas, marker)"));
+        assertTrue(layout.contains("@+id/tv_trade_bucket_hint"));
+        assertTrue(layout.contains("Your Purchase Markers"));
+        assertTrue(layout.contains("DeepSeek-managed"));
+        assertTrue(layout.contains("@drawable/bg_chart_manual_marker"));
+        assertTrue(tradeRenderer.contains("? \"M ×\" + trade.purchaseCount : \"M\""));
+        assertFalse(layout.contains("Solid dot = manual purchase"));
+        assertTrue(viewModel.contains("BackendApiClient.fetchTradeHistory(gameId, wallet)"));
+        assertFalse(layout.contains("@+id/chart_range_30m"));
+        assertTrue(layout.contains("@+id/chart_range_1h"));
+        assertTrue(layout.contains("@+id/chart_range_1d"));
+        assertTrue(layout.contains("@+id/chart_range_1w"));
+        assertFalse(layout.contains("@+id/tv_chart_window"));
+        assertFalse(source.contains("Last 1 hour · minute-level share movement"));
+        assertTrue(source.contains("xAxis.setAxisMinimum"));
+        assertTrue(source.contains("xAxis.setGranularity(granularityMinutes)"));
+    }
+
+    @Test
+    public void researchAssistantDoesNotExposeModelConfidenceInTheCard() throws Exception {
+        String source = readUtf8(AI_CHAT_FRAGMENT_PATH);
+        String layout = readUtf8("app/src/main/res/layout/fragment_ai_chat.xml");
+
+        assertFalse(layout.contains("@+id/tv_ai_confidence"));
+        assertFalse(source.contains("tvAiConfidence"));
+        assertFalse(source.contains("AI confidence "));
+    }
+
+    @Test
+    public void aiAutoManagementHasEditablePersistedRiskGuardrails() throws Exception {
+        String source = readUtf8(AI_MANAGED_SETTINGS_PATH);
+        String layout = readUtf8(AI_MANAGED_SETTINGS_LAYOUT_PATH);
+
+        for (String id : new String[]{"et_order_amount", "et_confidence", "et_edge",
+                "et_kelly", "switch_adaptive_cooldown", "btn_save_strategy"}) {
+            assertTrue("missing AI strategy control " + id, layout.contains("@+id/" + id));
+        }
+        assertTrue(source.contains("config.buyAmountBKC"));
+        assertTrue(source.contains("config.confidenceMin"));
+        assertTrue(source.contains("config.minEdgePercent"));
+        assertTrue(source.contains("config.kellyFraction"));
+        assertTrue(source.contains("config.adaptiveCooldown"));
+        assertTrue(source.contains("repository.configureAiManaged(gameId, true, config"));
+    }
+
+    @Test
     public void detailActivityUsesUsefulUnavailableMessageInsteadOfLoadingToast()
             throws Exception {
         String source = readUtf8(DETAIL_ACTIVITY_PATH);
 
         String toggle = blockAfter(source, "private void requestMarketAiAnalysis()");
         assertInOrder(toggle, "progressMarketAi.setVisibility(View.VISIBLE)",
-                "tvMarketAiSummary.setText(\"AI 正在核对行情、赔率、结算条件与时间风险…\")",
+                "tvMarketAiSummary.setText(\"AI is reviewing market data, share balance, resolution rules, and time risk…\")",
                 "viewModel.startAiAnalysis()");
         assertFalse("Starting analysis should update the card instead of showing a loading toast",
                 toggle.contains("Toast.makeText"));
@@ -183,7 +257,7 @@ public class GoldMarketUiContractTest {
 
         String errorObserver = blockAfter(source, "viewModel.getError().observe");
         assertInOrder(errorObserver, "err.startsWith(\"AI error:\")",
-                "showMarketAiUnavailable(\"暂不可用\", message)");
+                "showMarketAiUnavailable(\"Unavailable\", message)");
     }
 
     @Test
@@ -204,6 +278,27 @@ public class GoldMarketUiContractTest {
         String render = blockAfter(source, "private void showPositionAnalysis(");
         assertTrue(render.contains("positionAnalysisExpanded = true"));
         assertTrue(render.contains("layoutPositionAiDetails.setVisibility(View.VISIBLE)"));
+    }
+
+    @Test
+    public void positionInsightStartsOnlyAfterExplicitUserAction() throws Exception {
+        String source = readUtf8(POSITION_DETAIL_ACTIVITY_PATH);
+        String layout = readUtf8(POSITION_DETAIL_LAYOUT_PATH);
+
+        assertFalse(source.contains("maybeStartPositionAnalysis()"));
+        assertFalse(source.contains("positionAnalysisAutoRequested"));
+        assertTrue(source.contains("private void showPositionAnalysisReady()"));
+        assertTrue(source.contains("tvPositionAiStatus.setText(\"Analyze ›\")"));
+        assertTrue(source.contains("if (currentGame == null || !tradeHistoryLoadedOnce)"));
+        assertTrue(source.contains("showPositionAnalysisPreparing()"));
+        assertTrue(source.contains("tvPositionAiPlaceholder.setOnClickListener(v -> requestPositionAnalysis())"));
+        assertTrue(source.contains("btnPositionAiRefresh.setOnClickListener(v -> requestPositionAnalysis())"));
+        assertTrue(layout.contains("Tap Analyze to generate a personalized position and risk report"));
+
+        String ready = blockAfter(source, "private void showPositionAnalysisReady()");
+        assertFalse(ready.contains("DeepSeekClient.chatForParsing"));
+        String request = blockAfter(source, "private void requestPositionAnalysis()");
+        assertTrue(request.contains("DeepSeekClient.chatForParsing"));
     }
 
     @Test
@@ -235,11 +330,18 @@ public class GoldMarketUiContractTest {
         String fragment = readUtf8(POSITIONS_FRAGMENT_PATH);
         String cardLayout = readUtf8(POSITION_CARD_LAYOUT_PATH);
 
-        assertTrue(cardLayout.contains("持有 YES: 0.00"));
-        assertTrue(cardLayout.contains("持有 NO: 0.00"));
+        assertTrue(cardLayout.contains("YES shares: 0.00"));
+        assertTrue(cardLayout.contains("NO shares: 0.00"));
+        String titleTag = openingTag(cardLayout, "TextView", "tv_position_title");
+        assertTrue(titleTag.contains("app:layout_constraintEnd_toEndOf=\"parent\""));
+        assertTrue(titleTag.contains("android:maxLines=\"2\""));
+        assertFalse(titleTag.contains("tv_position_side"));
+        assertTrue(cardLayout.contains("android:text=\"Position Side\""));
+        assertTrue(cardLayout.indexOf("@+id/tv_position_side")
+                > cardLayout.indexOf("@+id/ll_data_row"));
         assertTrue(fragment.contains("GoldPositionValuation.calculateMarket"));
         assertTrue(fragment.contains("GoldPositionValuation.calculatePortfolio"));
-        assertTrue(fragment.contains("\" 份额\""));
+        assertTrue(fragment.contains("\" shares\""));
         assertFalse("Top summary must not add raw shares as BKC",
                 fragment.contains("totalInvested"));
 
@@ -255,6 +357,43 @@ public class GoldMarketUiContractTest {
                 "GoldPositionValuation.calculatePortfolio(myPositions)"));
         assertTrue(updateSummary.contains("portfolio.getUnavailableMarketCount()"));
         assertTrue(updateSummary.contains("animateBalance(totalBkc.doubleValue())"));
+    }
+
+    @Test
+    public void englishProductCopyUsesConsistentNaturalTerminology() throws Exception {
+        String copy = readUtf8(AI_MANAGED_SETTINGS_LAYOUT_PATH)
+                + readUtf8(DETAIL_LAYOUT_PATH)
+                + readUtf8(POSITION_DETAIL_LAYOUT_PATH)
+                + readUtf8("app/src/main/res/layout/dialog_gold_pool_summary.xml")
+                + readUtf8("app/src/main/res/layout/fragment_gold_market_list.xml")
+                + readUtf8(DETAIL_ACTIVITY_PATH)
+                + readUtf8(POSITION_DETAIL_ACTIVITY_PATH)
+                + readUtf8(DETAIL_VIEW_MODEL_PATH);
+
+        for (String retiredCopy : new String[]{
+                "AI Auto-Management", "AI auto-management", "AI Managed",
+                "DeepSeek managed", "Awaiting Resolution", "Claim Sent",
+                "Claim Success", "Start–End Dates", "On-chain Markets",
+                "Current market", "Collapse ˄", "View details ˅"
+        }) {
+            assertFalse("Retired English UI copy returned: " + retiredCopy,
+                    copy.contains(retiredCopy));
+        }
+        assertTrue(copy.contains("AI-Managed Trading"));
+        assertTrue(copy.contains("DeepSeek-managed"));
+        assertTrue(copy.contains("Start and End Dates"));
+        assertTrue(copy.contains("On-Chain Markets"));
+        assertTrue(copy.contains("Payout claim submitted"));
+        assertTrue(copy.contains("Payout claimed successfully"));
+
+        for (String viewPath : new String[]{
+                "app/src/main/java/com/example/brokerfi/xc/agent/gold/view/GoldMarketListFragment.java",
+                POSITIONS_FRAGMENT_PATH,
+                DETAIL_ACTIVITY_PATH
+        }) {
+            assertFalse("Internal timing diagnostics must not appear in production UI",
+                    readUtf8(viewPath).contains("getDebugToast().observe"));
+        }
     }
 
     private static String readUtf8(String path) throws Exception {

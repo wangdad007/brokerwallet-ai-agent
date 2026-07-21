@@ -92,7 +92,7 @@ public class GoldMyPositionsViewModel extends AndroidViewModel {
             @Override
             public void onTiming(String source, long durationMs, boolean isFallback) {
                 if (!showLoading) return;
-                String msg = source + " | " + String.format(java.util.Locale.getDefault(), "%.2f秒", durationMs / 1000.0);
+                String msg = source + " | " + String.format(java.util.Locale.US, "%.2fs", durationMs / 1000.0);
                 debugToast.postValue(msg);
             }
         });

@@ -58,16 +58,51 @@ public class GoldMarketDetailPresenterTest {
     }
 
     @Test
+    public void englishTitlePartsSeparateContentActionValueAndDuration() {
+        List<GoldMarketDetailPresenter.Part> threshold =
+                GoldMarketDetailPresenter.highlightParts("Gold Price At Least 3000 USD/oz");
+        assertTrue(contains(threshold, GoldMarketDetailPresenter.Role.NOUN, "Price"));
+        assertTrue(contains(threshold, GoldMarketDetailPresenter.Role.COMPARATOR, "At Least"));
+        assertTrue(contains(threshold, GoldMarketDetailPresenter.Role.AMOUNT, "3000 USD/oz"));
+
+        List<GoldMarketDetailPresenter.Part> streak =
+                GoldMarketDetailPresenter.highlightParts("Gold Price Rises for 2 Days");
+        assertTrue(contains(streak, GoldMarketDetailPresenter.Role.TREND_UP, "Rises"));
+        assertTrue(contains(streak, GoldMarketDetailPresenter.Role.AMOUNT,
+                "2 Days"));
+
+        List<GoldMarketDetailPresenter.Part> relative =
+                GoldMarketDetailPresenter.highlightParts("Gold Outperforms BTC");
+        assertTrue(contains(relative, GoldMarketDetailPresenter.Role.COMPARATOR, "Outperforms"));
+        assertTrue(contains(relative, GoldMarketDetailPresenter.Role.NOUN, "BTC"));
+    }
+
+    @Test
     public void resolutionRuleUsesReadableSections() {
         String formatted = GoldMarketDetailPresenter.formatResolutionRule(
                 "黄金价格 位于 3900-4050USD/盎司；北京时间 2026-07-15 00:00 至 "
                         + "2026-07-16 00:00；信源为 Ethereum Chainlink Data Feed，"
                         + "取边界时刻之前最后一轮有效报价。");
 
-        assertTrue(formatted.contains("判定条件\n黄金价格 位于 3900-4050USD/盎司"));
-        assertTrue(formatted.contains("观察周期\n北京时间 2026-07-15 00:00 至 2026-07-16 00:00"));
-        assertTrue(formatted.contains("数据来源\nEthereum Chainlink Data Feed"));
-        assertTrue(formatted.contains("取价规则\n取边界时刻之前最后一轮有效报价"));
+        assertTrue(formatted.contains("Resolution Rule\nGold Price Between 3900 and 4050 USD/oz"));
+        assertTrue(formatted.contains("Observation Period\nBeijing time 2026-07-15 00:00 to 2026-07-16 00:00"));
+        assertTrue(formatted.contains(
+                "Data Source\nChainlink XAU/USD Data Feed on Ethereum"));
+        assertTrue(formatted.contains("Pricing Policy\nUse the final valid quote at or before each boundary"));
+    }
+
+    @Test
+    public void formatsEnglishCreationPolicyIntoSections() {
+        String formatted = GoldMarketDetailPresenter.formatResolutionRule(
+                "Gold Price Above 4000 USD/oz; Beijing time 2026-07-15 00:00 to "
+                        + "2026-07-16 00:00; source: Ethereum Chainlink Data Feed; "
+                        + "use the final valid quote at or before each boundary.");
+
+        assertTrue(formatted.contains("Resolution Rule\nGold Price Above 4000 USD/oz"));
+        assertTrue(formatted.contains("Observation Period\nBeijing time 2026-07-15 00:00 to 2026-07-16 00:00"));
+        assertTrue(formatted.contains(
+                "Data Source\nChainlink XAU/USD Data Feed on Ethereum"));
+        assertTrue(formatted.contains("Pricing Policy\nUse the final valid quote at or before each boundary"));
     }
 
     @Test
@@ -126,7 +161,7 @@ public class GoldMarketDetailPresenterTest {
                 "截止 2026-07-06 15:00 金价 大于 10 USD", 0);
 
         org.junit.Assert.assertEquals("金价 大于 10 USD", hero.primaryTitle);
-        org.junit.Assert.assertEquals("截止 2026-07-06 15:00", hero.timeSubtitle);
+        org.junit.Assert.assertEquals("Ends 2026-07-06 15:00", hero.timeSubtitle);
     }
 
     @Test

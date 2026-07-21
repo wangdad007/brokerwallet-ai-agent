@@ -19,7 +19,7 @@ public final class GoldMarketOptionText {
     }
 
     public static String holdingLabel(int optionIndex) {
-        return optionIndex == 1 ? "持有 NO" : "持有 YES";
+        return optionIndex == 1 ? "Holding NO" : "Holding YES";
     }
 
     public static String displayName(String rawName, int optionIndex) {
@@ -49,14 +49,14 @@ public final class GoldMarketOptionText {
     }
 
     public static String outcomeLabel(int optionIndex, boolean winner) {
-        return displayName(optionIndex) + (winner ? " 胜出" : " 未胜出");
+        return displayName(optionIndex) + (winner ? " Won" : " Did not win");
     }
 
-    public static String probabilityLabel(int optionIndex, float probability) {
-        return String.format(Locale.getDefault(), "%s %.1f%%", shortName(optionIndex), probability);
+    public static String shareLabel(int optionIndex, float share) {
+        return String.format(Locale.getDefault(), "%s %.1f%%", chartLabel(optionIndex), share);
     }
 
     public static String chartLabel(int optionIndex) {
-        return displayName(optionIndex) + " 概率";
+        return displayName(optionIndex) + " Share";
     }
 }

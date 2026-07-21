@@ -26,15 +26,15 @@ public final class GoldMarketStatusStyle {
 
     public static GoldMarketStatusStyle forMarket(boolean isResolved, boolean isRefunded, long remainingSeconds) {
         if (isRefunded) {
-            return new GoldMarketStatusStyle("已退款", REFUNDED_TEXT, REFUNDED_BACKGROUND);
+            return new GoldMarketStatusStyle("Refunded", REFUNDED_TEXT, REFUNDED_BACKGROUND);
         }
         if (isResolved) {
-            return new GoldMarketStatusStyle("已开奖", RESOLVED_TEXT, RESOLVED_BACKGROUND);
+            return new GoldMarketStatusStyle("Resolved", RESOLVED_TEXT, RESOLVED_BACKGROUND);
         }
         if (remainingSeconds <= 0) {
-            return new GoldMarketStatusStyle("等待裁决", PENDING_TEXT, PENDING_BACKGROUND);
+            return new GoldMarketStatusStyle("Pending Resolution", PENDING_TEXT, PENDING_BACKGROUND);
         }
-        return new GoldMarketStatusStyle("运行中", ACTIVE_TEXT, ACTIVE_BACKGROUND);
+        return new GoldMarketStatusStyle("Active", ACTIVE_TEXT, ACTIVE_BACKGROUND);
     }
 
     public static GoldMarketStatusStyle forMarketOutcome(boolean isResolved,
@@ -49,7 +49,7 @@ public final class GoldMarketStatusStyle {
         boolean noWins = winningOption == 1;
         String winnerName = GoldMarketOptionText.displayName(noWins ? noName : yesName, noWins ? 1 : 0);
         return new GoldMarketStatusStyle(
-                winnerName + " 胜出",
+                winnerName + " Won",
                 noWins ? NO_TEXT : YES_TEXT,
                 noWins ? NO_BACKGROUND : YES_BACKGROUND);
     }
