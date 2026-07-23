@@ -19,7 +19,7 @@ public class AgentLocalConfigTest {
     @Test
     public void localAgentConfigCentralizesServiceUrls() {
         assertEquals("10.0.2.2", AgentConfig.LOCAL_HOST);
-        assertEquals("http://10.0.2.2:8082", AgentConfig.BACKEND_BASE_URL);
+        assertEquals("http://10.0.2.2:8081", AgentConfig.BACKEND_BASE_URL);
         assertEquals("http://10.0.2.2:56741/", AgentConfig.BROKER_CHAIN_BASE_URL);
         assertEquals("http://10.0.2.2:8083/ipfs/", AgentConfig.IPFS_GATEWAY_URL);
         assertEquals("http://10.0.2.2:5001/api/v0/add", AgentConfig.IPFS_API_ADD_URL);
