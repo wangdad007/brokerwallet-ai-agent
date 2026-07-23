@@ -19,7 +19,7 @@ public final class GoldMarketOptionText {
     }
 
     public static String holdingLabel(int optionIndex) {
-        return optionIndex == 1 ? "Holding NO" : "Holding YES";
+        return optionIndex == 1 ? "持有 NO" : "持有 YES";
     }
 
     public static String displayName(String rawName, int optionIndex) {
@@ -49,7 +49,7 @@ public final class GoldMarketOptionText {
     }
 
     public static String outcomeLabel(int optionIndex, boolean winner) {
-        return displayName(optionIndex) + (winner ? " Won" : " Did not win");
+        return displayName(optionIndex) + (winner ? " 获胜" : " 未获胜");
     }
 
     public static String shareLabel(int optionIndex, float share) {
@@ -57,6 +57,6 @@ public final class GoldMarketOptionText {
     }
 
     public static String chartLabel(int optionIndex) {
-        return displayName(optionIndex) + " Share";
+        return displayName(optionIndex) + " 份额";
     }
 }

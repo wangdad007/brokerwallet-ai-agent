@@ -9,7 +9,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Market Creation Summary"
+        android:text="博弈池创建摘要"
         android:textColor="#000000"
         android:textSize="20sp"
         android:textStyle="bold"
@@ -30,7 +30,7 @@
         <TextView
             android:layout_width="100dp"
             android:layout_height="wrap_content"
-            android:text="Market Title"
+            android:text="博弈池标题"
             android:textColor="#888888"
             android:textSize="14sp" />
         <TextView
@@ -40,7 +40,7 @@
             android:layout_weight="1"
             android:breakStrategy="simple"
             android:maxLines="3"
-            android:text="Confirmed"
+            android:text="已确认"
             android:textColor="#000000"
             android:textSize="14sp"
             android:textStyle="bold" />
@@ -54,14 +54,14 @@
         <TextView
             android:layout_width="100dp"
             android:layout_height="wrap_content"
-            android:text="Resolution Rule"
+            android:text="判定规则"
             android:textColor="#888888"
             android:textSize="14sp" />
         <TextView
             android:id="@+id/tv_summary_logic"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Resolution rule will appear here"
+            android:text="判定规则将在这里显示"
             android:textColor="#000000"
             android:textSize="14sp" />
     </LinearLayout>
@@ -74,14 +74,14 @@
         <TextView
             android:layout_width="100dp"
             android:layout_height="wrap_content"
-            android:text="Observation Period"
+            android:text="观察周期"
             android:textColor="#888888"
             android:textSize="14sp" />
         <TextView
             android:id="@+id/tv_summary_period"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Start and End Dates"
+            android:text="开始与截止日期"
             android:textColor="#000000"
             android:textSize="14sp" />
     </LinearLayout>
@@ -94,7 +94,7 @@
         <TextView
             android:layout_width="100dp"
             android:layout_height="wrap_content"
-            android:text="Creator"
+            android:text="创建者"
             android:textColor="#888888"
             android:textSize="14sp" />
         <TextView
@@ -116,14 +116,14 @@
         <TextView
             android:layout_width="100dp"
             android:layout_height="wrap_content"
-            android:text="Created At"
+            android:text="创建时间"
             android:textColor="#888888"
             android:textSize="14sp" />
         <TextView
             android:id="@+id/tv_summary_time"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Now"
+            android:text="刚刚"
             android:textColor="#000000"
             android:textSize="14sp" />
     </LinearLayout>
@@ -134,7 +134,7 @@
         android:layout_height="48dp"
         android:layout_marginTop="24dp"
         android:background="@drawable/custom_button_background"
-        android:text="Done · Return to Markets"
+        android:text="完成 · 返回博弈市场"
         android:textAllCaps="false"
         android:textColor="#FFFFFF" />
 

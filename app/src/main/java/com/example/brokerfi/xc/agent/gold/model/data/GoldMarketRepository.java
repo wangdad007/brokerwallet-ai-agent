@@ -328,7 +328,7 @@ public class GoldMarketRepository {
                     AppExecutors.getInstance().mainThread().execute(() -> callback.onConfirmed(successMsg));
                 }
             } catch (Exception e) {
-                postError(callback, describeTradeFailure("Submit transaction", e.getMessage()));
+                postError(callback, describeTradeFailure("提交交易", e.getMessage()));
             }
         });
     }
@@ -344,10 +344,10 @@ public class GoldMarketRepository {
                 + " data=" + data.substring(0, Math.min(66, data.length())) + "...");
         EthSendTransaction resp = web3j.ethSendTransaction(txn).send();
         if (resp.hasError()) {
-            postError(callback, describeTradeFailure("Submit transaction", resp.getError().getMessage()));
+            postError(callback, describeTradeFailure("提交交易", resp.getError().getMessage()));
             return null;
         } else if (resp.getTransactionHash() == null || resp.getTransactionHash().isEmpty()) {
-            postError(callback, "RPC returned no transaction hash; submission is unconfirmed");
+            postError(callback, "RPC 未返回交易哈希，提交状态尚未确认");
             return null;
         }
         String txHash = resp.getTransactionHash();
@@ -375,7 +375,7 @@ public class GoldMarketRepository {
         Log.d(TAG, "brokerChainSendTx response: " + (response != null ? response.substring(0, Math.min(200, response.length())) : "null"));
 
         if (response == null || response.trim().isEmpty()) {
-            throw new IOException("BrokerChain returned no response; transaction status is unknown");
+            throw new IOException("BrokerChain 未返回响应，交易状态未知");
         }
 
         String rpcError = describeBrokerChainTxError(response);
@@ -385,7 +385,7 @@ public class GoldMarketRepository {
 
         String txHash = extractBrokerChainTxHash(response);
         if (txHash == null || txHash.isEmpty()) {
-            throw new IOException("BrokerChain returned no transaction hash; status is unknown");
+            throw new IOException("BrokerChain 未返回交易哈希，交易状态未知");
         }
         return txHash;
     }
@@ -405,7 +405,7 @@ public class GoldMarketRepository {
 
     private String describeBrokerChainTxError(String response) {
         String trimmed = response == null ? "" : response.trim();
-        if (trimmed.isEmpty()) return "BrokerChain returned an empty response";
+        if (trimmed.isEmpty()) return "BrokerChain 返回了空响应";
 
         try {
             JSONObject root = new JSONObject(trimmed);
@@ -438,9 +438,9 @@ public class GoldMarketRepository {
         String lower = msg.toLowerCase();
 
         if (lower.contains("addr not exist") || lower.contains("account not exist")) {
-            return "The selected wallet account is not registered on the local BrokerChain yet. "
-                    + "Return to the wallet home screen, use Faucet once to create and fund this account, "
-                    + "then retry the trade.";
+            return "当前钱包账户尚未在 BrokerChain 上注册。"
+                    + "请返回钱包主页，使用一次水龙头创建账户并领取测试资金，"
+                    + "然后重试交易";
         }
 
         if (lower.contains("insufficient funds") || lower.contains("not have enough token")) {
@@ -448,31 +448,31 @@ public class GoldMarketRepository {
             if (matcher.find()) {
                 BigInteger requiredWei = new BigInteger(matcher.group(1));
                 BigInteger balanceWei = new BigInteger(matcher.group(2));
-                return "Insufficient balance. This market requires about "
-                        + formatBkc(requiredWei) + " BKC; current balance is about "
+                return "余额不足。该博弈池约需 "
+                        + formatBkc(requiredWei) + " BKC；当前余额约为 "
                         + formatBkc(balanceWei)
-                        + " BKC. Reduce initial liquidity to about 1 BKC or fund the wallet and retry.";
+                        + " BKC。请降低初始流动性或充值后重试";
             }
-            return "Insufficient balance for the on-chain transaction. Reduce initial liquidity or fund the wallet.";
+            return "链上交易余额不足，请降低初始流动性或充值后重试";
         }
 
         if (lower.contains("invalid sign") || lower.contains("replay attack")) {
-            return "The transaction signature is duplicate or expired. Wait a few seconds before submitting again.";
+            return "交易签名重复或已过期，请等待几秒后重新提交";
         }
 
         if (lower.contains("nonce")) {
-            return "The on-chain nonce is out of sequence, possibly because another transaction is pending. Wait and retry once.";
+            return "链上 nonce 顺序异常，可能有另一笔交易尚未完成，请稍候再试";
         }
 
         if (lower.contains("execution reverted") || lower.contains("revert")) {
-            return "The smart contract rejected this transaction. Technical details: " + msg;
+            return "智能合约拒绝了该交易。技术详情：" + msg;
         }
 
         if (code != Integer.MIN_VALUE) {
-            return "BrokerChain RPC error (code=" + code + "): "
+            return "BrokerChain RPC 错误（代码=" + code + "）："
                     + (msg.isEmpty() ? rawResponse : msg);
         }
-        return "Transaction failed: " + (msg.isEmpty() ? rawResponse : msg);
+        return "交易失败：" + (msg.isEmpty() ? rawResponse : msg);
     }
 
     private String describeTradeFailure(String stage, String rawMessage) {
@@ -480,36 +480,36 @@ public class GoldMarketRepository {
         String lower = msg.toLowerCase(Locale.ROOT);
 
         if (lower.contains("past deadline")) {
-            return stage + " failed: the market deadline has passed and the purchase was rejected.\n\n"
-                    + "Possible causes:\n"
-                    + "1. The market has ended;\n"
-                    + "2. The on-chain deadline uses an invalid time unit;\n"
-                    + "3. Cached market status is not current.\n\n"
-                    + "Technical details: Past deadline";
+            return stage + "失败：博弈池已过截止时间，本次购买被拒绝\n\n"
+                    + "可能原因：\n"
+                    + "1. 博弈池已经截止；\n"
+                    + "2. 链上截止时间使用了错误的时间单位；\n"
+                    + "3. 缓存中的博弈池状态不是最新状态\n\n"
+                    + "技术详情：Past deadline";
         }
         if (lower.contains("game already ended") || lower.contains("already ended")) {
-            return stage + " failed: this market is ended or refunded and no longer accepts purchases.\n\n"
-                    + "Technical details: " + msg;
+            return stage + "失败：该博弈池已截止或已退款，不再接受购买\n\n"
+                    + "技术详情：" + msg;
         }
         if (lower.contains("insufficient funds")) {
-            return stage + " failed: insufficient balance for the trade or gas.\n\n"
-                    + "Technical details: " + msg;
+            return stage + "失败：交易金额或手续费余额不足\n\n"
+                    + "技术详情：" + msg;
         }
         if (lower.contains("nonce")) {
-            return stage + " failed: the on-chain nonce is out of sequence and another transaction may be pending.\n\n"
-                    + "Wait a few seconds and try once more.\n\nTechnical details: " + msg;
+            return stage + "失败：链上 nonce 顺序异常，可能有另一笔交易尚未完成\n\n"
+                    + "请等待几秒后重试\n\n技术详情：" + msg;
         }
         if (lower.contains("replay attack") || lower.contains("invalid sign")) {
-            return stage + " failed: the transaction signature is duplicate or expired.\n\n"
-                    + "Avoid repeated taps; wait a few seconds and retry.\n\nTechnical details: " + msg;
+            return stage + "失败：交易签名重复或已过期\n\n"
+                    + "请勿连续点击，等待几秒后重试\n\n技术详情：" + msg;
         }
         if (lower.contains("execution reverted") || lower.contains("revert")) {
-            return stage + " failed: the smart contract rejected this transaction.\n\nTechnical details: " + msg;
+            return stage + "失败：智能合约拒绝了该交易\n\n技术详情：" + msg;
         }
         if (msg.isEmpty()) {
-            return stage + " failed without error details. Please try again later.";
+            return stage + "失败，未返回错误详情，请稍后重试";
         }
-        return stage + " failed:\n\n" + msg;
+        return stage + "失败：\n\n" + msg;
     }
 
     private String formatBkc(BigInteger wei) {
@@ -871,7 +871,7 @@ public class GoldMarketRepository {
         m.id = meta.gameId;
         m.contractAddress = meta.contractAddress;
         m.ipfsCID = meta.ipfsCid;
-        m.desc = meta.desc != null && !meta.desc.isEmpty() ? meta.desc : ("Market #" + meta.gameId);
+        m.desc = meta.desc != null && !meta.desc.isEmpty() ? meta.desc : ("博弈池 #" + meta.gameId);
         m.condition = meta.condition != null ? meta.condition : "";
         m.avatarUrl = meta.avatarUrl != null ? meta.avatarUrl : "";
         m.detailedInfo = meta.detailedInfo != null ? meta.detailedInfo : "";
@@ -1046,7 +1046,7 @@ public class GoldMarketRepository {
 
     private void enrichFromIPFS(GameModel model) {
         if (model.ipfsCID == null || model.ipfsCID.isEmpty()) {
-            model.desc = "Market #" + model.id;
+            model.desc = "博弈池 #" + model.id;
             model.history = generateMockHistory(model.virtualReserves);
             return;
         }
@@ -1054,7 +1054,7 @@ public class GoldMarketRepository {
             String json = PinataClient.downloadJsonFromIPFS(model.ipfsCID);
             if (json != null && !json.isEmpty()) {
                 JSONObject obj = new JSONObject(json);
-                model.desc = obj.optString("desc", "Market #" + model.id);
+                model.desc = obj.optString("desc", "博弈池 #" + model.id);
                 model.condition = obj.optString("condition", "");
                 model.avatarUrl = obj.optString("avatarUrl", "");
                 model.detailedInfo = obj.optString("detailedInfo", "");
@@ -1078,12 +1078,12 @@ public class GoldMarketRepository {
                     model.history = generateMockHistory(model.virtualReserves);
                 }
             } else {
-                model.desc = "Market #" + model.id;
+                model.desc = "博弈池 #" + model.id;
                 model.history = generateMockHistory(model.virtualReserves);
             }
         } catch (Exception e) {
             Log.e(TAG, "IPFS enrich failed for game " + model.id + ": " + e.getMessage());
-            model.desc = "Market #" + model.id;
+            model.desc = "博弈池 #" + model.id;
             model.history = generateMockHistory(model.virtualReserves);
         }
     }
@@ -1099,13 +1099,13 @@ public class GoldMarketRepository {
                 String hex = ethCall(function);
                 List<Type> result = FunctionReturnDecoder.decode(hex, function.getOutputParameters());
                 if (result.isEmpty()) {
-                    postError(callback, "Market count response was empty");
+                    postError(callback, "博弈池数量响应为空");
                     return;
                 }
                 int count = ((Uint256) result.get(0)).getValue().intValue();
                 AppExecutors.getInstance().mainThread().execute(() -> callback.onSuccess(count));
             } catch (Exception e) {
-                postError(callback, "Unable to load market count: " + e.getMessage());
+                postError(callback, "无法加载博弈池数量：" + e.getMessage());
             }
         });
     }
@@ -1933,7 +1933,7 @@ public class GoldMarketRepository {
         tradeInfo.optionId = optionId;
         tradeInfo.amountWei = "0";
 
-        sendTransaction(BigInteger.ZERO, buildClaimRewardFunction(gameId, optionId), "Payout claimed", callback, tradeInfo);
+        sendTransaction(BigInteger.ZERO, buildClaimRewardFunction(gameId, optionId), "领取收益", callback, tradeInfo);
     }
 
     public void resolveGame(int gameId, int winningOption, TxCallback callback) {

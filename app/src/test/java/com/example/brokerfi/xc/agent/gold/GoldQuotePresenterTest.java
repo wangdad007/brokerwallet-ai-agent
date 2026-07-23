@@ -14,24 +14,24 @@ public class GoldQuotePresenterTest {
                 "Chainlink XAU/USD feed=0x214eD9D round=922337",
                 "2026-07-15T01:40:59Z", false);
 
-        assertEquals("Chainlink XAU/USD · updated 07-15 09:40", label);
+        assertEquals("Chainlink XAU/USD · 更新于 07-15 09:40", label);
         assertFalse(label.contains("0x"));
         assertFalse(label.contains("round"));
     }
 
     @Test
     public void missingDailyReferenceIsNotRenderedAsZero() {
-        assertEquals("24h --", GoldQuotePresenter.dailyChange(0, false));
-        assertEquals("24h +0.00%", GoldQuotePresenter.dailyChange(0, true));
+        assertEquals("24小时 --", GoldQuotePresenter.dailyChange(0, false));
+        assertEquals("24小时 +0.00%", GoldQuotePresenter.dailyChange(0, true));
     }
 
     @Test
     public void relativeGoldApiTimestampKeepsTheFinalCharacter() {
         assertEquals(
-                "gold-api.com · updated a few seconds ago",
+                "gold-api.com · 更新于 a few seconds ago",
                 GoldQuotePresenter.quoteMeta("gold-api.com", "a few seconds ago", false));
         assertEquals(
-                "gold-api.com · updated a few minutes ago",
+                "gold-api.com · 更新于 a few minutes ago",
                 GoldQuotePresenter.quoteMeta("gold-api.com", "a few minutes ago", false));
     }
 }

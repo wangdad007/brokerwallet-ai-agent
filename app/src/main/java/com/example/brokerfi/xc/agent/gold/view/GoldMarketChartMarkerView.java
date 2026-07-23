@@ -40,8 +40,8 @@ public final class GoldMarketChartMarkerView extends MarkerView {
             setTime(point.timestampSec);
             yesView.setVisibility(View.VISIBLE);
             noView.setVisibility(View.VISIBLE);
-            yesView.setText(String.format(Locale.US, "YES Share %.1f%%", point.yesShare));
-            noView.setText(String.format(Locale.US, "NO Share %.1f%%", point.noShare));
+            yesView.setText(String.format(Locale.US, "YES 份额 %.1f%%", point.yesShare));
+            noView.setText(String.format(Locale.US, "NO 份额 %.1f%%", point.noShare));
             sourceView.setVisibility(View.GONE);
         } else if (payload instanceof GoldMarketChartPresenter.TradePoint) {
             GoldMarketChartPresenter.TradePoint trade =
@@ -56,14 +56,14 @@ public final class GoldMarketChartMarkerView extends MarkerView {
             boolean isYes = trade.optionId == 0;
             yesView.setVisibility(isYes ? View.VISIBLE : View.GONE);
             noView.setVisibility(isYes ? View.GONE : View.VISIBLE);
-            String label = String.format(Locale.US, "%s Share %.1f%%",
+            String label = String.format(Locale.US, "%s 份额 %.1f%%",
                     isYes ? "YES" : "NO", trade.marketShare);
             if (isYes) yesView.setText(label); else noView.setText(label);
             sourceView.setVisibility(View.VISIBLE);
-            String source = trade.aiManaged ? "DeepSeek-managed" : "Manual";
+            String source = trade.aiManaged ? "DeepSeek 托管" : "手动购买";
             sourceView.setText(trade.purchaseCount == 1
-                    ? source + " purchase"
-                    : String.format(Locale.US, "%s · %d purchases in this interval",
+                    ? source
+                    : String.format(Locale.US, "%s · 该时间段共 %d 笔购买",
                     source, trade.purchaseCount));
         }
         super.refreshContent(entry, highlight);

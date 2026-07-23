@@ -37,11 +37,11 @@ public class GoldPositionAnalysisPresenterTest {
         String prompt = GoldPositionAnalysisPresenter.buildPrompt(
                 game, Arrays.asList(buy, sell), 1_700_000_000_000L);
 
-        assertTrue(prompt.contains("Total buys: 10 BKC"));
-        assertTrue(prompt.contains("Total sells: 2 BKC"));
-        assertTrue(prompt.contains("Net cash invested: 8 BKC"));
-        assertTrue(prompt.contains("AI-managed trades: 1"));
-        assertTrue(prompt.contains("Current value:"));
+        assertTrue(prompt.contains("累计买入：10 BKC"));
+        assertTrue(prompt.contains("累计卖出：2 BKC"));
+        assertTrue(prompt.contains("净投入：8 BKC"));
+        assertTrue(prompt.contains("AI 托管交易：1"));
+        assertTrue(prompt.contains("当前估值："));
         assertFalse(prompt.contains(buy.txHash));
         assertFalse(prompt.toLowerCase().contains("private_key"));
     }
@@ -56,8 +56,8 @@ public class GoldPositionAnalysisPresenterTest {
         GoldPositionAnalysisPresenter.Analysis analysis =
                 GoldPositionAnalysisPresenter.parse(response);
 
-        assertEquals("Lean YES", analysis.stance);
-        assertEquals("Medium", analysis.riskLevel);
+        assertEquals("偏向 YES", analysis.stance);
+        assertEquals("中", analysis.riskLevel);
         assertTrue(analysis.drivers.contains("• YES share 60%"));
         assertTrue(analysis.actions.contains("Review before the deadline"));
     }
@@ -66,8 +66,8 @@ public class GoldPositionAnalysisPresenterTest {
     public void plainTextResponseFallsBackWithoutCrashing() {
         GoldPositionAnalysisPresenter.Analysis analysis =
                 GoldPositionAnalysisPresenter.parse("The position is concentrated; monitor risk.");
-        assertEquals("Watch", analysis.stance);
-        assertEquals("Pending", analysis.riskLevel);
+        assertEquals("观望", analysis.stance);
+        assertEquals("待定", analysis.riskLevel);
         assertTrue(analysis.summary.contains("position is concentrated"));
     }
 

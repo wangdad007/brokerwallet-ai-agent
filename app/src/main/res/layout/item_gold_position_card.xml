@@ -40,7 +40,7 @@
         android:ellipsize="end"
         android:maxLines="2"
         android:minHeight="44dp"
-        android:text="Market"
+        android:text="博弈池"
         android:textColor="#1A1A1A"
         android:textSize="15sp"
         android:textStyle="bold"
@@ -74,7 +74,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Estimated Value"
+                android:text="当前预计估值"
                 android:textColor="#94A3B8"
                 android:textSize="10sp" />
             <TextView
@@ -98,7 +98,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Position Side"
+                android:text="持仓方向"
                 android:textColor="#94A3B8"
                 android:textSize="10sp" />
 
@@ -110,7 +110,7 @@
                 android:maxLines="1"
                 android:paddingHorizontal="8dp"
                 android:paddingVertical="2dp"
-                android:text="Holding YES"
+                android:text="持有 YES"
                 android:textColor="#059669"
                 android:textSize="11sp"
                 android:textStyle="bold" />
@@ -126,7 +126,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Market Status"
+                android:text="博弈状态"
                 android:textColor="#94A3B8"
                 android:textSize="10sp" />
             <TextView
@@ -134,7 +134,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="Active"
+                android:text="运行中"
                 android:textColor="#059669"
                 android:textSize="13sp"
                 android:textStyle="bold" />
@@ -156,7 +156,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Your Share Details"
+            android:text="您的持有详细份额"
             android:textColor="#94A3B8"
             android:textSize="9sp"
             android:layout_marginBottom="6dp"/>
@@ -165,7 +165,7 @@
             android:id="@+id/tv_shares"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="YES shares: 0.00\nNO shares: 0.00"
+            android:text="持有 YES：0.00 份额\n持有 NO：0.00 份额"
             android:textColor="#475569"
             android:textSize="12sp"
             android:lineSpacingExtra="4dp"

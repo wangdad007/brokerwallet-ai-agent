@@ -64,7 +64,7 @@ public final class GoldMarketDetailPresenter {
                 .replace("截至", " ");
         primary = SPACE_PATTERN.matcher(primary).replaceAll(" ").trim();
         if (primary.isEmpty() || primary.startsWith("博弈池 #") || primary.startsWith("博弈池#")) {
-            primary = "Gold Market";
+            primary = "黄金博弈";
         }
 
         String subtitle = "";
@@ -72,10 +72,10 @@ public final class GoldMarketDetailPresenter {
             subtitle = times.get(0) + " - " + times.get(1);
         } else if (times.size() == 1) {
             boolean deadlineLike = title.contains("截止") || title.contains("截至");
-            subtitle = deadlineLike ? "Ends " + times.get(0) : times.get(0);
+            subtitle = deadlineLike ? "截止 " + times.get(0) : times.get(0);
         } else if (deadlineSec > 0) {
             java.text.SimpleDateFormat formatter = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US);
-            subtitle = "Ends " + formatter.format(new java.util.Date(deadlineSec * 1000L));
+            subtitle = "截止 " + formatter.format(new java.util.Date(deadlineSec * 1000L));
         }
 
         return new HeroText(primary, subtitle);
@@ -107,7 +107,7 @@ public final class GoldMarketDetailPresenter {
     /** Converts the metadata condition into a compact, scannable rule card. */
     public static String formatResolutionRule(String condition) {
         String normalized = condition == null ? "" : condition.trim();
-        if (normalized.isEmpty()) return "Resolution Rule\nUnavailable";
+        if (normalized.isEmpty()) return "判定规则\n暂无信息";
 
         String[] clauses = normalized.replace('\r', '\n').split("[；;]");
         List<String> sections = new ArrayList<>();
@@ -115,16 +115,16 @@ public final class GoldMarketDetailPresenter {
             String clause = rawClause.trim().replaceFirst("[。.]$", "");
             if (clause.isEmpty()) continue;
             if (startsWithIgnoreCase(clause, "Beijing time") || clause.startsWith("北京时间")) {
-                sections.add("Observation Period\n" + translateLegacyClause(clause));
+                sections.add("观察周期\n" + translateLegacyClause(clause));
                 continue;
             }
             if (startsWithIgnoreCase(clause, "source:")) {
-                sections.add("Data Source\n" + normalizeDataSource(
+                sections.add("数据来源\n" + normalizeDataSource(
                         clause.substring(clause.indexOf(':') + 1).trim()));
                 continue;
             }
             if (startsWithIgnoreCase(clause, "use the final valid quote")) {
-                sections.add("Pricing Policy\n" + capitalizeSentence(clause));
+                sections.add("取价规则\n" + translateLegacyClause(clause));
                 continue;
             }
             if (clause.startsWith("信源为")) {
@@ -134,18 +134,18 @@ public final class GoldMarketDetailPresenter {
                 if (separator >= 0) {
                     String source = sourceAndPolicy.substring(0, separator).trim();
                     String policy = sourceAndPolicy.substring(separator + 1).trim();
-                    sections.add("Data Source\n" + normalizeDataSource(source));
+                    sections.add("数据来源\n" + normalizeDataSource(source));
                     if (!policy.isEmpty()) {
-                        sections.add("Pricing Policy\n" + translateLegacyClause(policy));
+                        sections.add("取价规则\n" + translateLegacyClause(policy));
                     }
                 } else {
-                    sections.add("Data Source\n" + normalizeDataSource(sourceAndPolicy));
+                    sections.add("数据来源\n" + normalizeDataSource(sourceAndPolicy));
                 }
                 continue;
             }
-            sections.add("Resolution Rule\n" + translateLegacyClause(clause));
+            sections.add("判定条件\n" + translateLegacyClause(clause));
         }
-        if (sections.isEmpty()) return "Resolution Rule\n" + translateLegacyClause(normalized);
+        if (sections.isEmpty()) return "判定规则\n" + translateLegacyClause(normalized);
         return joinSections(sections);
     }
 
@@ -156,7 +156,7 @@ public final class GoldMarketDetailPresenter {
     private static String normalizeDataSource(String source) {
         String normalized = source == null ? "" : source.trim();
         if (normalized.equalsIgnoreCase("Ethereum Chainlink Data Feed")) {
-            return "Chainlink XAU/USD Data Feed on Ethereum";
+            return "Ethereum Chainlink XAU/USD 数据源";
         }
         return normalized;
     }
@@ -170,58 +170,37 @@ public final class GoldMarketDetailPresenter {
                 + value.substring(Character.charCount(first));
     }
 
-    /** Converts legacy Chinese template metadata without changing stored settlement rules. */
+    /** 将历史英文或中文元数据统一为中文展示，不改变链上判定规则。 */
     private static String translateLegacyClause(String raw) {
         String translated = raw == null ? "" : raw.trim();
         String[][] replacements = {
-                {"取边界时刻之前最后一轮有效报价", "Use the final valid quote at or before each boundary"},
-                {"美联储降息", "Federal Reserve Rate Cut"},
-                {"连续上涨", "Rises on each consecutive day"},
-                {"连续下跌", "Falls on each consecutive day"},
-                {"黄金价格", "Gold Price"},
-                {"黄金收益率", "Gold Absolute Return"},
-                {"金价", "Gold Price"},
-                {"价格区间", "Price Range"},
-                {"涨跌幅", "Absolute Return"},
-                {"波动率", "Volatility"},
-                {"波幅", "Volatility"},
-                {"成交量", "Trading Volume"},
-                {"交易量", "Trading Volume"},
-                {"技术指标", "Technical Indicator"},
-                {"相对基准", "relative to the baseline"},
-                {"大于等于", "At Least"},
-                {"小于等于", "At Most"},
-                {"不低于", "At Least"},
-                {"不高于", "At Most"},
-                {"曾触及", "Touched"},
-                {"跑赢", "Outperforms"},
-                {"上涨", "Rises"},
-                {"下跌", "Falls"},
-                {"持平", "Remains Flat"},
-                {"位于", "Between"},
-                {"不在", "Outside"},
-                {"大于", "Above"},
-                {"小于", "Below"},
-                {"等于", "Equals"},
-                {"超过", "Above"},
-                {"触及", "Touches"},
-                {"发生", "Occurs"},
-                {"北京时间", "Beijing time"},
-                {"USD/盎司", "USD/oz"},
-                {"美元/盎司", "USD/oz"},
-                {"盎司", "oz"},
-                {"，", ", "},
-                {"至", " to "}
+                {"Use the final valid quote at or before each boundary", "取边界时刻之前最后一轮有效报价"},
+                {"use the final valid quote at or before each boundary", "取边界时刻之前最后一轮有效报价"},
+                {"Federal Reserve Rate Cut", "美联储降息"},
+                {"Rises on each consecutive day", "连续上涨"},
+                {"Falls on each consecutive day", "连续下跌"},
+                {"Gold Absolute Return", "黄金涨跌幅"},
+                {"Gold Price", "黄金价格"},
+                {"Price Range", "价格区间"},
+                {"Trading Volume", "成交量"},
+                {"Technical Indicator", "技术指标"},
+                {"Outperforms", "跑赢"},
+                {"At Least", "大于等于"},
+                {"At Most", "小于等于"},
+                {"Above", "大于"},
+                {"Below", "小于"},
+                {"Equals", "等于"},
+                {"Between", "位于"},
+                {"Outside", "不在"},
+                {"Beijing time", "北京时间"},
+                {"USD/oz", "USD/盎司"},
+                {" to ", " 至 "}
         };
         for (String[] replacement : replacements) {
             translated = translated.replace(replacement[0], replacement[1]);
         }
         translated = SPACE_PATTERN.matcher(translated).replaceAll(" ").trim();
-        translated = BETWEEN_RANGE_PATTERN.matcher(translated)
-                .replaceAll("Between $1 and $2 $3");
-        return containsHan(translated)
-                ? "This legacy market uses its original structured resolution rule."
-                : translated;
+        return translated;
     }
 
     private static boolean containsHan(String value) {

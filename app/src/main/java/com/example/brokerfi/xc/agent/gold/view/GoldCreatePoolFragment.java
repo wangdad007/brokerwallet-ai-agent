@@ -57,19 +57,19 @@ public class GoldCreatePoolFragment extends Fragment {
     }
 
     public static String buildAiParserPrompt(String today) {
-        return "You are a strict parser for a gold prediction market. "
-                + "Return one JSON object and no markdown. Today is " + today + ".\n"
-                + "Only these six types are allowed:\n"
-                + "1. TYPE_PRICE: XAU direction over whole Beijing days. directionIdx 0=UP, 1=DOWN, 2=FLAT.\n"
-                + "2. TYPE_RETURN_THRESHOLD: absolute XAU close-to-close return. param1=positive percent, operatorIdx 0=GTE, 1=LTE.\n"
-                + "3. TYPE_PRICE_THRESHOLD: XAU price at the end boundary. param1=positive USD/oz, operatorIdx 0=GTE, 1=LTE.\n"
-                + "4. TYPE_PRICE_RANGE: end-boundary XAU price in or outside a closed interval. param1=lower, param2=upper, operatorIdx 0=inside, 1=outside.\n"
-                + "5. TYPE_RELATIVE: XAU return strictly greater than a crypto benchmark. param1 must be BTC, ETH, SOL, or BNB.\n"
-                + "6. TYPE_STREAK: XAU rises or falls at every consecutive Beijing-day boundary. directionIdx 0=UP, 1=DOWN.\n"
-                + "All markets use the Chainlink XAU/USD Data Feed on Ethereum, Beijing midnight boundaries, and observation periods of 1–4 full days. "
-                + "startDaysFromNow must be 0 or greater; durationDays must be 1-4. "
-                + "If the request cannot be represented exactly, set confidence below 0.7.\n"
-                + "Output schema: {\"type\":\"TYPE_...\",\"param1\":\"\",\"param2\":\"\","
+        return "你是黄金预测博弈池的严格规则解析器。"
+                + "只返回一个 JSON 对象，不要输出 Markdown。今天是 " + today + "。\n"
+                + "只允许以下六种类型：\n"
+                + "1. TYPE_PRICE：按北京时间整日边界判断 XAU 方向，directionIdx 0=上涨、1=下跌、2=持平。\n"
+                + "2. TYPE_RETURN_THRESHOLD：XAU 收盘价之间的绝对涨跌幅，param1=正百分比，operatorIdx 0=大于等于、1=小于等于。\n"
+                + "3. TYPE_PRICE_THRESHOLD：截止边界的 XAU 价格，param1=正数 USD/盎司，operatorIdx 0=大于等于、1=小于等于。\n"
+                + "4. TYPE_PRICE_RANGE：截止边界的 XAU 价格是否位于闭区间，param1=下限、param2=上限，operatorIdx 0=区间内、1=区间外。\n"
+                + "5. TYPE_RELATIVE：XAU 收益率是否严格跑赢加密货币标的，param1 只能为 BTC、ETH、SOL 或 BNB。\n"
+                + "6. TYPE_STREAK：XAU 在连续的北京时间整日边界上涨或下跌，directionIdx 0=上涨、1=下跌。\n"
+                + "所有博弈池使用 Ethereum Chainlink XAU/USD 数据源、北京时间零点边界和 1 至 4 个整天的观察期。"
+                + "startDaysFromNow 必须大于等于 0，durationDays 必须为 1 至 4。"
+                + "若用户需求无法准确表示，请将 confidence 设为低于 0.7。\n"
+                + "输出结构：{\"type\":\"TYPE_...\",\"param1\":\"\",\"param2\":\"\","
                 + "\"directionIdx\":0,\"operatorIdx\":0,\"startDaysFromNow\":0,"
                 + "\"durationDays\":2,\"liquidity\":1,\"confidence\":0.0}";
     }
@@ -77,11 +77,11 @@ public class GoldCreatePoolFragment extends Fragment {
     private void performAiAnalysis() {
         String input = etAiInput.getText().toString().trim();
         if (input.isEmpty()) {
-            Toast.makeText(getContext(), "Describe a clear gold market question", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "请清楚描述一个黄金预测问题", Toast.LENGTH_SHORT).show();
             return;
         }
         btnAiAnalyze.setEnabled(false);
-        btnAiAnalyze.setText("Preparing market setup…");
+        btnAiAnalyze.setText("正在生成博弈池配置…");
         String prompt = buildAiParserPrompt(dateFormat.format(new Date()));
         DeepSeekClient.chatForParsing(prompt, input, new DeepSeekClient.ChatCallback() {
             @Override
@@ -98,7 +98,7 @@ public class GoldCreatePoolFragment extends Fragment {
                 if (getActivity() == null) return;
                 getActivity().runOnUiThread(() -> {
                     resetAnalyzeButton();
-                    Toast.makeText(getContext(), "Unable to generate market setup: " + error,
+                    Toast.makeText(getContext(), "无法生成博弈池配置：" + error,
                             Toast.LENGTH_SHORT).show();
                 });
             }
@@ -107,7 +107,7 @@ public class GoldCreatePoolFragment extends Fragment {
 
     private void resetAnalyzeButton() {
         btnAiAnalyze.setEnabled(true);
-        btnAiAnalyze.setText("Generate Market Setup");
+        btnAiAnalyze.setText("生成博弈池配置");
     }
 
     private void handleAiResponse(String response) {
@@ -116,10 +116,10 @@ public class GoldCreatePoolFragment extends Fragment {
             String type = json.optString("type", "").trim();
             double confidence = json.optDouble("confidence", 0d);
             if (!GoldMarketTemplateCatalog.isCreatable(type)) {
-                throw new IllegalArgumentException("AI returned an unsupported market type");
+                throw new IllegalArgumentException("AI 返回了不支持的博弈池类型");
             }
             if (confidence < CONFIDENCE_THRESHOLD) {
-                throw new IllegalArgumentException("Add a value, direction and full-day observation period");
+                throw new IllegalArgumentException("请补充数值、方向和整日观察周期");
             }
             String validation = validateTemplateFields(type, json);
             if (validation != null) throw new IllegalArgumentException(validation);
@@ -138,28 +138,28 @@ public class GoldCreatePoolFragment extends Fragment {
     private String validateTemplateFields(String type, JSONObject json) {
         int startDays = json.optInt("startDaysFromNow", -1);
         int durationDays = json.optInt("durationDays", -1);
-        if (startDays < 0) return "Start-day offset must be zero or greater";
-        if (durationDays < 1 || durationDays > 4) return "Observation period must be 1–4 full days";
+        if (startDays < 0) return "开始日期偏移必须大于等于 0";
+        if (durationDays < 1 || durationDays > 4) return "观察期必须为 1 至 4 个整天";
         String param1 = json.optString("param1", "").trim();
         String param2 = json.optString("param2", "").trim();
         int direction = json.optInt("directionIdx", -1);
         int operator = json.optInt("operatorIdx", -1);
 
         if (GoldMarketTemplateCatalog.TYPE_PRICE.equals(type)) {
-            return direction >= 0 && direction <= 2 ? null : "Select Up, Down or Flat";
+            return direction >= 0 && direction <= 2 ? null : "请选择上涨、下跌或持平";
         }
         if (GoldMarketTemplateCatalog.TYPE_STREAK.equals(type)) {
-            return direction >= 0 && direction <= 1 ? null : "A streak supports only Up or Down";
+            return direction >= 0 && direction <= 1 ? null : "连续涨跌只支持上涨或下跌";
         }
         if (GoldMarketTemplateCatalog.TYPE_RELATIVE.equals(type)) {
             return GoldMarketCreationPolicy.isSupportedBenchmark(param1)
-                    ? null : "Outperformance benchmarks support BTC, ETH, SOL or BNB";
+                    ? null : "跑赢率标的仅支持 BTC、ETH、SOL 或 BNB";
         }
-        if (operator < 0 || operator > 1) return "Comparison must be At Least or At Most";
-        if (!isPositiveNumber(param1)) return "AI did not extract a valid positive number";
+        if (operator < 0 || operator > 1) return "比较方式必须为大于等于或小于等于";
+        if (!isPositiveNumber(param1)) return "AI 未提取到有效正数";
         if (GoldMarketTemplateCatalog.TYPE_PRICE_RANGE.equals(type)) {
-            if (!isPositiveNumber(param2)) return "AI did not extract an upper range bound";
-            if (Double.parseDouble(param2) <= Double.parseDouble(param1)) return "Upper bound must exceed the lower bound";
+            if (!isPositiveNumber(param2)) return "AI 未提取到有效的区间上限";
+            if (Double.parseDouble(param2) <= Double.parseDouble(param1)) return "区间上限必须大于下限";
         }
         return null;
     }
@@ -177,7 +177,7 @@ public class GoldCreatePoolFragment extends Fragment {
         String cleaned = response == null ? "" : response.trim();
         int start = cleaned.indexOf('{');
         int end = cleaned.lastIndexOf('}');
-        if (start < 0 || end <= start) throw new Exception("AI did not return valid JSON");
+        if (start < 0 || end <= start) throw new Exception("AI 未返回有效 JSON");
         return cleaned.substring(start, end + 1);
     }
 

@@ -52,7 +52,7 @@ import java.util.Map;
 
 public class GoldMarketDetailActivity extends AppCompatActivity {
     private static final int REQUEST_AI_MANAGED_SETTINGS = 4201;
-    private static final String MARKET_AI_LOADING_MESSAGE = "Your analysis is still being generated";
+    private static final String MARKET_AI_LOADING_MESSAGE = "投研分析仍在生成中";
     private static final long DATA_REFRESH_INTERVAL_MS = 15_000L;
     private static final int YES_COLOR = GoldMarketStatusStyle.YES_TEXT;
     private static final int YES_BACKGROUND = GoldMarketStatusStyle.YES_BACKGROUND;
@@ -143,7 +143,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
                 Toast.makeText(this, err, Toast.LENGTH_SHORT).show();
                 if (err.startsWith("AI error:")) {
                     String message = err.substring("AI error:".length()).trim();
-                    showMarketAiUnavailable("Unavailable", message);
+                    showMarketAiUnavailable("暂不可用", message);
                 }
             }
         });
@@ -207,9 +207,9 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         cardHoldingNo = findViewById(R.id.card_holding_no);
 
         tvMarketAiStatus = findViewById(R.id.tv_market_ai_status);
-        tvMarketAiStatus.setText("Analyze ›");
+        tvMarketAiStatus.setText("开始分析 ›");
         tvMarketAiSummary = findViewById(R.id.tv_market_ai_summary);
-        tvMarketAiSummary.setText("Tap to generate a structured AI market report");
+        tvMarketAiSummary.setText("点击生成结构化 AI 博弈池投研报告");
         tvMarketAiStance = findViewById(R.id.tv_market_ai_stance);
         tvMarketAiRisk = findViewById(R.id.tv_market_ai_risk);
         tvMarketAiDrivers = findViewById(R.id.tv_market_ai_drivers);
@@ -277,7 +277,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         updateChartRangeStyles();
         layoutChartContainer.setVisibility(View.VISIBLE);
         lineChart.clear();
-        lineChart.setNoDataText("Loading share history…");
+        lineChart.setNoDataText("正在加载份额历史…");
         viewModel.loadChartData(gameId, selectedChartRange);
     }
 
@@ -294,7 +294,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
 
     private void updateUI() {
         if (currentGame == null) return;
-        String title = currentGame.desc != null && !currentGame.desc.isEmpty() ? currentGame.desc : "Market #" + currentGame.id;
+        String title = currentGame.desc != null && !currentGame.desc.isEmpty() ? currentGame.desc : "博弈池 #" + currentGame.id;
         String condition = GoldMarketDetailPresenter.formatResolutionRule(currentGame.condition);
         tvMarketDesc.setText(styleMarketText(
                 GoldMarketCardPresenter.displayTitle(title, currentGame.condition, currentGame.deadlineSec), true));
@@ -338,7 +338,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         if (chartRequestedGameId != currentGame.id) {
             chartRequestedGameId = currentGame.id;
             layoutChartContainer.setVisibility(View.VISIBLE);
-            lineChart.setNoDataText("Loading share history…");
+            lineChart.setNoDataText("正在加载份额历史…");
             viewModel.loadChartData(currentGame.id, selectedChartRange);
         }
         updateCountdown();
@@ -372,7 +372,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
                 cardHoldingYes.setVisibility(View.VISIBLE);
                 String name = optionName(0);
                 tvHoldingYesLabel.setText(name);
-                tvHoldingYesAmount.setText(GoldNoteMarketActivity.formatShareAmount(sYes) + " shares");
+                tvHoldingYesAmount.setText(GoldNoteMarketActivity.formatShareAmount(sYes) + " 份额");
                 tvHoldingYesLabel.setTextColor(YES_COLOR);
                 tvHoldingYesAmount.setTextColor(YES_COLOR);
                 styleHoldingCard(cardHoldingYes, true);
@@ -384,7 +384,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
                 cardHoldingNo.setVisibility(View.VISIBLE);
                 String name = optionName(1);
                 tvHoldingNoLabel.setText(name);
-                tvHoldingNoAmount.setText(GoldNoteMarketActivity.formatShareAmount(sNo) + " shares");
+                tvHoldingNoAmount.setText(GoldNoteMarketActivity.formatShareAmount(sNo) + " 份额");
                 tvHoldingNoLabel.setTextColor(NO_COLOR);
                 tvHoldingNoAmount.setTextColor(NO_COLOR);
                 styleHoldingCard(cardHoldingNo, false);
@@ -442,7 +442,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
                         model.trades, rawData.range, visibleSpanSec);
         String rangeLabel = rawData.range == null
                 ? "1D" : rawData.range.toUpperCase(Locale.US);
-        tvTradeBucketHint.setText(String.format(Locale.US, "%s · %s per marker",
+        tvTradeBucketHint.setText(String.format(Locale.US, "%s · 每个标记代表 %s",
                 rangeLabel, GoldMarketChartPresenter.bucketLabel(aggregation.bucketSeconds)));
 
         List<Entry> manualYes = new ArrayList<>();
@@ -592,7 +592,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
     }
 
     private void openAiManagedSettings() {
-        String title = currentGame == null ? "Current Market"
+        String title = currentGame == null ? "当前博弈池"
                 : GoldMarketCardPresenter.displayTitle(currentGame.desc, currentGame.condition,
                 currentGame.deadlineSec);
         Intent intent = GoldAiManagedSettingsActivity.createIntent(
@@ -605,12 +605,12 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         String amount = aiManagedConfig.buyAmountBKC == null
                 ? "1" : aiManagedConfig.buyAmountBKC;
         tvAiManagedSummary.setText(String.format(Locale.US,
-                "%s BKC/order · ≥%.0f%% confidence · ≥%.1f%% model edge",
+                "每单 %s BKC · 置信度 ≥%.0f%% · 模型优势 ≥%.1f%%",
                 amount, aiManagedConfig.confidenceMin * 100d,
                 aiManagedConfig.minEdgePercent));
         if (btnAiManagedSettings != null) {
             btnAiManagedSettings.setText(aiManagedConfig.enabled
-                    ? "Edit AI strategy ›" : "Configure AI strategy ›");
+                    ? "编辑 AI 策略 ›" : "配置 AI 策略 ›");
         }
     }
 
@@ -629,7 +629,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         }
         aiExpanded = !aiExpanded;
         layoutAiDetails.setVisibility(aiExpanded ? View.VISIBLE : View.GONE);
-        tvMarketAiStatus.setText(aiExpanded ? "Hide details ↑" : "View details ↓");
+        tvMarketAiStatus.setText(aiExpanded ? "收起详情 ↑" : "展开详情 ↓");
     }
 
     private void refreshMarketAiAnalysis() {
@@ -643,7 +643,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         requestInFlight = true;
         progressMarketAi.setVisibility(View.VISIBLE);
         tvMarketAiStatus.setVisibility(View.GONE);
-        tvMarketAiSummary.setText("AI is reviewing market data, share balance, resolution rules, and time risk…");
+        tvMarketAiSummary.setText("AI 正在核对行情、份额分布、判定规则与时间风险…");
         if (!marketAiHasResult) {
             layoutMarketAiChips.setVisibility(View.GONE);
             layoutAiDetails.setVisibility(View.GONE);
@@ -655,7 +655,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         requestInFlight = false;
         if (destroyed) return;
         if (answer == null || answer.trim().isEmpty()) {
-            showMarketAiUnavailable("Unavailable", "AI analysis is temporarily unavailable");
+            showMarketAiUnavailable("暂不可用", "AI 投研分析暂时不可用");
             return;
         }
         marketAiSummary = answer;
@@ -664,10 +664,10 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
                 GoldMarketResearchAnalysisPresenter.parse(answer);
         progressMarketAi.setVisibility(View.GONE);
         tvMarketAiStatus.setVisibility(View.VISIBLE);
-        tvMarketAiStatus.setText("View details ↓");
+        tvMarketAiStatus.setText("展开详情 ↓");
         tvMarketAiSummary.setText(analysis.summary);
         tvMarketAiStance.setText(analysis.stance);
-        tvMarketAiRisk.setText(analysis.riskLevel + " Risk");
+        tvMarketAiRisk.setText("风险 " + analysis.riskLevel);
         tvMarketAiRisk.setBackground(riskBackground(analysis.riskLevel));
         tvMarketAiRisk.setTextColor(riskTextColor(analysis.riskLevel));
         tvMarketAiDrivers.setText(analysis.drivers);
@@ -820,7 +820,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         View v = LayoutInflater.from(this).inflate(R.layout.dialog_gold_buy_confirm, null);
         builder.setView(v);
-        ((TextView) v.findViewById(R.id.tv_buy_title)).setText("Buy " + name);
+        ((TextView) v.findViewById(R.id.tv_buy_title)).setText("买入 " + name);
         EditText et = v.findViewById(R.id.et_buy_amount);
         Button btn = v.findViewById(R.id.btn_buy_confirm);
         btn.setBackgroundResource(optionId == 0 ? R.drawable.bg_bet_yes : R.drawable.bg_bet_no);
@@ -829,7 +829,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         btn.setOnClickListener(view -> {
             String val = et.getText().toString().trim();
             if (val.isEmpty()) {
-                Toast.makeText(GoldMarketDetailActivity.this, "Enter a trade amount", Toast.LENGTH_SHORT).show();
+                Toast.makeText(GoldMarketDetailActivity.this, "请输入交易金额", Toast.LENGTH_SHORT).show();
                 return;
             }
             String preflightError = validateBuyRequest(optionId, val);
@@ -839,11 +839,11 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
             }
             BigInteger wei = GoldMarketRepository.parseTokenAmountToWei(val);
             if (wei == null) {
-                Toast.makeText(GoldMarketDetailActivity.this, "Invalid amount. Enter a number such as 100", Toast.LENGTH_SHORT).show();
+                Toast.makeText(GoldMarketDetailActivity.this, "金额格式无效，请输入例如 100 的数字", Toast.LENGTH_SHORT).show();
                 return;
             }
             dialog.dismiss();
-            Toast.makeText(GoldMarketDetailActivity.this, "Submitting transaction…", Toast.LENGTH_SHORT).show();
+            Toast.makeText(GoldMarketDetailActivity.this, "正在提交交易…", Toast.LENGTH_SHORT).show();
             viewModel.buyShares(gameId, resolveContractAddress(), optionId, wei);
         });
         v.findViewById(R.id.btn_buy_cancel).setOnClickListener(view -> dialog.dismiss());
@@ -853,7 +853,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
     private void claimReward() {
         if (currentGame == null) return;
         if (!shouldShowClaimReward()) {
-            Toast.makeText(this, "No payout is currently available", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "当前没有可领取的收益", Toast.LENGTH_SHORT).show();
             return;
         }
         int optIndex = -1;
@@ -896,27 +896,27 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
 
     private String validateBuyRequest(int optionId, String amountText) {
         if (currentGame == null) {
-            return "Trade failed: market data has not finished loading. Please try again.";
+            return "交易失败：博弈池数据尚未加载完成，请稍后重试";
         }
         long remaining = GoldNoteMarketActivity.remainingSecondsUntilDeadline(
                 currentGame.deadlineSec, System.currentTimeMillis());
         if (remaining == 0) {
-            return "Trade failed: this market has ended and no longer accepts YES/NO share purchases.";
+            return "交易失败：该博弈池已经截止，不再接受 YES/NO 份额购买";
         }
         if (remaining < 0) {
-            return "Trade failed: the market deadline has not finished syncing.\n\n"
-                    + "Pull to refresh. If the issue remains, the cached or on-chain deadline may be unavailable.";
+            return "交易失败：博弈池截止时间尚未同步完成\n\n"
+                    + "请下拉刷新；若问题仍存在，缓存或链上截止时间可能暂不可用";
         }
         if (currentGame.isResolved || currentGame.isRefunded) {
-            return "Trade failed: this market is "
-                    + (currentGame.isRefunded ? "refunded" : "resolved")
-                    + " and no longer accepts purchases.";
+            return "交易失败：该博弈池"
+                    + (currentGame.isRefunded ? "已退款" : "已开奖")
+                    + "，不再接受购买";
         }
         if (resolveContractAddress() == null || resolveContractAddress().trim().isEmpty()) {
-            return "Trade failed: the market contract address is unavailable.";
+            return "交易失败：博弈池合约地址不可用";
         }
         if (amountText == null || amountText.trim().isEmpty()) {
-            return "Trade failed: enter a trade amount.";
+            return "交易失败：请输入交易金额";
         }
         return null;
     }
@@ -924,9 +924,9 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
     private void showTradeErrorDialog(String message) {
         if (isFinishing() || destroyed) return;
         new AlertDialog.Builder(this)
-                .setTitle("Trade Failed")
+                .setTitle("交易失败")
                 .setMessage(message)
-                .setPositiveButton("OK", null)
+                .setPositiveButton("确定", null)
                 .show();
     }
 }

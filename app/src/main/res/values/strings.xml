@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">BrokerChain Wallet</string>
+    <string name="app_name">BrokerChain Wallet 中文市场</string>
     <string name="welcome_text">BrokerChain Wallet</string>
     <string name="create_wallet">Create a Wallet</string>
     <string name="import_wallet">Import existing wallet</string>
@@ -39,4 +39,3 @@
     <string name="No">No</string>
     <string name="Wrong_Password_Warning">Wrong Password</string>
 </resources>
-

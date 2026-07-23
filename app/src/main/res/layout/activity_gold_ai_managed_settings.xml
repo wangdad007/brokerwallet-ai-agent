@@ -17,14 +17,14 @@
             android:layout_width="32dp"
             android:layout_height="32dp"
             android:layout_centerVertical="true"
-            android:contentDescription="Back"
+            android:contentDescription="返回"
             android:src="@drawable/up_circle" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
-            android:text="AI-Managed Trading"
+            android:text="AI 自动托管"
             android:textColor="#0F172A"
             android:textSize="18sp"
             android:textStyle="bold" />
@@ -76,7 +76,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Your AI Strategy"
+                            android:text="您的 AI 托管策略"
                             android:textColor="#0F172A"
                             android:textSize="19sp"
                             android:textStyle="bold" />
@@ -85,7 +85,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="3dp"
-                            android:text="Set execution limits and risk gates"
+                            android:text="设置交易边界与风险门槛"
                             android:textColor="#64748B"
                             android:textSize="12sp" />
                     </LinearLayout>
@@ -97,7 +97,7 @@
                         android:background="@drawable/bg_status_active"
                         android:paddingHorizontal="10dp"
                         android:paddingVertical="5dp"
-                        android:text="Ready"
+                        android:text="待启用"
                         android:textColor="#059669"
                         android:textSize="12sp"
                         android:textStyle="bold" />
@@ -109,7 +109,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
                     android:maxLines="2"
-                    android:text="Current Market"
+                    android:text="当前博弈池"
                     android:textColor="#334155"
                     android:textSize="14sp"
                     android:textStyle="bold" />
@@ -119,7 +119,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:lineSpacingExtra="2dp"
-                    android:text="AI monitors the market and submits buy orders only when every guardrail below is satisfied."
+                    android:text="AI 持续监测博弈池，仅在满足下列全部风控条件时提交买入订单。"
                     android:textColor="#64748B"
                     android:textSize="12sp" />
             </LinearLayout>
@@ -128,7 +128,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
-                android:text="Risk Profile"
+                android:text="风险偏好"
                 android:textColor="#0F172A"
                 android:textSize="16sp"
                 android:textStyle="bold" />
@@ -148,7 +148,7 @@
                     android:layout_weight="1"
                     android:background="@drawable/bg_ai_strategy_preset"
                     android:gravity="center"
-                    android:text="Conservative"
+                    android:text="稳健"
                     android:textColor="#475569"
                     android:textSize="12sp"
                     android:textStyle="bold" />
@@ -161,7 +161,7 @@
                     android:layout_weight="1"
                     android:background="@drawable/bg_ai_strategy_preset"
                     android:gravity="center"
-                    android:text="Balanced"
+                    android:text="平衡"
                     android:textColor="#475569"
                     android:textSize="12sp"
                     android:textStyle="bold" />
@@ -174,7 +174,7 @@
                     android:layout_weight="1"
                     android:background="@drawable/bg_ai_strategy_preset"
                     android:gravity="center"
-                    android:text="Active"
+                    android:text="积极"
                     android:textColor="#475569"
                     android:textSize="12sp"
                     android:textStyle="bold" />
@@ -184,7 +184,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
-                android:text="Execution Guardrails"
+                android:text="交易风控参数"
                 android:textColor="#0F172A"
                 android:textSize="16sp"
                 android:textStyle="bold" />
@@ -203,8 +203,8 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:orientation="vertical">
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Maximum Order Size" android:textColor="#0F172A" android:textSize="14sp" android:textStyle="bold" />
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="Maximum amount before Kelly sizing" android:textColor="#94A3B8" android:textSize="11sp" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="单笔最大金额" android:textColor="#0F172A" android:textSize="14sp" android:textStyle="bold" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="应用 Kelly 仓位缩放前的金额上限" android:textColor="#94A3B8" android:textSize="11sp" />
                 </LinearLayout>
                 <EditText
                     android:id="@+id/et_order_amount"
@@ -231,8 +231,8 @@
                 android:orientation="horizontal"
                 android:padding="16dp">
                 <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Minimum Confidence" android:textColor="#0F172A" android:textSize="14sp" android:textStyle="bold" />
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="Rejects low-confidence model decisions" android:textColor="#94A3B8" android:textSize="11sp" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="最低置信度" android:textColor="#0F172A" android:textSize="14sp" android:textStyle="bold" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="拒绝低置信度的模型决策" android:textColor="#94A3B8" android:textSize="11sp" />
                 </LinearLayout>
                 <EditText android:id="@+id/et_confidence" android:layout_width="58dp" android:layout_height="44dp" android:background="@android:color/transparent" android:gravity="end|center_vertical" android:inputType="numberDecimal" android:maxLines="1" android:padding="0dp" android:text="70" android:textColor="#0F172A" android:textSize="17sp" android:textStyle="bold" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="3dp" android:text="%" android:textColor="#64748B" android:textSize="13sp" android:textStyle="bold" />
@@ -247,8 +247,8 @@
                 android:orientation="horizontal"
                 android:padding="16dp">
                 <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Minimum Model Edge" android:textColor="#0F172A" android:textSize="14sp" android:textStyle="bold" />
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="Required model advantage over the market-implied share" android:textColor="#94A3B8" android:textSize="11sp" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="最低模型优势" android:textColor="#0F172A" android:textSize="14sp" android:textStyle="bold" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="模型概率相对市场隐含份额的最低优势" android:textColor="#94A3B8" android:textSize="11sp" />
                 </LinearLayout>
                 <EditText android:id="@+id/et_edge" android:layout_width="58dp" android:layout_height="44dp" android:background="@android:color/transparent" android:gravity="end|center_vertical" android:inputType="numberDecimal" android:maxLines="1" android:padding="0dp" android:text="5" android:textColor="#0F172A" android:textSize="17sp" android:textStyle="bold" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="3dp" android:text="%" android:textColor="#64748B" android:textSize="13sp" android:textStyle="bold" />
@@ -263,8 +263,8 @@
                 android:orientation="horizontal"
                 android:padding="16dp">
                 <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Kelly Allocation" android:textColor="#0F172A" android:textSize="14sp" android:textStyle="bold" />
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="Scales order size with model conviction" android:textColor="#94A3B8" android:textSize="11sp" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Kelly 仓位比例" android:textColor="#0F172A" android:textSize="14sp" android:textStyle="bold" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="根据模型判断强度缩放订单金额" android:textColor="#94A3B8" android:textSize="11sp" />
                 </LinearLayout>
                 <EditText android:id="@+id/et_kelly" android:layout_width="58dp" android:layout_height="44dp" android:background="@android:color/transparent" android:gravity="end|center_vertical" android:inputType="numberDecimal" android:maxLines="1" android:padding="0dp" android:text="25" android:textColor="#0F172A" android:textSize="17sp" android:textStyle="bold" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="3dp" android:text="%" android:textColor="#64748B" android:textSize="13sp" android:textStyle="bold" />
@@ -279,8 +279,8 @@
                 android:orientation="horizontal"
                 android:padding="16dp">
                 <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Adaptive Cooldown" android:textColor="#0F172A" android:textSize="14sp" android:textStyle="bold" />
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="Prevents repeated orders on the same side" android:textColor="#94A3B8" android:textSize="11sp" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="自适应冷却期" android:textColor="#0F172A" android:textSize="14sp" android:textStyle="bold" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="避免短时间内重复买入同一方向" android:textColor="#94A3B8" android:textSize="11sp" />
                 </LinearLayout>
                 <androidx.appcompat.widget.SwitchCompat
                     android:id="@+id/switch_adaptive_cooldown"
@@ -294,7 +294,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:lineSpacingExtra="2dp"
-                android:text="AI-managed trading only submits orders within these limits. It does not guarantee a profit, and you can disable it from the market details page at any time."
+                android:text="AI 自动托管只会在上述限制内提交订单，不保证盈利；您可以随时在博弈池详情页关闭托管。"
                 android:textColor="#94A3B8"
                 android:textSize="11sp" />
 
@@ -305,7 +305,7 @@
                 android:layout_marginTop="22dp"
                 android:layout_marginBottom="16dp"
                 android:background="@drawable/bg_ai_strategy_save"
-                android:text="Save &amp; Enable AI Trading"
+                android:text="保存并开启 AI 托管"
                 android:textAllCaps="false"
                 android:textColor="#FFFFFF"
                 android:textSize="16sp"

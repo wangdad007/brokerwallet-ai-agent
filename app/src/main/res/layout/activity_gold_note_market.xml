@@ -52,7 +52,7 @@
             android:layout_centerVertical="true"
             android:padding="4dp"
             android:src="@drawable/up_circle"
-            android:contentDescription="Back" />
+            android:contentDescription="返回" />
     </RelativeLayout>
 
     <!-- Persistent Gold Price Bar -->
@@ -98,7 +98,7 @@
                 android:layout_marginTop="4dp"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:text="Loading market quote"
+                android:text="正在加载黄金行情"
                 android:textColor="#666666"
                 android:textSize="12sp" />
         </LinearLayout>

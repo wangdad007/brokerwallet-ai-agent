@@ -36,8 +36,8 @@ public class GoldCreatePoolViewModel extends AndroidViewModel {
         isDeploying.setValue(true);
         repository.createGame(title, condition, imageData, detailedInfo, optionNames, durationSec,
                 liqWei, templateType, resolutionRule, new GoldMarketRepository.TxCallback() {
-            @Override public void onTxSent(String hash) { txStatus.postValue("Sent: " + hash); }
-            @Override public void onConfirmed(String msg) { isDeploying.postValue(false); txStatus.postValue("Success"); }
+            @Override public void onTxSent(String hash) { txStatus.postValue("交易已提交：" + hash); }
+            @Override public void onConfirmed(String msg) { isDeploying.postValue(false); txStatus.postValue("创建成功"); }
             @Override public void onError(String err) { isDeploying.postValue(false); error.postValue(err); }
         });
     }

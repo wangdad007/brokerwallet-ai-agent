@@ -118,7 +118,7 @@ public class GoldMarketRepositoryTest {
 
         assertTrue(activity.contains("DeepSeekClient.init(this)"));
         assertTrue(activity.contains("new AIChatFragment()"));
-        assertTrue(activity.contains("tab.setText(\"AI Research\")"));
+        assertTrue(activity.contains("tab.setText(\"AI投研\")"));
     }
 
     @Test
@@ -140,15 +140,15 @@ public class GoldMarketRepositoryTest {
         assertEquals(-1,
                 GoldNoteMarketActivity.remainingSecondsUntilDeadline(604800, nowMillis));
         assertFalse(GoldNoteMarketActivity.hasKnownDeadline(604800));
-        assertEquals("Syncing deadline", GoldNoteMarketActivity.formatRemainingTime(-1));
-        assertEquals("Syncing", GoldNoteMarketActivity.formatMarketStatus(-1));
+        assertEquals("正在同步截止时间", GoldNoteMarketActivity.formatRemainingTime(-1));
+        assertEquals("同步中", GoldNoteMarketActivity.formatMarketStatus(-1));
     }
 
     @Test
     public void countdownDisplayShowsPreciseRemainingTime() {
-        assertEquals("Ends in 2d 3h", GoldNoteMarketActivity.formatRemainingTime(2 * 86400L + 3 * 3600L));
-        assertEquals("Ends in 5h 12m", GoldNoteMarketActivity.formatRemainingTime(5 * 3600L + 12 * 60L));
-        assertEquals("Ends in 45m", GoldNoteMarketActivity.formatRemainingTime(45 * 60L));
+        assertEquals("距结束 2天3小时", GoldNoteMarketActivity.formatRemainingTime(2 * 86400L + 3 * 3600L));
+        assertEquals("距结束 5小时12分钟", GoldNoteMarketActivity.formatRemainingTime(5 * 3600L + 12 * 60L));
+        assertEquals("距结束 45分钟", GoldNoteMarketActivity.formatRemainingTime(45 * 60L));
     }
 
     @Test

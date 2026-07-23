@@ -123,7 +123,7 @@ public class GoldMarketChartPresenterTest {
         assertEquals(2L * 60L * 60L,
                 GoldMarketChartPresenter.aggregateTrades(model.trades, "all", 86_400L)
                         .bucketSeconds);
-        assertEquals("5 min", GoldMarketChartPresenter.bucketLabel(oneHour.bucketSeconds));
+        assertEquals("5 分钟", GoldMarketChartPresenter.bucketLabel(oneHour.bucketSeconds));
     }
 
     @Test

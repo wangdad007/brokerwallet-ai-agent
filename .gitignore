@@ -91,3 +91,6 @@ Thumbs.db
 # Agent workspaces and visual design drafts
 .worktrees/
 .superpowers/
+
+# Local Solidity compiler output for the isolated CN deployment
+contract-build-cn/

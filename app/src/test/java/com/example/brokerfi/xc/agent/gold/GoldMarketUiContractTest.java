@@ -99,7 +99,7 @@ public class GoldMarketUiContractTest {
 
         int marketPanelEnd = layout.indexOf("@+id/tv_countdown");
         int aiCard = layout.indexOf("@+id/card_market_ai");
-        int tradingHeading = layout.indexOf("android:text=\"Trade Now\"");
+        int tradingHeading = layout.indexOf("android:text=\"立即下注\"");
         assertTrue("AI card must follow the AMM market panel",
                 marketPanelEnd >= 0 && aiCard > marketPanelEnd);
         assertTrue("AI card must precede the trading section", tradingHeading > aiCard);
@@ -109,7 +109,7 @@ public class GoldMarketUiContractTest {
         assertTrue(cardTag.contains("android:focusable=\"true\""));
         assertTrue(layout.contains("@+id/tv_market_ai_status"));
         assertTrue(layout.contains("@+id/tv_market_ai_summary"));
-        assertTrue(layout.contains("AI Market Research"));
+        assertTrue(layout.contains("AI 投研分析"));
 
         assertEquals("@drawable/bg_bet_yes", buttonBackground(layout, "btn_buy_up"));
         assertEquals("@drawable/bg_bet_no", buttonBackground(layout, "btn_buy_down"));
@@ -144,7 +144,7 @@ public class GoldMarketUiContractTest {
 
         String requestCard = blockAfter(source, "private void requestMarketAiAnalysis()");
         assertInOrder(requestCard, "requestInFlight = true", "progressMarketAi.setVisibility",
-                "AI is reviewing market data, share balance, resolution rules, and time risk", "viewModel.startAiAnalysis()");
+                "AI 正在核对行情、份额分布、判定规则与时间风险", "viewModel.startAiAnalysis()");
 
         String request = blockAfter(viewModel, "public void startAiAnalysis()");
         assertInOrder(request, "currentGame.getValue()", "GoldAdvisoryManager.fetchPrice");
@@ -193,11 +193,11 @@ public class GoldMarketUiContractTest {
         assertTrue(tradeRenderer.contains("DS ×"));
         assertTrue(tradeRenderer.contains("drawConnector(canvas, marker)"));
         assertTrue(layout.contains("@+id/tv_trade_bucket_hint"));
-        assertTrue(layout.contains("Your Purchase Markers"));
-        assertTrue(layout.contains("DeepSeek-managed"));
+        assertTrue(layout.contains("您的购买标记"));
+        assertTrue(layout.contains("DeepSeek 托管"));
         assertTrue(layout.contains("@drawable/bg_chart_manual_marker"));
         assertTrue(tradeRenderer.contains("? \"M ×\" + trade.purchaseCount : \"M\""));
-        assertFalse(layout.contains("Solid dot = manual purchase"));
+        assertFalse(layout.contains("实心点 = 手动购买"));
         assertTrue(viewModel.contains("BackendApiClient.fetchTradeHistory(gameId, wallet)"));
         assertFalse(layout.contains("@+id/chart_range_30m"));
         assertTrue(layout.contains("@+id/chart_range_1h"));
@@ -243,7 +243,7 @@ public class GoldMarketUiContractTest {
 
         String toggle = blockAfter(source, "private void requestMarketAiAnalysis()");
         assertInOrder(toggle, "progressMarketAi.setVisibility(View.VISIBLE)",
-                "tvMarketAiSummary.setText(\"AI is reviewing market data, share balance, resolution rules, and time risk…\")",
+                "tvMarketAiSummary.setText(\"AI 正在核对行情、份额分布、判定规则与时间风险…\")",
                 "viewModel.startAiAnalysis()");
         assertFalse("Starting analysis should update the card instead of showing a loading toast",
                 toggle.contains("Toast.makeText"));
@@ -257,7 +257,7 @@ public class GoldMarketUiContractTest {
 
         String errorObserver = blockAfter(source, "viewModel.getError().observe");
         assertInOrder(errorObserver, "err.startsWith(\"AI error:\")",
-                "showMarketAiUnavailable(\"Unavailable\", message)");
+                "showMarketAiUnavailable(\"暂不可用\", message)");
     }
 
     @Test
@@ -288,12 +288,12 @@ public class GoldMarketUiContractTest {
         assertFalse(source.contains("maybeStartPositionAnalysis()"));
         assertFalse(source.contains("positionAnalysisAutoRequested"));
         assertTrue(source.contains("private void showPositionAnalysisReady()"));
-        assertTrue(source.contains("tvPositionAiStatus.setText(\"Analyze ›\")"));
+        assertTrue(source.contains("tvPositionAiStatus.setText(\"开始分析 ›\")"));
         assertTrue(source.contains("if (currentGame == null || !tradeHistoryLoadedOnce)"));
         assertTrue(source.contains("showPositionAnalysisPreparing()"));
         assertTrue(source.contains("tvPositionAiPlaceholder.setOnClickListener(v -> requestPositionAnalysis())"));
         assertTrue(source.contains("btnPositionAiRefresh.setOnClickListener(v -> requestPositionAnalysis())"));
-        assertTrue(layout.contains("Tap Analyze to generate a personalized position and risk report"));
+        assertTrue(layout.contains("点击分析，生成个性化持仓与风险报告"));
 
         String ready = blockAfter(source, "private void showPositionAnalysisReady()");
         assertFalse(ready.contains("DeepSeekClient.chatForParsing"));
@@ -330,18 +330,18 @@ public class GoldMarketUiContractTest {
         String fragment = readUtf8(POSITIONS_FRAGMENT_PATH);
         String cardLayout = readUtf8(POSITION_CARD_LAYOUT_PATH);
 
-        assertTrue(cardLayout.contains("YES shares: 0.00"));
-        assertTrue(cardLayout.contains("NO shares: 0.00"));
+        assertTrue(cardLayout.contains("持有 YES：0.00 份额"));
+        assertTrue(cardLayout.contains("持有 NO：0.00 份额"));
         String titleTag = openingTag(cardLayout, "TextView", "tv_position_title");
         assertTrue(titleTag.contains("app:layout_constraintEnd_toEndOf=\"parent\""));
         assertTrue(titleTag.contains("android:maxLines=\"2\""));
         assertFalse(titleTag.contains("tv_position_side"));
-        assertTrue(cardLayout.contains("android:text=\"Position Side\""));
+        assertTrue(cardLayout.contains("android:text=\"持仓方向\""));
         assertTrue(cardLayout.indexOf("@+id/tv_position_side")
                 > cardLayout.indexOf("@+id/ll_data_row"));
         assertTrue(fragment.contains("GoldPositionValuation.calculateMarket"));
         assertTrue(fragment.contains("GoldPositionValuation.calculatePortfolio"));
-        assertTrue(fragment.contains("\" shares\""));
+        assertTrue(fragment.contains("\" 份额\""));
         assertFalse("Top summary must not add raw shares as BKC",
                 fragment.contains("totalInvested"));
 
@@ -360,7 +360,7 @@ public class GoldMarketUiContractTest {
     }
 
     @Test
-    public void englishProductCopyUsesConsistentNaturalTerminology() throws Exception {
+    public void chineseProductCopyUsesConsistentNaturalTerminology() throws Exception {
         String copy = readUtf8(AI_MANAGED_SETTINGS_LAYOUT_PATH)
                 + readUtf8(DETAIL_LAYOUT_PATH)
                 + readUtf8(POSITION_DETAIL_LAYOUT_PATH)
@@ -379,12 +379,12 @@ public class GoldMarketUiContractTest {
             assertFalse("Retired English UI copy returned: " + retiredCopy,
                     copy.contains(retiredCopy));
         }
-        assertTrue(copy.contains("AI-Managed Trading"));
-        assertTrue(copy.contains("DeepSeek-managed"));
-        assertTrue(copy.contains("Start and End Dates"));
-        assertTrue(copy.contains("On-Chain Markets"));
-        assertTrue(copy.contains("Payout claim submitted"));
-        assertTrue(copy.contains("Payout claimed successfully"));
+        assertTrue(copy.contains("AI 自动托管"));
+        assertTrue(copy.contains("DeepSeek 托管"));
+        assertTrue(copy.contains("开始与截止日期"));
+        assertTrue(copy.contains("链上博弈市场"));
+        assertTrue(copy.contains("收益领取交易已提交"));
+        assertTrue(copy.contains("收益领取成功"));
 
         for (String viewPath : new String[]{
                 "app/src/main/java/com/example/brokerfi/xc/agent/gold/view/GoldMarketListFragment.java",

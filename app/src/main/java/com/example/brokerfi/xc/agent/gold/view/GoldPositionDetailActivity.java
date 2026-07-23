@@ -91,7 +91,7 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
         gameId = getIntent().getIntExtra("GAME_ID", -1);
         contractAddress = getIntent().getStringExtra("CONTRACT_ADDRESS");
         if (gameId <= 0) {
-            Toast.makeText(this, "Invalid market ID", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "博弈池 ID 无效", Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
@@ -225,7 +225,7 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
         }
 
         String rawTitle = currentGame.desc != null && !currentGame.desc.isEmpty()
-                ? currentGame.desc : "Market #" + currentGame.id;
+                ? currentGame.desc : "博弈池 #" + currentGame.id;
         String rawCondition = currentGame.condition == null ? "" : currentGame.condition;
         String condition = GoldMarketDetailPresenter.formatResolutionRule(rawCondition);
         tvPoolDesc.setText(GoldMarketTextStyler.style(
@@ -300,7 +300,7 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
         if (hasYes) {
             rowPositionYes.setVisibility(View.VISIBLE);
             tvPosYesLabel.setText(yesName);
-            tvPosYesShares.setText(GoldNoteMarketActivity.formatShareAmount(sYes) + " shares");
+            tvPosYesShares.setText(GoldNoteMarketActivity.formatShareAmount(sYes) + " 份额");
         } else {
             rowPositionYes.setVisibility(View.GONE);
         }
@@ -308,7 +308,7 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
         if (hasNo) {
             rowPositionNo.setVisibility(View.VISIBLE);
             tvPosNoLabel.setText(noName);
-            tvPosNoShares.setText(GoldNoteMarketActivity.formatShareAmount(sNo) + " shares");
+            tvPosNoShares.setText(GoldNoteMarketActivity.formatShareAmount(sNo) + " 份额");
         } else {
             rowPositionNo.setVisibility(View.GONE);
         }
@@ -318,7 +318,7 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
         if (marketValue.isComplete()) {
             tvCurrentValue.setText(GoldNoteMarketActivity.formatBkc(marketValue.getValueWei()) + " BKC");
         } else {
-            tvCurrentValue.setText("Value unavailable");
+            tvCurrentValue.setText("估值不可用");
         }
 
         // Total Invested & Return Rate
@@ -360,7 +360,7 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
         progressPositionAi.setVisibility(View.VISIBLE);
         tvPositionAiStatus.setVisibility(View.GONE);
         tvPositionAiPlaceholder.setVisibility(View.VISIBLE);
-        tvPositionAiPlaceholder.setText("AI is reviewing position structure, cash flow, and market risk…");
+        tvPositionAiPlaceholder.setText("AI 正在分析持仓结构、资金流与市场风险…");
         if (!positionAnalysisHasResult) layoutPositionAiResult.setVisibility(View.GONE);
 
         String prompt = GoldPositionAnalysisPresenter.buildPrompt(
@@ -392,12 +392,12 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
         }
         progressPositionAi.setVisibility(View.GONE);
         tvPositionAiStatus.setVisibility(View.VISIBLE);
-        tvPositionAiStatus.setText("Analyze ›");
+        tvPositionAiStatus.setText("开始分析 ›");
         layoutPositionAiResult.setVisibility(View.GONE);
         layoutPositionAiDetails.setVisibility(View.GONE);
         tvPositionAiPlaceholder.setVisibility(View.VISIBLE);
         tvPositionAiPlaceholder.setText(
-                "Tap Analyze to generate a personalized position and risk report.");
+                "点击“开始分析”生成个性化持仓与风险报告");
     }
 
     private void showPositionAnalysisPreparing() {
@@ -406,11 +406,11 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
         }
         progressPositionAi.setVisibility(View.GONE);
         tvPositionAiStatus.setVisibility(View.VISIBLE);
-        tvPositionAiStatus.setText("Preparing…");
+        tvPositionAiStatus.setText("准备中…");
         layoutPositionAiResult.setVisibility(View.GONE);
         layoutPositionAiDetails.setVisibility(View.GONE);
         tvPositionAiPlaceholder.setVisibility(View.VISIBLE);
-        tvPositionAiPlaceholder.setText("Position and trade data are still loading…");
+        tvPositionAiPlaceholder.setText("持仓与交易数据仍在加载中…");
     }
 
     private void togglePositionAnalysisDetails() {
@@ -420,7 +420,7 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
         }
         positionAnalysisExpanded = !positionAnalysisExpanded;
         layoutPositionAiDetails.setVisibility(positionAnalysisExpanded ? View.VISIBLE : View.GONE);
-        tvPositionAiStatus.setText(positionAnalysisExpanded ? "Hide details ↑" : "View details ↓");
+        tvPositionAiStatus.setText(positionAnalysisExpanded ? "收起详情 ↑" : "展开详情 ↓");
     }
 
     private void showPositionAnalysis(GoldPositionAnalysisPresenter.Analysis analysis) {
@@ -430,12 +430,12 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
         positionAnalysisExpanded = true;
         progressPositionAi.setVisibility(View.GONE);
         tvPositionAiStatus.setVisibility(View.VISIBLE);
-        tvPositionAiStatus.setText("Hide details ↑");
+        tvPositionAiStatus.setText("收起详情 ↑");
         tvPositionAiPlaceholder.setVisibility(View.GONE);
         layoutPositionAiResult.setVisibility(View.VISIBLE);
         layoutPositionAiDetails.setVisibility(View.VISIBLE);
         tvPositionAiStance.setText(analysis.stance);
-        tvPositionAiRisk.setText(analysis.riskLevel + " Risk");
+        tvPositionAiRisk.setText("风险 " + analysis.riskLevel);
         tvPositionAiRisk.setBackground(riskBackground(analysis.riskLevel));
         tvPositionAiRisk.setTextColor(riskTextColor(analysis.riskLevel));
         tvPositionAiSummary.setText(analysis.summary);
@@ -450,17 +450,17 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
         progressPositionAi.setVisibility(View.GONE);
         tvPositionAiStatus.setVisibility(View.VISIBLE);
         if (positionAnalysisHasResult) {
-            tvPositionAiStatus.setText(positionAnalysisExpanded ? "Hide details ↑" : "View details ↓");
+            tvPositionAiStatus.setText(positionAnalysisExpanded ? "收起详情 ↑" : "展开详情 ↓");
             tvPositionAiPlaceholder.setVisibility(View.GONE);
             layoutPositionAiResult.setVisibility(View.VISIBLE);
-            Toast.makeText(this, "AI position analysis failed. Please try again later", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "AI 持仓分析失败，请稍后重试", Toast.LENGTH_SHORT).show();
             return;
         }
-        tvPositionAiStatus.setText("Retry");
+        tvPositionAiStatus.setText("重试");
         layoutPositionAiResult.setVisibility(View.GONE);
         layoutPositionAiDetails.setVisibility(View.GONE);
         tvPositionAiPlaceholder.setVisibility(View.VISIBLE);
-        tvPositionAiPlaceholder.setText("AI analysis is unavailable. Tap here or select Retry to try again.");
+        tvPositionAiPlaceholder.setText("AI 分析暂不可用，点击此处或选择“重试”再次尝试");
     }
 
     private void showPositionAnalysisEmpty() {
@@ -468,11 +468,11 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
         if (progressPositionAi == null) return;
         progressPositionAi.setVisibility(View.GONE);
         tvPositionAiStatus.setVisibility(View.VISIBLE);
-        tvPositionAiStatus.setText("No position");
+        tvPositionAiStatus.setText("暂无持仓");
         layoutPositionAiResult.setVisibility(View.GONE);
         layoutPositionAiDetails.setVisibility(View.GONE);
         tvPositionAiPlaceholder.setVisibility(View.VISIBLE);
-        tvPositionAiPlaceholder.setText("A personalized position and risk analysis will be available after you open a position.");
+        tvPositionAiPlaceholder.setText("建立持仓后即可生成个性化持仓与风险分析");
     }
 
     private GradientDrawable riskBackground(String riskLevel) {
@@ -544,7 +544,7 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
 
         rowReturnRate.setVisibility(View.VISIBLE);
         String prefix = rate >= 0 ? "+" : "";
-        tvReturnRate.setText(String.format(Locale.US, "Return %s%.2f%%", prefix, rate));
+        tvReturnRate.setText(String.format(Locale.US, "收益率 %s%.2f%%", prefix, rate));
         tvReturnRate.setTextColor(rate >= 0 ? 0xFF059669 : 0xFFE11D48);
     }
 
@@ -591,25 +591,25 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
             // Trade-source badge
             if (snapshotRow) {
                 tvManagedBadge.setVisibility(View.VISIBLE);
-                tvManagedBadge.setText("Snapshot");
+                tvManagedBadge.setText("持仓快照");
                 tvManagedBadge.setTextColor(0xFF64748B);
                 tvManagedBadge.setBackgroundResource(R.drawable.bg_badge_ai);
             } else if (trade.isAiManaged) {
                 tvManagedBadge.setVisibility(View.VISIBLE);
-                tvManagedBadge.setText("AI-managed");
+                tvManagedBadge.setText("AI 托管");
             } else {
                 tvManagedBadge.setVisibility(View.VISIBLE);
-                tvManagedBadge.setText("Manual");
+                tvManagedBadge.setText("手动");
                 tvManagedBadge.setTextColor(0xFF64748B);
                 tvManagedBadge.setBackgroundResource(R.drawable.bg_badge_ai);
             }
 
             // Time
-            tvTradeTime.setText(snapshotRow ? "On-chain position snapshot" : formatTradeTime(trade.createdAt));
+            tvTradeTime.setText(snapshotRow ? "链上持仓快照" : formatTradeTime(trade.createdAt));
 
             // Amount in BKC
             if (snapshotRow) {
-                tvTradeAmount.setText("Investment record is syncing…");
+                tvTradeAmount.setText("投入记录同步中…");
             } else {
                 try {
                     BigInteger amountWei = new BigInteger(trade.amountWei);
@@ -624,7 +624,7 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
 
             // Share amount
             String shareAmountText = formatShareAmount(trade.shareAmountWei);
-            tvTradeShares.setText(shareAmountText != null ? shareAmountText : "Shares are syncing…");
+            tvTradeShares.setText(shareAmountText != null ? shareAmountText : "份额同步中…");
 
             tradeHistoryContainer.addView(row);
         }
@@ -674,7 +674,7 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
     private String formatTradeTime(String rawTime) {
         long millis = parseTradeTimeMillis(rawTime);
         if (millis <= 0) {
-            return "Time syncing";
+            return "时间同步中";
         }
         return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
                 .format(new Date(millis));
@@ -727,7 +727,7 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
             if (shareWei.compareTo(BigInteger.ZERO) <= 0) return null;
             BigDecimal shares = new BigDecimal(shareWei).divide(
                     new BigDecimal("1000000000000000000"), 2, RoundingMode.HALF_UP);
-            return String.format(Locale.US, "%s shares",
+            return String.format(Locale.US, "%s 份额",
                     shares.stripTrailingZeros().toPlainString());
         } catch (NumberFormatException e) {
             return null;

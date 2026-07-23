@@ -20,12 +20,12 @@ public final class GoldMarketTemplateCatalog {
     private static final Map<String, Template> TEMPLATES = new LinkedHashMap<>();
 
     static {
-        add(new Template(TYPE_PRICE, "Price Direction", "Predict gold's direction over a full-day observation period", R.drawable.ic_template_price));
-        add(new Template(TYPE_RETURN_THRESHOLD, "Absolute Return", "Compare gold's absolute percentage return with a threshold", R.drawable.ic_template_volatility));
-        add(new Template(TYPE_PRICE_THRESHOLD, "Price Threshold", "Compare the ending gold price with a target", R.drawable.ic_template_price_threshold));
-        add(new Template(TYPE_PRICE_RANGE, "Price Range", "Predict whether the ending gold price falls within a range", R.drawable.ic_template_touch));
-        add(new Template(TYPE_RELATIVE, "Outperformance", "Compare gold's return with BTC, ETH, SOL, or BNB", R.drawable.ic_template_relative));
-        add(new Template(TYPE_STREAK, "Direction Streak", "Predict whether gold rises or falls on each consecutive day", R.drawable.ic_template_technical));
+        add(new Template(TYPE_PRICE, "价格涨跌", "预测整日观察区间内的黄金价格方向", R.drawable.ic_template_price));
+        add(new Template(TYPE_RETURN_THRESHOLD, "涨跌幅", "预测黄金绝对涨跌幅是否达到指定阈值", R.drawable.ic_template_volatility));
+        add(new Template(TYPE_PRICE_THRESHOLD, "价格阈值", "预测截止时黄金价格是否达到目标值", R.drawable.ic_template_price_threshold));
+        add(new Template(TYPE_PRICE_RANGE, "价格区间", "预测截止时黄金价格是否位于指定区间", R.drawable.ic_template_touch));
+        add(new Template(TYPE_RELATIVE, "跑赢率", "比较黄金与 BTC、ETH、SOL 或 BNB 的整日收益率", R.drawable.ic_template_relative));
+        add(new Template(TYPE_STREAK, "连续涨跌", "预测黄金是否在连续交易日内持续上涨或下跌", R.drawable.ic_template_technical));
     }
 
     private GoldMarketTemplateCatalog() {

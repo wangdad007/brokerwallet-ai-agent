@@ -85,7 +85,7 @@ public class GoldMarketListFragment extends Fragment {
         viewModel.getIsLoading().observe(getViewLifecycleOwner(), loading -> swipeRefresh.setRefreshing(loading));
 
         viewModel.getError().observe(getViewLifecycleOwner(), err -> {
-            if (err != null) Toast.makeText(requireContext(), "Error: " + err, Toast.LENGTH_SHORT).show();
+            if (err != null) Toast.makeText(requireContext(), "加载失败：" + err, Toast.LENGTH_SHORT).show();
         });
 
     }
@@ -116,7 +116,7 @@ public class GoldMarketListFragment extends Fragment {
             View card = inflater.inflate(R.layout.item_gold_market_card, marketListContainer, false);
             TextView tvTitle = card.findViewById(R.id.tv_market_title);
             ImageView ivIcon = card.findViewById(R.id.iv_market_icon);
-            String rawTitle = game.desc != null && !game.desc.isEmpty() ? game.desc : "Market #" + game.id;
+            String rawTitle = game.desc != null && !game.desc.isEmpty() ? game.desc : "博弈池 #" + game.id;
             tvTitle.setText(GoldMarketTextStyler.style(
                     GoldMarketCardPresenter.displayTitle(rawTitle, game.condition, game.deadlineSec), true));
 

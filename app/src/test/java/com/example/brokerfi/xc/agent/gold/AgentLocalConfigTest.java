@@ -19,7 +19,7 @@ public class AgentLocalConfigTest {
     @Test
     public void localAgentConfigCentralizesServiceUrls() {
         assertEquals("10.0.2.2", AgentConfig.LOCAL_HOST);
-        assertEquals("http://10.0.2.2:8081", AgentConfig.BACKEND_BASE_URL);
+        assertEquals("http://10.0.2.2:8082", AgentConfig.BACKEND_BASE_URL);
         assertEquals("http://10.0.2.2:56741/", AgentConfig.BROKER_CHAIN_BASE_URL);
         assertEquals("http://10.0.2.2:8083/ipfs/", AgentConfig.IPFS_GATEWAY_URL);
         assertEquals("http://10.0.2.2:5001/api/v0/add", AgentConfig.IPFS_API_ADD_URL);
@@ -45,10 +45,10 @@ public class AgentLocalConfigTest {
         GoldMarketStatusStyle resolved = GoldMarketStatusStyle.forMarket(true, false, 0);
         GoldMarketStatusStyle refunded = GoldMarketStatusStyle.forMarket(false, true, 0);
 
-        assertEquals("Active", active.label);
-        assertEquals("Pending Resolution", pending.label);
-        assertEquals("Resolved", resolved.label);
-        assertEquals("Refunded", refunded.label);
+        assertEquals("运行中", active.label);
+        assertEquals("等待裁决", pending.label);
+        assertEquals("已开奖", resolved.label);
+        assertEquals("已退款", refunded.label);
 
         assertEquals(0xFF047857, active.textColor);
         assertEquals(0xFFB45309, pending.textColor);
@@ -63,8 +63,8 @@ public class AgentLocalConfigTest {
         GoldMarketStatusStyle noWinner = GoldMarketStatusStyle.forMarketOutcome(
                 true, false, 0, 1, "YES", "NO");
 
-        assertEquals("YES Won", yesWinner.label);
-        assertEquals("NO Won", noWinner.label);
+        assertEquals("YES 获胜", yesWinner.label);
+        assertEquals("NO 获胜", noWinner.label);
         assertEquals(GoldMarketStatusStyle.YES_TEXT, yesWinner.textColor);
         assertEquals(GoldMarketStatusStyle.NO_TEXT, noWinner.textColor);
     }
@@ -75,10 +75,10 @@ public class AgentLocalConfigTest {
         assertEquals("NO", GoldMarketOptionText.displayName("NO", 1));
         assertEquals("YES", GoldMarketOptionText.displayName("达成 (YES)", 0));
         assertEquals("NO", GoldMarketOptionText.displayName("未达成 (NO)", 1));
-        assertEquals("YES Share 60.0%", GoldMarketOptionText.shareLabel(0, 60.0f));
-        assertEquals("NO Share 40.0%", GoldMarketOptionText.shareLabel(1, 40.0f));
-        assertEquals("Holding YES", GoldMarketOptionText.holdingLabel(0));
-        assertEquals("Holding NO", GoldMarketOptionText.holdingLabel(1));
+        assertEquals("YES 份额 60.0%", GoldMarketOptionText.shareLabel(0, 60.0f));
+        assertEquals("NO 份额 40.0%", GoldMarketOptionText.shareLabel(1, 40.0f));
+        assertEquals("持有 YES", GoldMarketOptionText.holdingLabel(0));
+        assertEquals("持有 NO", GoldMarketOptionText.holdingLabel(1));
     }
 
     @Test

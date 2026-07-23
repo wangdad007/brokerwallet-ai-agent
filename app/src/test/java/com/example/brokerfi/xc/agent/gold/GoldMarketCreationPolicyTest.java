@@ -151,7 +151,7 @@ public class GoldMarketCreationPolicyTest {
 			GoldMarketCreationPolicy.contractDurationSeconds(now, end);
 			throw new AssertionError("expected expired window rejection");
 		} catch (IllegalArgumentException expected) {
-			assertTrue(expected.getMessage().contains("later than the current time"));
+			assertTrue(expected.getMessage().contains("晚于当前时间"));
 		}
 	}
 

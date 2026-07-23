@@ -27,7 +27,7 @@
                     android:id="@+id/label_balance"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Total Position Value"
+                    android:text="个人总持有估值"
                     android:textColor="#CCFFFFFF"
                     android:textSize="13sp" />
 
@@ -53,7 +53,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Portfolio Value Trend"
+                        android:text="资产估值走势"
                         android:textColor="#99FFFFFF"
                         android:textSize="11sp" />
 
@@ -78,7 +78,7 @@
                     android:layout_height="wrap_content"
                     android:layout_below="@id/divider_card"
                     android:layout_marginTop="16dp"
-                    android:text="0 markets held"
+                    android:text="累计参与 0 个博弈池"
                     android:textColor="#AAFFFFFF"
                     android:textSize="14sp" />
 
@@ -88,7 +88,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
-                android:text="My Positions"
+                android:text="我的持仓"
                 android:textColor="#000000"
                 android:textSize="20sp"
                 android:textStyle="bold" />

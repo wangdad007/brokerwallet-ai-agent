@@ -7,7 +7,8 @@ android {
     compileSdk = 33
 
     defaultConfig {
-        applicationId = "com.example.brokerfi"
+        // CN 与 ENG 使用不同 applicationId，可在同一台设备上同时安装展示。
+        applicationId = "com.example.brokerfi.cn"
         minSdk = 21
         targetSdk = 33
         versionCode = 1

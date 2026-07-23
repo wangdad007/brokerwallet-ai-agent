@@ -21,13 +21,13 @@
             android:layout_centerVertical="true"
             android:padding="8dp"
             android:src="@drawable/up_circle"
-            android:contentDescription="Back" />
+            android:contentDescription="返回" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
-            android:text="Market Details"
+            android:text="博弈池详情"
             android:textColor="#000000"
             android:textSize="18sp"
             android:textStyle="bold" />
@@ -83,7 +83,7 @@
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:lineSpacingExtra="5dp"
-                                android:text="Market"
+                                android:text="博弈池"
                                 android:textColor="#111827"
                                 android:textSize="27sp"
                                 android:textStyle="bold" />
@@ -109,7 +109,7 @@
                         android:lineSpacingExtra="5dp"
                         android:paddingHorizontal="16dp"
                         android:paddingVertical="14dp"
-                        android:text="Resolution details unavailable"
+                        android:text="暂无判定规则详情"
                         android:textColor="#475569"
                         android:textSize="15sp" />
                 </LinearLayout>
@@ -127,7 +127,7 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Market Overview"
+                        android:text="博弈池概览"
                         android:textColor="#0F172A"
                         android:textSize="17sp"
                         android:textStyle="bold" />
@@ -153,7 +153,7 @@
                                 android:id="@+id/tv_up_label"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="YES Share"
+                                android:text="YES 份额"
                                 android:textColor="#047857"
                                 android:textSize="13sp"
                                 android:textStyle="bold" />
@@ -184,7 +184,7 @@
                                 android:id="@+id/tv_down_label"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="NO Share"
+                                android:text="NO 份额"
                                 android:textColor="#E11D48"
                                 android:textSize="13sp"
                                 android:textStyle="bold" />
@@ -240,7 +240,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Liquidity"
+                                android:text="流动性"
                                 android:textColor="#94A3B8"
                                 android:textSize="12sp"
                                 android:textStyle="bold" />
@@ -266,7 +266,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Market Status"
+                                android:text="博弈池状态"
                                 android:textColor="#94A3B8"
                                 android:textSize="12sp"
                                 android:textStyle="bold" />
@@ -276,7 +276,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="4dp"
-                                android:text="Ends in --"
+                                android:text="距结束 --"
                                 android:textColor="#64748B"
                                 android:textSize="15sp"
                                 android:textStyle="bold" />
@@ -306,7 +306,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="YES/NO Share Trend"
+                            android:text="YES/NO 份额走势"
                             android:textColor="#0F172A"
                             android:textSize="17sp"
                             android:textStyle="bold" />
@@ -314,7 +314,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="● YES Share"
+                            android:text="● YES 份额"
                             android:textColor="#059669"
                             android:textSize="11sp"
                             android:textStyle="bold" />
@@ -323,7 +323,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="10dp"
-                            android:text="● NO Share"
+                            android:text="● NO 份额"
                             android:textColor="#E11D48"
                             android:textSize="11sp"
                             android:textStyle="bold" />
@@ -333,7 +333,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="5dp"
-                        android:text="Market curves include every trade · badges mark only your purchases"
+                        android:text="曲线包含博弈池全部交易 · 标记仅显示当前用户的购买记录"
                         android:textColor="#64748B"
                         android:textSize="10sp" />
 
@@ -356,7 +356,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="Your Purchase Markers"
+                                android:text="您的购买标记"
                                 android:textColor="#0F172A"
                                 android:textSize="12sp"
                                 android:textStyle="bold" />
@@ -365,7 +365,7 @@
                                 android:id="@+id/tv_trade_bucket_hint"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="1D · 2 hours per marker"
+                                android:text="1 天 · 每 2 小时聚合为一个标记"
                                 android:textColor="#64748B"
                                 android:textSize="10sp"
                                 android:textStyle="bold" />
@@ -392,7 +392,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginStart="6dp"
-                                android:text="Manual"
+                                android:text="手动购买"
                                 android:textColor="#475569"
                                 android:textSize="11sp" />
 
@@ -411,7 +411,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginStart="6dp"
-                                android:text="DeepSeek-managed"
+                                android:text="DeepSeek 托管"
                                 android:textColor="#475569"
                                 android:textSize="11sp" />
                         </LinearLayout>
@@ -433,7 +433,7 @@
                             android:layout_height="match_parent"
                             android:layout_weight="1"
                             android:gravity="center"
-                            android:text="1H"
+                            android:text="1小时"
                             android:textSize="11sp"
                             android:textStyle="bold" />
 
@@ -443,7 +443,7 @@
                             android:layout_height="match_parent"
                             android:layout_weight="1"
                             android:gravity="center"
-                            android:text="1D"
+                            android:text="1天"
                             android:textSize="11sp"
                             android:textStyle="bold" />
 
@@ -453,7 +453,7 @@
                             android:layout_height="match_parent"
                             android:layout_weight="1"
                             android:gravity="center"
-                            android:text="1W"
+                            android:text="1周"
                             android:textSize="11sp"
                             android:textStyle="bold" />
 
@@ -463,7 +463,7 @@
                             android:layout_height="match_parent"
                             android:layout_weight="1"
                             android:gravity="center"
-                            android:text="ALL"
+                            android:text="全部"
                             android:textSize="11sp"
                             android:textStyle="bold" />
                     </LinearLayout>
@@ -515,7 +515,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="AI Market Research"
+                                android:text="AI 投研分析"
                                 android:textColor="#0F172A"
                                 android:textSize="17sp"
                                 android:textStyle="bold" />
@@ -523,7 +523,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="2dp"
-                                android:text="Market data, share balance, sources, and time risk"
+                                android:text="结合行情、份额、信源与时间风险"
                                 android:textColor="#64748B"
                                 android:textSize="12sp" />
                         </LinearLayout>
@@ -543,7 +543,7 @@
                             android:background="@drawable/bg_position_ai_chip"
                             android:paddingHorizontal="10dp"
                             android:paddingVertical="5dp"
-                            android:text="Analyze ›"
+                            android:text="点击分析 ›"
                             android:textColor="#4F46E5"
                             android:textSize="11sp"
                             android:textStyle="bold" />
@@ -554,7 +554,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="15dp"
-                        android:text="Tap to generate a structured AI market report"
+                        android:text="点击生成结构化 AI 投研报告"
                         android:textColor="#1E293B"
                         android:textSize="15sp"
                         android:textStyle="bold"
@@ -576,7 +576,7 @@
                             android:background="@drawable/bg_position_ai_chip"
                             android:paddingHorizontal="11dp"
                             android:paddingVertical="6dp"
-                            android:text="Watch"
+                            android:text="观望"
                             android:textColor="#4338CA"
                             android:textSize="12sp"
                             android:textStyle="bold" />
@@ -588,7 +588,7 @@
                             android:layout_marginStart="8dp"
                             android:paddingHorizontal="11dp"
                             android:paddingVertical="6dp"
-                                android:text="Risk Assessment Pending"
+                                android:text="风险评估待生成"
                             android:textColor="#475569"
                             android:textSize="12sp"
                             android:textStyle="bold" />
@@ -611,7 +611,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Key Signals"
+                            android:text="关键信号"
                             android:textColor="#475569"
                             android:textSize="12sp"
                             android:textStyle="bold" />
@@ -629,7 +629,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="14dp"
-                            android:text="Assessment &amp; Risk Management"
+                            android:text="研判与风险管理"
                             android:textColor="#475569"
                             android:textSize="12sp"
                             android:textStyle="bold" />
@@ -655,7 +655,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="AI analysis is for reference only."
+                                android:text="AI 分析仅供参考，不构成投资建议。"
                                 android:textColor="#94A3B8"
                                 android:textSize="11sp" />
 
@@ -667,7 +667,7 @@
                                 android:gravity="center"
                                 android:minWidth="72dp"
                                 android:paddingHorizontal="8dp"
-                                android:text="Analyze Again"
+                                android:text="重新分析"
                                 android:textColor="#4F46E5"
                                 android:textSize="12sp"
                                 android:textStyle="bold" />
@@ -700,7 +700,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="AI-Managed Trading (Beta)"
+                                android:text="AI 自动托管（Beta）"
                                 android:textColor="#334155"
                                 android:textSize="14sp"
                                 android:textStyle="bold" />
@@ -709,7 +709,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="2dp"
-                                android:text="Configure order size, confidence, and risk limits"
+                                android:text="设置订单金额、置信度与风险限制"
                                 android:textColor="#94A3B8"
                                 android:textSize="11sp" />
                         </LinearLayout>
@@ -730,7 +730,7 @@
                             android:layout_marginTop="12dp"
                             android:background="@drawable/bg_ai_strategy_preset"
                             android:gravity="center"
-                            android:text="Configure AI strategy ›"
+                            android:text="配置 AI 托管策略 ›"
                             android:textColor="#4F46E5"
                             android:textSize="13sp"
                             android:textStyle="bold" />
@@ -742,7 +742,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="32dp"
-                    android:text="Trade Now"
+                    android:text="立即下注"
                     android:textColor="#000000"
                     android:textSize="17sp"
                     android:textStyle="bold" />
@@ -761,7 +761,7 @@
                         android:layout_weight="1"
                         android:layout_marginEnd="8dp"
                         android:background="@drawable/bg_bet_yes"
-                        android:text="Buy YES"
+                        android:text="买入 YES"
                         android:textAllCaps="false"
                         android:textColor="#FFFFFF"
                         android:textSize="17sp"
@@ -775,7 +775,7 @@
                         android:layout_weight="1"
                         android:layout_marginStart="8dp"
                         android:background="@drawable/bg_bet_no"
-                        android:text="Buy NO"
+                        android:text="买入 NO"
                         android:textAllCaps="false"
                         android:textColor="#FFFFFF"
                         android:textSize="17sp"
@@ -788,7 +788,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="32dp"
-                    android:text="Your Position"
+                    android:text="个人持有"
                     android:textColor="#000000"
                     android:textSize="17sp"
                     android:textStyle="bold" />
@@ -807,7 +807,7 @@
                         android:layout_height="wrap_content"
                         android:background="@drawable/bg_gold_market_panel"
                         android:padding="20dp"
-                        android:text="No position"
+                        android:text="暂无持仓"
                         android:textColor="#94A3B8"
                         android:textSize="14sp"
                         android:gravity="center"
@@ -842,7 +842,7 @@
                             android:id="@+id/tv_holding_yes_amount"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="0.00 shares"
+                            android:text="0.00 份额"
                             android:textColor="#059669"
                             android:textSize="15sp"
                             android:textStyle="bold" />
@@ -876,7 +876,7 @@
                             android:id="@+id/tv_holding_no_amount"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="0.00 shares"
+                            android:text="0.00 份额"
                             android:textColor="#E11D48"
                             android:textSize="15sp"
                             android:textStyle="bold" />
@@ -889,7 +889,7 @@
                     android:layout_height="60dp"
                     android:layout_marginTop="24dp"
                     android:background="@drawable/bg_bet_yes"
-                    android:text="Claim Payout"
+                    android:text="领取收益"
                     android:textAllCaps="false"
                     android:textColor="#FFFFFF"
                     android:textSize="18sp"

@@ -300,13 +300,13 @@ public class GoldMarketDetailViewModel extends AndroidViewModel {
     public void claimReward(int gameId, String contractAddress, int optionId) {
         repositoryFor(contractAddress).claimReward(gameId, optionId, new GoldMarketRepository.TxCallback() {
             @Override public void onTxSent(String txHash) {
-                txStatus.postValue("Payout claim submitted");
+                txStatus.postValue("收益领取交易已提交");
             }
             @Override public void onConfirmed(String msg) {
-                txStatus.postValue("Payout claimed successfully");
+                txStatus.postValue("收益领取成功");
                 loadGameInfo(gameId, contractAddress);
             }
-            @Override public void onError(String err) { tradeError.postValue("Claim failed:\n\n" + err); }
+            @Override public void onError(String err) { tradeError.postValue("领取收益失败：\n\n" + err); }
         });
     }
 }

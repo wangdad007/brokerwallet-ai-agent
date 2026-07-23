@@ -17,7 +17,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Create a Custom Market"
+            android:text="创建自定义博弈池"
             android:textColor="#1A1A1A"
             android:textSize="22sp"
             android:textStyle="bold" />
@@ -26,7 +26,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="Describe a market for AI, or configure a template manually."
+            android:text="使用自然语言交给 AI 创建，或手动配置博弈池模板。"
             android:textColor="#94A3B8"
             android:textSize="13sp" />
 
@@ -45,7 +45,7 @@
                 android:layout_height="42dp"
                 android:layout_weight="1"
                 android:gravity="center"
-                android:text="Create with AI"
+                android:text="AI 创建"
                 android:textColor="#FFFFFF"
                 android:textSize="14sp"
                 android:textStyle="bold" />
@@ -56,7 +56,7 @@
                 android:layout_height="42dp"
                 android:layout_weight="1"
                 android:gravity="center"
-                android:text="Manual Setup"
+                android:text="手动创建"
                 android:textColor="#475569"
                 android:textSize="14sp"
                 android:textStyle="bold" />
@@ -76,7 +76,7 @@
                 android:layout_height="110dp"
                 android:background="@drawable/custom_edittext_background"
                 android:gravity="top"
-                android:hint="Example: Create a market on whether gold will reach $2,400 next Monday…"
+                android:hint="例如：创建一个预测黄金下周一能否达到 2400 美元的博弈池…"
                 android:padding="14dp"
                 android:textSize="14sp"
                 android:textColor="#334155"
@@ -89,7 +89,7 @@
                 android:layout_height="52dp"
                 android:layout_marginTop="16dp"
                 android:background="@drawable/custom_button_background_black"
-                android:text="Generate Market Setup"
+                android:text="生成博弈池配置"
                 android:textAllCaps="false"
                 android:textColor="#FFFFFF"
                 android:textSize="15sp"

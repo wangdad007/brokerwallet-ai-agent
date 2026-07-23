@@ -23,25 +23,25 @@ public final class GoldQuotePresenter {
         String source = rawSource == null ? "" : rawSource.trim();
         boolean cached = source.contains("缓存") || source.toLowerCase(Locale.US).contains("cache");
         if (source.toLowerCase(Locale.US).startsWith("chainlink")) {
-            return cached ? "Chainlink XAU/USD (cached)" : "Chainlink XAU/USD";
+            return cached ? "Chainlink XAU/USD（缓存）" : "Chainlink XAU/USD";
         }
         int feed = source.indexOf(" feed=");
         if (feed > 0) source = source.substring(0, feed).trim();
         int round = source.indexOf(" round=");
         if (round > 0) source = source.substring(0, round).trim();
-        return source.isEmpty() ? "Market data" : source;
+        return source.isEmpty() ? "市场行情" : source;
     }
 
     public static String quoteMeta(String rawSource, String rawUpdatedAt, boolean delayed) {
         String source = sourceLabel(rawSource);
         String time = compactUpdatedAt(rawUpdatedAt);
-        String suffix = delayed && !source.toLowerCase(Locale.US).contains("cache") ? " · delayed" : "";
-        return time.isEmpty() ? source + suffix : source + " · updated " + time + suffix;
+        String suffix = delayed && !source.toLowerCase(Locale.US).contains("cache") ? " · 数据延迟" : "";
+        return time.isEmpty() ? source + suffix : source + " · 更新于 " + time + suffix;
     }
 
     public static String dailyChange(double change, boolean available) {
-        if (!available || Double.isNaN(change) || Double.isInfinite(change)) return "24h --";
-        return String.format(Locale.getDefault(), "24h %+.2f%%", change);
+        if (!available || Double.isNaN(change) || Double.isInfinite(change)) return "24小时 --";
+        return String.format(Locale.getDefault(), "24小时 %+.2f%%", change);
     }
 
     private static String compactUpdatedAt(String raw) {

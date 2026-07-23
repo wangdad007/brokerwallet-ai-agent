@@ -98,8 +98,8 @@ public class AIChatFragment extends Fragment {
 
     private void loadInitialGoldAdvice() {
         if (!ensureIdle()) return;
-        String initialQuestion = "Provide a current gold market assessment, including trend analysis and key risks.";
-        int loadingIndex = beginLoading("Loading live gold and market snapshots…");
+        String initialQuestion = "请给出当前黄金市场评估，包括趋势分析和主要风险";
+        int loadingIndex = beginLoading("正在加载实时黄金行情与博弈池快照…");
         loadLiveContextAndAsk(initialQuestion, loadingIndex);
     }
 
@@ -135,7 +135,7 @@ public class AIChatFragment extends Fragment {
             @Override
             public void onError(String error) {
                 loadMarketsAndAsk(question, loadingIndex, null,
-                        "Live gold quote failed: " + safeText(error));
+                        "实时黄金行情加载失败：" + safeText(error));
             }
         });
     }
@@ -150,7 +150,7 @@ public class AIChatFragment extends Fragment {
             marketContext = GoldMarketResearchPromptBuilder.buildMarketOverview(
                     Collections.emptyList(), System.currentTimeMillis(), quote);
             if (!TextUtils.isEmpty(quoteWarning)) marketContext += "\n" + quoteWarning;
-            marketContext += "\nMarket status: wallet not initialized";
+            marketContext += "\n博弈池状态：钱包尚未初始化";
             askWithCurrentContext(question, loadingIndex);
             return;
         }
@@ -173,28 +173,28 @@ public class AIChatFragment extends Fragment {
                         if (!TextUtils.isEmpty(quoteWarning)) {
                             marketContext += "\n" + quoteWarning;
                         }
-                        marketContext += "\nUnable to load markets: " + safeText(error);
+                        marketContext += "\n无法加载博弈池：" + safeText(error);
                         askWithCurrentContext(question, loadingIndex);
                     }
                 });
     }
 
     private void showWelcomeMessage() {
-        addMessage("AI", "Hello! I am the BrokerChain Gold Research Assistant.\n\n" +
-                "I use current gold quotes, on-chain market snapshots, and your question to provide market research.\n" +
-                "Each question refreshes the quote and market snapshot.\n" +
-                "Never enter a private key or seed phrase.\n\n" +
+        addMessage("AI", "你好，我是 BrokerChain 黄金 AI 投研助手\n\n" +
+                "我会结合当前黄金行情、链上博弈池快照和你的问题提供投研分析\n" +
+                "每次提问都会重新获取行情与博弈池快照\n" +
+                "请勿输入私钥或助记词\n\n" +
                 (DeepSeekClient.isConfigured() ?
-                        "AI research is ready. Ask a question anytime." :
-                        "A DeepSeek API key has not been configured."));
+                        "AI 投研服务已就绪，可以直接提问" :
+                        "尚未配置 DeepSeek API 密钥"));
     }
 
     private void loadAiAdvice() {
         if (!DeepSeekClient.isConfigured()) {
-            tvAiSummary.setText("Tap to configure a DeepSeek API key");
+            tvAiSummary.setText("点击配置 DeepSeek API 密钥");
             return;
         }
-        tvAiSummary.setText("Loading AI market research…");
+        tvAiSummary.setText("正在生成 AI 市场投研…");
         GoldAdvisoryManager.fetch(new GoldAdvisoryManager.AdvisoryCallback() {
             @Override
             public void onSuccess(GoldAdvisoryManager.Advisory advisory) {
@@ -204,7 +204,7 @@ public class AIChatFragment extends Fragment {
             @Override
             public void onError(String error) {
                 if (!destroyed && isAdded()) {
-                    tvAiSummary.setText("Unable to load · tap to retry");
+                    tvAiSummary.setText("加载失败 · 点击重试");
                 }
             }
         });
@@ -212,7 +212,7 @@ public class AIChatFragment extends Fragment {
 
     private void updateAiAdviceUI(GoldAdvisoryManager.Advisory advisory) {
         if (destroyed || !isAdded() || advisory == null) return;
-        tvAiSignal.setText(advisory.signal);
+        tvAiSignal.setText(displaySignal(advisory.signal));
         tvAiSummary.setText(advisory.summary);
         int color = advisory.signal.equals("BUY") ? Color.parseColor("#047857") : (advisory.signal.equals("SELL") ? Color.RED : Color.BLACK);
         tvAiSignal.setTextColor(color);
@@ -230,13 +230,13 @@ public class AIChatFragment extends Fragment {
         if (!ensureIdle()) {
             return;
         }
-        addMessage("You", text);
+        addMessage("你", text);
         if (!DeepSeekClient.isConfigured()) {
-            addMessage("AI", "Configure a DeepSeek API key first.");
+            addMessage("AI", "请先配置 DeepSeek API 密钥");
             return;
         }
 
-        int loadingIndex = beginLoading("Loading live gold and market snapshots…");
+        int loadingIndex = beginLoading("正在加载实时黄金行情与博弈池快照…");
         loadLiveContextAndAsk(text, loadingIndex);
     }
 
@@ -321,7 +321,7 @@ public class AIChatFragment extends Fragment {
 
     private boolean ensureIdle() {
         if (requestInFlight) {
-            addMessage("AI", "The previous request is still running. Please wait.");
+            addMessage("AI", "上一次请求仍在处理中，请稍候");
             return false;
         }
         return true;
@@ -350,46 +350,52 @@ public class AIChatFragment extends Fragment {
 
     private String safeText(String text) {
         if (TextUtils.isEmpty(text)) {
-            return "AI returned no content. Please try again later.";
+            return "AI 未返回内容，请稍后重试";
         }
         return text;
     }
 
     private String formatAiError(String error) {
         if (TextUtils.isEmpty(error)) {
-            return "AI request failed without error details. Check your connection and try again.";
+            return "AI 请求失败且未返回错误详情，请检查网络后重试";
         }
         String lower = error.toLowerCase();
         if (lower.contains("401") || lower.contains("unauthorized") || lower.contains("invalid api key")) {
-            return "AI request failed: the DeepSeek API key is invalid or expired.";
+            return "AI 请求失败：DeepSeek API 密钥无效或已过期";
         }
         if (lower.contains("timeout") || lower.contains("timed out")) {
-            return "AI request timed out. Check your connection or try again later.";
+            return "AI 请求超时，请检查网络或稍后重试";
         }
         if (lower.contains("not configured") || lower.contains("no_api_key")) {
-            return "Configure a DeepSeek API key first.";
+            return "请先配置 DeepSeek API 密钥";
         }
         if (error.length() > 300) {
             error = error.substring(0, 300) + "...";
         }
-        return "AI request failed: " + error;
+        return "AI 请求失败：" + error;
     }
 
     private void showApiKeyDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
-        builder.setTitle("Configure DeepSeek API Key");
+        builder.setTitle("配置 DeepSeek API 密钥");
         final EditText input = new EditText(requireContext());
-        input.setHint("Enter your API key");
+        input.setHint("请输入 API 密钥");
         input.setText(DeepSeekClient.getApiKey());
         builder.setView(input);
-        builder.setPositiveButton("Save", (dialog, which) -> {
+        builder.setPositiveButton("保存", (dialog, which) -> {
             String key = input.getText().toString().trim();
             if (!key.isEmpty()) {
                 DeepSeekClient.setApiKey(key);
                 loadAiAdvice();
             }
         });
-        builder.setNegativeButton("Cancel", null);
+        builder.setNegativeButton("取消", null);
         builder.show();
+    }
+
+    private String displaySignal(String signal) {
+        if ("BUY".equalsIgnoreCase(signal)) return "买入";
+        if ("SELL".equalsIgnoreCase(signal)) return "卖出";
+        return "观望";
     }
 }

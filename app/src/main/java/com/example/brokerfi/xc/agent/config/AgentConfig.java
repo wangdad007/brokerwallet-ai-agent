@@ -3,7 +3,7 @@ package com.example.brokerfi.xc.agent.config;
 public final class AgentConfig {
     public static final String LOCAL_HOST = "10.0.2.2";
 
-    public static final String BACKEND_BASE_URL = "http://" + LOCAL_HOST + ":8081";
+    public static final String BACKEND_BASE_URL = "http://" + LOCAL_HOST + ":8082";
     public static final String BACKEND_GOLD_API_PREFIX = "/api/v1/gold";
     public static final String BACKEND_GOLD_QUOTE_URL = BACKEND_BASE_URL + BACKEND_GOLD_API_PREFIX + "/quote";
     public static final String BACKEND_RESEARCH_URL = BACKEND_BASE_URL + BACKEND_GOLD_API_PREFIX + "/research";

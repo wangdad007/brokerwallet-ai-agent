@@ -6,7 +6,7 @@ import java.util.List;
 
 public final class GoldMarketSecurityPolicy {
     private static final String RETIRED_LOCAL_CONTRACT_ADDRESS = "0xad4F9eD0F2b51A26314C9f83DF588cCcE26ae03c";
-    public static final String DEFAULT_CONTRACT_ADDRESS = "0x981759e72832D96721623355a09323BD8CabbC56";
+    public static final String DEFAULT_CONTRACT_ADDRESS = "0xda550FdB040A10ff1f5467042aE3E7E13DF43F7F";
 
     private GoldMarketSecurityPolicy() {
     }

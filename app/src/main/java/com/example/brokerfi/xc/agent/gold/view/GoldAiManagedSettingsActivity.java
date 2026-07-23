@@ -79,9 +79,9 @@ public class GoldAiManagedSettingsActivity extends AppCompatActivity {
         TextView marketName = findViewById(R.id.tv_market_name);
         String title = getIntent().getStringExtra(EXTRA_MARKET_TITLE);
         marketName.setText(title == null || title.trim().isEmpty()
-                ? "Current Market" : title.trim());
+                ? "当前博弈池" : title.trim());
         TextView status = findViewById(R.id.tv_strategy_status);
-        status.setText(getIntent().getBooleanExtra(EXTRA_ENABLED, false) ? "Enabled" : "Ready");
+        status.setText(getIntent().getBooleanExtra(EXTRA_ENABLED, false) ? "已启用" : "待启用");
 
         etOrderAmount.setText(getIntent().getStringExtra(EXTRA_AMOUNT));
         etConfidence.setText(formatPercent(getIntent().getDoubleExtra(EXTRA_CONFIDENCE, 0.70) * 100));
@@ -167,25 +167,25 @@ public class GoldAiManagedSettingsActivity extends AppCompatActivity {
 
     private void saveStrategy() {
         if (saving) return;
-        Double amount = readNumber(etOrderAmount, "Enter a valid order size");
-        Double confidence = readNumber(etConfidence, "Enter a valid confidence threshold");
-        Double edge = readNumber(etEdge, "Enter a valid model edge");
-        Double kelly = readNumber(etKelly, "Enter a valid Kelly allocation");
+        Double amount = readNumber(etOrderAmount, "请输入有效的单笔金额");
+        Double confidence = readNumber(etConfidence, "请输入有效的置信度门槛");
+        Double edge = readNumber(etEdge, "请输入有效的模型优势");
+        Double kelly = readNumber(etKelly, "请输入有效的 Kelly 仓位比例");
         if (amount == null || confidence == null || edge == null || kelly == null) return;
         if (amount <= 0 || amount > 1000) {
-            showFieldError(etOrderAmount, "Order size must be greater than 0 and no more than 1,000 BKC");
+            showFieldError(etOrderAmount, "单笔金额必须大于 0 且不超过 1,000 BKC");
             return;
         }
         if (confidence < 50 || confidence > 99) {
-            showFieldError(etConfidence, "Confidence must be between 50% and 99%");
+            showFieldError(etConfidence, "置信度必须位于 50% 至 99% 之间");
             return;
         }
         if (edge < 1 || edge > 30) {
-            showFieldError(etEdge, "Model edge must be between 1% and 30%");
+            showFieldError(etEdge, "模型优势必须位于 1% 至 30% 之间");
             return;
         }
         if (kelly < 5 || kelly > 100) {
-            showFieldError(etKelly, "Kelly allocation must be between 5% and 100%");
+            showFieldError(etKelly, "Kelly 仓位比例必须位于 5% 至 100% 之间");
             return;
         }
 
@@ -202,13 +202,13 @@ public class GoldAiManagedSettingsActivity extends AppCompatActivity {
         String privateKey = StorageUtil.getCurrentPrivatekey(this);
         if (gameId <= 0 || contractAddress == null || contractAddress.trim().isEmpty()
                 || privateKey == null || privateKey.trim().isEmpty()) {
-            Toast.makeText(this, "Wallet or market configuration is unavailable", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "钱包或博弈池配置不可用", Toast.LENGTH_LONG).show();
             return;
         }
 
         saving = true;
         btnSave.setEnabled(false);
-        btnSave.setText("Saving strategy…");
+        btnSave.setText("正在保存策略…");
         GoldMarketRepository repository = new GoldMarketRepository(this, privateKey, contractAddress);
         repository.configureAiManaged(gameId, true, config,
                 new GoldMarketRepository.DataCallback<Boolean>() {
@@ -217,7 +217,7 @@ public class GoldAiManagedSettingsActivity extends AppCompatActivity {
                 saving = false;
                 setResult(Activity.RESULT_OK);
                 Toast.makeText(GoldAiManagedSettingsActivity.this,
-                        "AI-managed trading enabled", Toast.LENGTH_SHORT).show();
+                        "AI 自动托管已开启", Toast.LENGTH_SHORT).show();
                 finish();
             }
 
@@ -225,9 +225,9 @@ public class GoldAiManagedSettingsActivity extends AppCompatActivity {
             public void onError(String error) {
                 saving = false;
                 btnSave.setEnabled(true);
-                btnSave.setText("Save & Enable AI Trading");
+                btnSave.setText("保存并开启 AI 托管");
                 Toast.makeText(GoldAiManagedSettingsActivity.this,
-                        error == null ? "Unable to save strategy" : error,
+                        error == null ? "无法保存托管策略" : error,
                         Toast.LENGTH_LONG).show();
             }
         });

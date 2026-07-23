@@ -179,13 +179,13 @@ public final class GoldMarketChartPresenter {
     }
 
     public static String bucketLabel(long seconds) {
-        if (seconds < 60L * 60L) return (seconds / 60L) + " min";
+        if (seconds < 60L * 60L) return (seconds / 60L) + " 分钟";
         if (seconds < 24L * 60L * 60L) {
             long hours = seconds / (60L * 60L);
-            return hours + (hours == 1L ? " hour" : " hours");
+            return hours + " 小时";
         }
         long days = seconds / (24L * 60L * 60L);
-        return days + (days == 1L ? " day" : " days");
+        return days + " 天";
     }
 
     private static long bucketSeconds(String range, long visibleSpanSec) {

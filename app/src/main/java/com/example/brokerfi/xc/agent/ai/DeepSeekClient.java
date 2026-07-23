@@ -140,7 +140,7 @@ public class DeepSeekClient {
             }
             request.messages.add(new Message("assistant", content));
             request.messages.add(new Message("user",
-                    "The previous segment was truncated. Continue exactly where it stopped without repeating content, finish the response, and close all Markdown structures."));
+                    "上一段内容被截断，请从中断处继续，不要重复已有内容，完成回答并闭合所有 Markdown 结构"));
         }
         throw new IllegalStateException("DeepSeek response remained truncated after continuation");
     }
@@ -189,7 +189,7 @@ public class DeepSeekClient {
     }
 
     public static void chatSimple(String userMessage, ChatCallback callback) {
-        chat("You are a professional blockchain and DeFi assistant for BrokerChain Wallet. Answer in concise, actionable English.",
+        chat("你是 BrokerChain Wallet 的专业区块链与 DeFi 助手，请使用简洁、可执行的中文回答",
                 userMessage, callback);
     }
 

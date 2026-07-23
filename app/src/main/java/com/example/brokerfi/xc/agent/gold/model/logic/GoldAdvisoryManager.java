@@ -94,7 +94,7 @@ public class GoldAdvisoryManager {
             try {
                 Advisory quote = fetchGoldQuote();
                 if (quote == null || quote.priceUsd <= 0) {
-                    throw new IllegalStateException("Live gold quote is temporarily unavailable");
+                    throw new IllegalStateException("实时黄金行情暂不可用");
                 }
                 AppExecutors.getInstance().mainThread().execute(() -> callback.onSuccess(quote));
             } catch (Exception e) {
@@ -208,7 +208,7 @@ public class GoldAdvisoryManager {
                                 quote.priceUsd = price;
                                 quote.change24h = change;
                                 quote.changeAvailable = prevClose > 0;
-                                quote.quoteSource = "Sina Finance";
+                                quote.quoteSource = "新浪财经";
                                 quote.quoteUpdatedAt = fields.length > 12
                                         ? fields[12] + " " + fields[6]
                                         : fields.length > 6 ? fields[6] : "";
@@ -240,37 +240,37 @@ public class GoldAdvisoryManager {
     }
 
     private static String buildSystemPrompt() {
-        return "You are a professional gold-market analyst serving retail investors. " +
-                "Synthesize several dimensions into a concise market assessment. " +
-                "When the user supplies in-app quote or on-chain market data, treat it as authoritative and never invent live prices. " +
-                "Return only the requested JSON without a code block.";
+        return "你是面向普通投资者的专业黄金市场分析师。" +
+                "请综合多个维度给出简洁的市场评估。" +
+                "用户提供的应用内行情或链上博弈池数据应视为权威输入，不得编造实时价格。" +
+                "只返回指定 JSON，不要使用代码块，所有自然语言字段必须使用中文。";
     }
 
     private static String buildUserPrompt(Advisory quote, double cny) {
         String changeInfo = quote.changeAvailable
-                ? String.format(Locale.US, "24h change %+.2f%%", quote.change24h)
-                : "24h change unavailable";
+                ? String.format(Locale.US, "24 小时涨跌 %+.2f%%", quote.change24h)
+                : "24 小时涨跌暂不可用";
         String priceInfo = quote.priceUsd > 0
-                ? String.format(Locale.US, "Current gold spot price $%.2f/oz, %s, source %s, updated %s",
+                ? String.format(Locale.US, "当前黄金现货价格 %.2f 美元/盎司，%s，来源 %s，更新时间 %s",
                         quote.priceUsd, changeInfo, quote.quoteSource, quote.quoteUpdatedAt)
-                : "(Live gold quote unavailable)";
+                : "（实时黄金行情暂不可用）";
         String cnyInfo = cny > 0
-                ? String.format(Locale.US, "Current USD/CNY rate %.4f", cny)
-                : "(FX rate unavailable)";
+                ? String.format(Locale.US, "当前美元兑人民币汇率 %.4f", cny)
+                : "（汇率暂不可用）";
 
-        return "[Live market data]\n" +
+        return "【实时市场数据】\n" +
                 "• " + priceInfo + "\n" +
                 "• " + cnyInfo + "\n\n" +
-                "Assess the market using these dimensions:\n" +
-                "1. Current level and recent trend\n" +
-                "2. Geopolitical safe-haven demand\n" +
-                "3. US dollar trend and inflation expectations\n" +
-                "4. Central-bank purchases and institutional flows\n\n" +
-                "Return exactly this JSON without a code block:\n" +
+                "请从以下维度评估市场：\n" +
+                "1. 当前价格水平与近期趋势\n" +
+                "2. 地缘政治与避险需求\n" +
+                "3. 美元走势与通胀预期\n" +
+                "4. 央行购金与机构资金流\n\n" +
+                "请严格返回以下 JSON，不要使用代码块：\n" +
                 "GOLD_ADVISORY:{\"signal\":\"BUY|HOLD|SELL\",\"confidence\":0 to 100," +
                 "\"priceUsd\":" + (quote.priceUsd > 0 ? quote.priceUsd : 0) + "," +
-                "\"summary\":\"one grammatically complete sentence, 30 words or fewer\"," +
-                "\"factors\":[\"factor 1\",\"factor 2\",\"factor 3\"]}";
+                "\"summary\":\"一条语义完整、不超过 50 个汉字的中文句子\"," +
+                "\"factors\":[\"中文因素1\",\"中文因素2\",\"中文因素3\"]}";
     }
 
     private static Advisory parseAdvisory(String reply, double price, double change, double cny) {
@@ -297,7 +297,7 @@ public class GoldAdvisoryManager {
                 a.summary = reply.length() > 80 ? reply.substring(0, 80) + "…" : reply;
             }
         } catch (Exception e) {
-            a.summary = "Unable to parse the result. Please try again.";
+            a.summary = "分析结果解析失败，请重试";
         }
         return a;
     }
@@ -321,7 +321,7 @@ public class GoldAdvisoryManager {
         Advisory cached = copyQuote(lastValidQuote);
         cached.quoteDelayed = true;
         cached.quoteSource = cached.quoteSource == null || cached.quoteSource.trim().isEmpty()
-                ? "Recent quote (cached)" : cached.quoteSource + " (cached)";
+                ? "近期行情（缓存）" : cached.quoteSource + "（缓存）";
         return cached;
     }
 

@@ -122,18 +122,18 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
             btnDeploy.setEnabled(runtimePolicyReady && !deploying);
             btnSelectStartTime.setEnabled(runtimePolicyReady && !deploying);
             btnSelectTime.setEnabled(runtimePolicyReady && !deploying);
-            btnDeploy.setText(deploying ? "Deploying…" : "Deploy Market");
+            btnDeploy.setText(deploying ? "正在部署…" : "部署博弈池");
         });
         viewModel.getTxStatus().observe(this, status -> {
             if (status != null) {
                 Toast.makeText(this, status, Toast.LENGTH_LONG).show();
-                if (status.startsWith("Success") || status.equals("Success")) finish();
+                if (status.startsWith("创建成功") || status.equals("创建成功")) finish();
             }
         });
         viewModel.getError().observe(this, error -> {
             if (error != null) {
-                new AlertDialog.Builder(this).setTitle("Market Creation Failed").setMessage(error)
-                        .setPositiveButton("OK", null).show();
+                new AlertDialog.Builder(this).setTitle("博弈池创建失败").setMessage(error)
+                        .setPositiveButton("确定", null).show();
             }
         });
     }
@@ -173,7 +173,7 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
         btnSelectStartTime.setEnabled(false);
         btnSelectTime.setEnabled(false);
         tvObservationHint.setOnClickListener(null);
-        tvObservationHint.setText("Checking backend settlement mode…");
+        tvObservationHint.setText("正在检查后端开奖模式…");
         tvObservationHint.setTextColor(0xFF64748B);
         AppExecutors.getInstance().networkIO().execute(() -> {
             try {
@@ -194,10 +194,10 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
                         startCalendar = demoWindow.start;
                         endCalendar = demoWindow.end;
                         updateDateButtons();
-                        tvObservationHint.setText("Demo settlement mode is active. Historical 1–4 day observation periods are allowed; the new market will expire immediately and remain pending resolution.");
+                        tvObservationHint.setText("演示开奖模式已开启：允许选择过去 1 至 4 个整天作为观察期；新博弈池将立即到期并进入等待裁决状态。");
                         tvObservationHint.setTextColor(0xFFB45309);
                     } else {
-                        tvObservationHint.setText("The observation period must be 1–4 full days. Changing the start date adjusts the end date automatically.");
+                        tvObservationHint.setText("观察期必须为 1 至 4 个整天；修改开始日期后，系统会自动调整截止日期。");
                         tvObservationHint.setTextColor(0xFF8B96A9);
                     }
                 });
@@ -207,7 +207,7 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
                     runtimePolicyLoading = false;
                     runtimePolicyReady = false;
                     allowExpiredMarketCreation = false;
-                    tvObservationHint.setText("Backend unavailable. Start the backend, then tap here to retry loading the settlement mode.");
+                    tvObservationHint.setText("后端暂不可用；请先启动后端，再点击此处重新加载开奖模式。");
                     tvObservationHint.setTextColor(0xFFDC2626);
                     tvObservationHint.setOnClickListener(view -> loadRuntimePolicy());
                 });
@@ -219,7 +219,7 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
         GoldMarketTemplateCatalog.Template template = GoldMarketTemplateCatalog.forType(templateType);
         tvTemplateName.setText(template.title);
         tvTemplateDetail.setText(template.hint
-                + ". Resolution uses verified market data and full-day observation periods based on Beijing time.");
+                + "。博弈判定使用经核验的市场数据，并按北京时间整日边界计算观察期。");
         containerDirection.setVisibility(View.GONE);
         containerOperator.setVisibility(View.GONE);
         containerBenchmark.setVisibility(View.GONE);
@@ -233,22 +233,22 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
         } else if (GoldMarketTemplateCatalog.TYPE_RETURN_THRESHOLD.equals(templateType)) {
             showOrderedOperator();
             etParam1.setVisibility(View.VISIBLE);
-            etParam1.setHint("Absolute return threshold (%)");
+            etParam1.setHint("绝对涨跌幅阈值（%）");
             etParam1.setInputType(android.text.InputType.TYPE_CLASS_NUMBER
                     | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
         } else if (GoldMarketTemplateCatalog.TYPE_PRICE_THRESHOLD.equals(templateType)) {
             showOrderedOperator();
             etParam1.setVisibility(View.VISIBLE);
-            etParam1.setHint("Target price (USD/oz)");
+            etParam1.setHint("目标价格（USD/盎司）");
             etParam1.setInputType(android.text.InputType.TYPE_CLASS_NUMBER
                     | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
         } else if (GoldMarketTemplateCatalog.TYPE_PRICE_RANGE.equals(templateType)) {
             containerOperator.setVisibility(View.VISIBLE);
-            setSpinnerItems(spinnerOperator, Arrays.asList("Inside closed range", "Outside closed range"));
+            setSpinnerItems(spinnerOperator, Arrays.asList("位于闭区间内", "位于闭区间外"));
             etParam1.setVisibility(View.VISIBLE);
             etParam2.setVisibility(View.VISIBLE);
-            etParam1.setHint("Lower price bound (USD/oz)");
-            etParam2.setHint("Upper price bound (USD/oz)");
+            etParam1.setHint("价格区间下限（USD/盎司）");
+            etParam2.setHint("价格区间上限（USD/盎司）");
             int numeric = android.text.InputType.TYPE_CLASS_NUMBER
                     | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL;
             etParam1.setInputType(numeric);
@@ -261,14 +261,14 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
     private void showDirectionOptions(boolean allowFlat) {
         containerDirection.setVisibility(View.VISIBLE);
         List<String> values = allowFlat
-                ? Arrays.asList("Up", "Down", "Flat")
-                : Arrays.asList("Up", "Down");
+                ? Arrays.asList("上涨", "下跌", "持平")
+                : Arrays.asList("上涨", "下跌");
         setSpinnerItems(spinnerDirection, values);
     }
 
     private void showOrderedOperator() {
         containerOperator.setVisibility(View.VISIBLE);
-        setSpinnerItems(spinnerOperator, Arrays.asList("At Least", "At Most"));
+        setSpinnerItems(spinnerOperator, Arrays.asList("大于等于", "小于等于"));
     }
 
     private void setSpinnerItems(Spinner spinner, List<String> values) {
@@ -304,10 +304,10 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
             applyDefaultWindow(json.optInt("startDaysFromNow", 0),
                     json.optInt("durationDays", 2));
             applyTemplateDefaultCover();
-            Toast.makeText(this, "AI-generated market rules applied", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "AI 生成的博弈规则已应用", Toast.LENGTH_SHORT).show();
         } catch (Exception error) {
             Log.e("GoldCreate", "apply AI data failed", error);
-            Toast.makeText(this, "Invalid AI rule: " + error.getMessage(), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "AI 规则无效：" + error.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 
@@ -330,7 +330,7 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
             selected.set(year, month, day, 0, 0, 0);
             Calendar normalized = GoldMarketCreationPolicy.normalizeSelectedDate(selected);
             if (!sameDate(selected, normalized)) {
-                Toast.makeText(this, "No valid settlement boundary on the selected date; moved to "
+                Toast.makeText(this, "所选日期没有有效结算边界，已自动调整至 "
                         + dateFormat.format(normalized.getTime()), Toast.LENGTH_LONG).show();
             }
             if (start) {
@@ -339,7 +339,7 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
                 endCalendar = GoldMarketCreationPolicy.defaultEndForSelectedStart(
                         startCalendar, preferredDays,
                         GoldMarketTemplateCatalog.TYPE_STREAK.equals(templateType));
-                Toast.makeText(this, "End date adjusted to the 1–4 full-day rule", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "截止日期已按 1 至 4 个整天规则自动调整", Toast.LENGTH_SHORT).show();
             } else {
                 endCalendar = normalized;
             }
@@ -375,8 +375,8 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
     }
 
     private void updateDateButtons() {
-        btnSelectStartTime.setText("Start: " + dateFormat.format(startCalendar.getTime()) + " 00:00");
-        btnSelectTime.setText("End: " + dateFormat.format(endCalendar.getTime()) + " 00:00");
+        btnSelectStartTime.setText("开始日期：" + dateFormat.format(startCalendar.getTime()) + " 00:00");
+        btnSelectTime.setText("截止日期：" + dateFormat.format(endCalendar.getTime()) + " 00:00");
     }
 
     private void attemptShowSummary() {
@@ -420,29 +420,29 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
         if (liquidity.isEmpty()) liquidity = "1";
         final java.math.BigInteger liquidityWei = GoldMarketRepository.parseTokenAmountToWei(liquidity);
         if (liquidityWei == null) {
-            Toast.makeText(this, "Invalid initial liquidity amount", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "初始流动性金额无效", Toast.LENGTH_SHORT).show();
             return;
         }
         View content = LayoutInflater.from(this).inflate(R.layout.dialog_gold_pool_summary, null);
-        ((TextView) content.findViewById(R.id.tv_summary_id)).setText("Ready to deploy: " + title);
+        ((TextView) content.findViewById(R.id.tv_summary_id)).setText("待部署博弈池：" + title);
         ((TextView) content.findViewById(R.id.tv_summary_logic)).setText(
-                condition + "\nInitial liquidity: " + liquidity + " BKC"
+                condition + "\n初始流动性：" + liquidity + " BKC"
                         + (immediateExpiryDemo
-                        ? "\nDemo mode: expires immediately and waits for multi-AI resolution."
+                        ? "\n演示模式：博弈池将立即到期并等待多 AI 裁决。"
                         : ""));
         ((TextView) content.findViewById(R.id.tv_summary_period)).setText(
-                dateFormat.format(startCalendar.getTime()) + " to "
-                        + dateFormat.format(endCalendar.getTime()) + " (Beijing time)");
+                dateFormat.format(startCalendar.getTime()) + " 至 "
+                        + dateFormat.format(endCalendar.getTime()) + "（北京时间）");
         ((TextView) content.findViewById(R.id.tv_summary_creator)).setText(viewModel.getWalletAddress());
         ((TextView) content.findViewById(R.id.tv_summary_time)).setText(dateFormat.format(new Date()));
 
         AlertDialog dialog = new AlertDialog.Builder(this).setView(content).create();
         Button confirm = content.findViewById(R.id.btn_summary_close);
-        confirm.setText("Confirm & Deploy");
+        confirm.setText("确认并部署");
         confirm.setOnClickListener(view -> {
             dialog.dismiss();
             byte[] cover = selectedImageData != null ? selectedImageData : templateImageData;
-            viewModel.createGame(title, condition, cover, "Premium", Arrays.asList("YES", "NO"),
+            viewModel.createGame(title, condition, cover, "中文黄金预测博弈池", Arrays.asList("YES", "NO"),
                     durationSeconds, liquidityWei, templateType, rule);
         });
         dialog.show();
@@ -452,7 +452,7 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
         int iconRes = GoldMarketTemplateIcon.forType(templateType);
         ivPoolIcon.setImageResource(iconRes);
         templateImageData = renderDrawableAsPng(iconRes);
-        if (iconRes != R.drawable.apartment_icon) btnSelectImage.setText("Change Image");
+        if (iconRes != R.drawable.apartment_icon) btnSelectImage.setText("更换封面");
     }
 
     private byte[] renderDrawableAsPng(int drawableRes) {
@@ -489,7 +489,7 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
                 }
             }
         } catch (Exception error) {
-            Toast.makeText(this, "Unable to load image", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "无法加载图片", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -532,7 +532,7 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
             badge.setColor(benchmark.color);
             icon.setBackground(badge);
             icon.setText(benchmark.glyph);
-            icon.setContentDescription(benchmark.symbol + " icon");
+            icon.setContentDescription(benchmark.symbol + " 图标");
             label.setText(benchmark.symbol + " · " + benchmark.name);
             return view;
         }
