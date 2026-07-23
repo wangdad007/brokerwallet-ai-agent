@@ -234,7 +234,7 @@ public class MintActivity extends AppCompatActivity {
     private void startCamera() {
         try {
             File photoFile = createImageFile();
-            imageUri = FileProvider.getUriForFile(this, "com.example.brokerfi.fileprovider", photoFile);
+            imageUri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", photoFile);
             Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
             cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
             cameraLauncher.launch(cameraIntent);

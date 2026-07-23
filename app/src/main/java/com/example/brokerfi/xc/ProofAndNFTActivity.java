@@ -258,7 +258,7 @@ public class ProofAndNFTActivity extends AppCompatActivity {
             File photoFile = createImageFile();
             if (photoFile != null) {
                 currentPhotoUri = FileProvider.getUriForFile(this,
-                        "com.example.brokerfi.fileprovider",
+                        getPackageName() + ".fileprovider",
                         photoFile);
                 takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, currentPhotoUri);
                 startActivityForResult(takePictureIntent, REQUEST_CODE_CAMERA);
@@ -576,7 +576,7 @@ public class ProofAndNFTActivity extends AppCompatActivity {
             out.flush();
             out.close();
             
-            return FileProvider.getUriForFile(this, "com.example.brokerfi.fileprovider", file);
+            return FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", file);
         } catch (IOException e) {
             Log.e("SaveBitmap", "Error saving bitmap", e);
             return null;
