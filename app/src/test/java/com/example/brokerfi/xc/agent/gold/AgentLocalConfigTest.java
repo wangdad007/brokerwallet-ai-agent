@@ -1,6 +1,7 @@
 package com.example.brokerfi.xc.agent.gold;
 
 import com.example.brokerfi.xc.agent.config.AgentConfig;
+import com.example.brokerfi.xc.Holder;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketOptionText;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketStatusStyle;
 
@@ -26,6 +27,15 @@ public class AgentLocalConfigTest {
         assertEquals("https://api.gold-api.com/price/XAU", AgentConfig.GOLD_API_URL);
         assertEquals("https://hq.sinajs.cn/list=hf_XAU", AgentConfig.SINA_GOLD_URL);
         assertEquals("https://open.er-api.com/v6/latest/USD", AgentConfig.FX_USD_CNY_URL);
+    }
+
+    @Test
+    public void walletAndGoldMarketUseTheSameLocalSupervisorChain() {
+        assertEquals("http", Holder.serverScheme);
+        assertEquals(AgentConfig.LOCAL_HOST, Holder.serverHost);
+        assertEquals("56741", Holder.serverPort);
+        assertEquals("http://" + Holder.serverHost + ":" + Holder.serverPort + "/",
+                AgentConfig.BROKER_CHAIN_BASE_URL);
     }
 
     @Test

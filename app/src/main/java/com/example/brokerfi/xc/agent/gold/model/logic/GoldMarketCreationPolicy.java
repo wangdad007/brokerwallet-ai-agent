@@ -81,6 +81,28 @@ public final class GoldMarketCreationPolicy {
         return new Window(start, end);
     }
 
+    /** Returns the most recent fully elapsed whole-day window for demo settlement. */
+    public static Window latestExpiredWindow(Calendar now, int durationDays, boolean streak) {
+        if (durationDays < 1 || durationDays > 4) {
+            throw new IllegalArgumentException("Observation period must be 1–4 full days");
+        }
+        Calendar candidateEnd = midnight(now);
+        for (int attempt = 0; attempt < 14; attempt++) {
+            Calendar candidateStart = (Calendar) candidateEnd.clone();
+            candidateStart.add(Calendar.DAY_OF_YEAR, -durationDays);
+            try {
+                Window window = validateSelectedWindow(candidateStart, candidateEnd, streak);
+                if (window.durationDays() == durationDays && !window.end.after(now)) {
+                    return window;
+                }
+            } catch (IllegalArgumentException ignored) {
+                // Move to the previous boundary until a complete valid window is found.
+            }
+            candidateEnd.add(Calendar.DAY_OF_YEAR, -1);
+        }
+        throw new IllegalArgumentException("Unable to find a recent completed observation period");
+    }
+
     public static Window validateSelectedWindow(Calendar selectedStart, Calendar selectedEnd,
                                                 boolean streak) {
         Calendar start = normalizeSelectedDate(selectedStart);
@@ -227,8 +249,22 @@ public final class GoldMarketCreationPolicy {
     }
 
     public static long contractDurationSeconds(Calendar now, Calendar end) {
+        return contractDurationSeconds(now, end, false, 1L);
+    }
+
+    /**
+     * Produces the contract duration without changing the historical observation
+     * window stored in the resolution rule. The deployed contract rejects zero
+     * duration, so demo mode uses its advertised minimum positive duration.
+     */
+    public static long contractDurationSeconds(Calendar now, Calendar end,
+                                               boolean allowExpiredMarketCreation,
+                                               long demoDurationSeconds) {
         long duration = (end.getTimeInMillis() - now.getTimeInMillis()) / 1000L;
-        if (duration <= 0) throw new IllegalArgumentException("End date must be later than the current time");
+        if (duration <= 0) {
+            if (allowExpiredMarketCreation) return Math.max(1L, demoDurationSeconds);
+            throw new IllegalArgumentException("End date must be later than the current time");
+        }
         return duration;
     }
 

@@ -161,6 +161,23 @@ public class BrokerChainClient {
         String finalValue = (value == null || value.isEmpty() || value.equals("0")) ? "0x0" : value;
         if (!finalValue.startsWith("0x")) finalValue = "0x" + finalValue;
 
+        String response = sendEthTxOnce(privateKey, to, data, finalValue, gas);
+        if (!isAddressMissingResponse(response)) {
+            return response;
+        }
+
+        // A newly imported wallet key has the same address on every chain, but
+        // the local Supervisor still needs its own account row and local funds.
+        // Register/fund it once, then rebuild the transaction with a fresh UUID
+        // because the failed submission's UUID has already passed replay checks.
+        String claimResponse = claimLocalAccount(privateKey);
+        Log.i(TAG, "Local account registration response: " + claimResponse);
+        return sendEthTxOnce(privateKey, to, data, finalValue, gas);
+    }
+
+    private static String sendEthTxOnce(String privateKey, String to, String data,
+                                        String finalValue, String gas) throws Exception {
+
         String uuid = UUID.randomUUID().toString();
         String thedata = to + data + finalValue + gas + uuid;
         String[] sign = signECDSA(privateKey, thedata);
@@ -176,6 +193,25 @@ public class BrokerChainClient {
         req.setSign2(sign[1]);
 
         return doPost("eth_sendTransaction", req);
+    }
+
+    private static String claimLocalAccount(String privateKey) throws Exception {
+        String uuid = UUID.randomUUID().toString();
+        String[] sign = signECDSA(privateKey, uuid);
+
+        SignedAccountReq req = new SignedAccountReq();
+        req.setPublicKey(getPublicKeyFromPrivateKey(privateKey));
+        req.setRandomStr(uuid);
+        req.setSign1(sign[0]);
+        req.setSign2(sign[1]);
+        return doPost("claim", req);
+    }
+
+    public static boolean isAddressMissingResponse(String response) {
+        if (response == null) return false;
+        String normalized = response.toLowerCase(java.util.Locale.ROOT);
+        return normalized.contains("addr not exist")
+                || normalized.contains("account not exist");
     }
 
     /**
@@ -290,6 +326,14 @@ public class BrokerChainClient {
         public void setSign1(String s) { Sign1 = s; }
         public void setSign2(String s) { Sign2 = s; }
         public void setUUID(String u) { UUID = u; }
+    }
+
+    public static class SignedAccountReq {
+        private String PublicKey, RandomStr, Sign1, Sign2;
+        public void setPublicKey(String value) { PublicKey = value; }
+        public void setRandomStr(String value) { RandomStr = value; }
+        public void setSign1(String value) { Sign1 = value; }
+        public void setSign2(String value) { Sign2 = value; }
     }
 
     public static class ReceiptReq {

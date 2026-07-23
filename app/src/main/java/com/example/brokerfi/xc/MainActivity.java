@@ -57,6 +57,7 @@ public class MainActivity extends AppCompatActivity {
     private ImageView news;
     private ImageView medalSystem;
     private ImageView goldMarket;
+    private boolean restoringAccountSelection;
     private LinearLayout support;
     private NavigationHelper navigationHelper;
     private RelativeLayout sendlist;
@@ -104,12 +105,18 @@ public class MainActivity extends AppCompatActivity {
 
 //        balanceTextView = findViewById(R.id.balanceTextView);
 
-        //Save CurrentAccount
-        StorageUtil.saveCurrentAccount(MainActivity.this,"0");
+        // Initialize only once. Resetting this value on every recreation made
+        // Gold Market silently fall back to Account 1 after Account 2 was selected.
+        if (StorageUtil.getCurrentAccount(MainActivity.this) == null) {
+            StorageUtil.saveCurrentAccount(MainActivity.this, "0");
+        }
 
         accountSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (restoringAccountSelection) {
+                    return;
+                }
 
                 // Get hidden account list from local
                 String hiddenAccountsStr = getHiddenAccounts();
@@ -372,6 +379,7 @@ public class MainActivity extends AppCompatActivity {
                             }
                         };
                         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                        restoringAccountSelection = true;
                         accountSpinner.setAdapter(adapter);
                         
                         // Update the position
@@ -390,6 +398,9 @@ public class MainActivity extends AppCompatActivity {
                                 StorageUtil.saveCurrentAccount(MainActivity.this, String.valueOf(finalOriginalIndices.get(0)));
                             }
                         }
+                        // Spinner dispatches its initial callback asynchronously. Keep it
+                        // suppressed until the stored account has been restored.
+                        accountSpinner.post(() -> restoringAccountSelection = false);
                     });
                 }
                 try {

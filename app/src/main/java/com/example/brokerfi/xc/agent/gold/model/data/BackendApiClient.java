@@ -177,6 +177,26 @@ public class BackendApiClient {
     // ==================== 游戏元数据 API（DB 读写） ====================
 
     /**
+     * 获取后端当前运行策略。是否允许创建已结束的演示池由后端的同一个
+     * sentinel.auto_resolve_enabled 开关派生，前端不保存第二份配置。
+     */
+    public static RuntimePolicy fetchRuntimePolicy() throws Exception {
+        String body = doGet("/runtime-policy");
+        return gson.fromJson(body, RuntimePolicy.class);
+    }
+
+    public static class RuntimePolicy {
+        @SerializedName("auto_resolve_enabled")
+        public boolean autoResolveEnabled = true;
+
+        @SerializedName("allow_expired_market_creation")
+        public boolean allowExpiredMarketCreation;
+
+        @SerializedName("demo_duration_seconds")
+        public long demoDurationSeconds = 1L;
+    }
+
+    /**
      * 从后端 DB 获取所有游戏的元数据（标题、条件、图片等）
      * 相比从 IPFS 逐个下载，DB 查询快得多
      *

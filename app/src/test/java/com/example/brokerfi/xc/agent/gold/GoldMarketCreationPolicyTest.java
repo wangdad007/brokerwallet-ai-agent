@@ -66,6 +66,19 @@ public class GoldMarketCreationPolicyTest {
     }
 
     @Test
+    public void demoWindowIsAlreadyFinishedAndKeepsRequestedWholeDays() {
+        Calendar now = Calendar.getInstance(BEIJING);
+        now.clear();
+        now.set(2026, Calendar.JULY, 22, 12, 0); // Wednesday noon
+        GoldMarketCreationPolicy.Window window =
+                GoldMarketCreationPolicy.latestExpiredWindow(now, 2, false);
+        assertEquals(2, window.durationDays());
+        assertTrue(!window.end.after(now));
+        assertTrue(GoldMarketCreationPolicy.isValidBoundary(window.start));
+        assertTrue(GoldMarketCreationPolicy.isValidBoundary(window.end));
+    }
+
+    @Test
     public void buildsCanonicalRelativeRule() {
         Calendar now = Calendar.getInstance(BEIJING);
         now.clear();
@@ -126,4 +139,30 @@ public class GoldMarketCreationPolicyTest {
             assertEquals(end.getTimeInMillis() / 1000L, rule.get("end_time_sec"));
         }
     }
+
+	@Test
+	public void expiredWindowIsRejectedDuringNormalOperation() {
+		Calendar now = Calendar.getInstance(BEIJING);
+		now.clear();
+		now.set(2026, Calendar.JULY, 22, 12, 0);
+		Calendar end = (Calendar) now.clone();
+		end.add(Calendar.HOUR_OF_DAY, -1);
+		try {
+			GoldMarketCreationPolicy.contractDurationSeconds(now, end);
+			throw new AssertionError("expected expired window rejection");
+		} catch (IllegalArgumentException expected) {
+			assertTrue(expected.getMessage().contains("later than the current time"));
+		}
+	}
+
+	@Test
+	public void expiredWindowUsesMinimumPositiveContractDurationInDemoMode() {
+		Calendar now = Calendar.getInstance(BEIJING);
+		now.clear();
+		now.set(2026, Calendar.JULY, 22, 12, 0);
+		Calendar end = (Calendar) now.clone();
+		end.add(Calendar.DAY_OF_YEAR, -1);
+		assertEquals(1L, GoldMarketCreationPolicy.contractDurationSeconds(
+				now, end, true, 1L));
+	}
 }

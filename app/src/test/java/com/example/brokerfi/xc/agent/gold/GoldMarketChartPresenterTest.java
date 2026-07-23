@@ -148,6 +148,21 @@ public class GoldMarketChartPresenterTest {
     }
 
     @Test
+    public void rapidOpposingTradesRemainExactStepsInsteadOfSmoothedArtifacts() {
+        GoldMarketChartPresenter.ChartModel model = GoldMarketChartPresenter.prepare(
+                Arrays.asList(
+                        history(1_000L, 79f, 21f),
+                        history(1_004L, 14f, 86f),
+                        history(1_165L, 99f, 1f)),
+                Collections.emptyList());
+
+        assertEquals(79f, shareAt(model, 1_003L, 0), 0.001f);
+        assertEquals(14f, shareAt(model, 1_004L, 0), 0.001f);
+        assertEquals(14f, shareAt(model, 1_164L, 0), 0.001f);
+        assertEquals(99f, shareAt(model, 1_165L, 0), 0.001f);
+    }
+
+    @Test
     public void rejectsFutureDatedPurchases() {
         BackendApiClient.TradeDTO future = trade(
                 System.currentTimeMillis() / 1000L + 3_600L, 0, false);

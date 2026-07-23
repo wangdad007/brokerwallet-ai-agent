@@ -18,6 +18,7 @@ import com.example.brokerfi.xc.StorageUtil;
 import com.example.brokerfi.xc.agent.ai.DeepSeekClient;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldAdvisoryManager;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldQuotePresenter;
+import com.example.brokerfi.xc.agent.gold.model.data.BrokerChainClient;
 import com.example.brokerfi.xc.agent.gold.viewmodel.GoldNoteMarketViewModel;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
@@ -33,6 +34,7 @@ public class GoldNoteMarketActivity extends AppCompatActivity {
     private TextView tvGoldPrice, tvGoldChange, tvGoldQuoteMeta;
     private boolean hasValidQuote = false;
     private boolean destroyed = false;
+    private String activeWalletAddress;
     private final Handler timerHandler = new Handler(Looper.getMainLooper());
     private final Runnable priceRefreshRunnable = new Runnable() {
         @Override public void run() {
@@ -48,12 +50,29 @@ public class GoldNoteMarketActivity extends AppCompatActivity {
         setContentView(R.layout.activity_gold_note_market);
         destroyed = false;
         DeepSeekClient.init(this);
-        if (StorageUtil.getCurrentPrivatekey(this) == null) { Toast.makeText(this, "Please sign in first", Toast.LENGTH_SHORT).show(); finish(); return; }
+        String currentPrivateKey = StorageUtil.getCurrentPrivatekey(this);
+        if (currentPrivateKey == null) { Toast.makeText(this, "Please sign in first", Toast.LENGTH_SHORT).show(); finish(); return; }
+        activeWalletAddress = BrokerChainClient.getAddress(currentPrivateKey);
         viewModel = new ViewModelProvider(this).get(GoldNoteMarketViewModel.class);
         initViews();
         observeViewModel();
         viewModel.loadPrice();
         timerHandler.post(priceRefreshRunnable);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        String currentPrivateKey = StorageUtil.getCurrentPrivatekey(this);
+        String currentWalletAddress = currentPrivateKey == null
+                ? "" : BrokerChainClient.getAddress(currentPrivateKey);
+        if (activeWalletAddress != null
+                && !activeWalletAddress.equalsIgnoreCase(currentWalletAddress)) {
+            // Fragments keep account-scoped repositories in their ViewModels.
+            // Recreate them when the wallet account changes instead of reusing stale keys.
+            activeWalletAddress = currentWalletAddress;
+            recreate();
+        }
     }
 
     private void observeViewModel() {

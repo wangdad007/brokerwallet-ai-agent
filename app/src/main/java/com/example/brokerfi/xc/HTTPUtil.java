@@ -7,12 +7,17 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 
 public class HTTPUtil {
+    private static String walletServerUrl(String endpoint) {
+        String normalizedEndpoint = endpoint != null && endpoint.startsWith("/")
+                ? endpoint.substring(1) : endpoint;
+        return Holder.serverScheme + "://" + Holder.serverHost + ":"
+                + Holder.serverPort + "/" + normalizedEndpoint;
+    }
+
     public static byte[] doPost(String url, Object requestBody) throws Exception {
         Gson gson = new Gson();
         String jsonInputString = gson.toJson(requestBody);
-//        String urlString = "https://" + Holder.serverHost + ":" + Holder.serverPort+"/";
-        String urlString = "https://" + Holder.serverHost + ":" + "443"+"/";
-        urlString += url;
+        String urlString = walletServerUrl(url);
 
         URL requestUrl = new URL(urlString);
         HttpURLConnection connection = (HttpURLConnection) requestUrl.openConnection();
@@ -65,9 +70,7 @@ public class HTTPUtil {
     public static byte[] doGet(String url, Object requestBody) throws Exception {
         Gson gson = new Gson();
         String jsonInputString = gson.toJson(requestBody);
-        //String urlString = "https://" + Holder.serverHost + ":" + Holder.serverPort+"/";
-        String urlString = "https://" + Holder.serverHost + ":" +"443" +"/";
-        urlString += url;
+        String urlString = walletServerUrl(url);
 
         URL requestUrl = new URL(urlString);
         HttpURLConnection connection = (HttpURLConnection) requestUrl.openConnection();

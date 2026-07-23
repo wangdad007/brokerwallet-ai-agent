@@ -18,6 +18,8 @@ public final class GoldMarketChartPresenter {
     private static final long FUTURE_TRADE_TOLERANCE_SEC = 5 * 60L;
     private static final int MAX_RENDER_POINTS = 360;
     private static final int MAX_SAMPLES_PER_INTERVAL = 12;
+    private static final long ABRUPT_MOVE_MAX_INTERVAL_SEC = 5L * 60L;
+    private static final float ABRUPT_MOVE_MIN_PERCENT = 8f;
 
     private GoldMarketChartPresenter() {}
 
@@ -285,6 +287,21 @@ public final class GoldMarketChartPresenter {
         List<SharePoint> result = new ArrayList<>((count - 1) * samplesPerInterval + 1);
         for (int i = 0; i < count - 1; i++) {
             double span = x[i + 1] - x[i];
+            if (span <= ABRUPT_MOVE_MAX_INTERVAL_SEC
+                    && Math.abs(y[i + 1] - y[i]) >= ABRUPT_MOVE_MIN_PERCENT) {
+                // A large move over only a few seconds/minutes is a real trade
+                // impact, not a continuous trend. Hold the previous value until
+                // the execution time, then draw the recorded jump. This prevents
+                // smoothing from making rapid opposite trades look like a false dip.
+                appendDistinct(result, source.get(i));
+                if (source.get(i + 1).timestampSec - source.get(i).timestampSec > 1L) {
+                    appendDistinct(result, new SharePoint(
+                            source.get(i + 1).timestampSec - 1L,
+                            source.get(i).yesShare, source.get(i).noShare));
+                }
+                appendDistinct(result, source.get(i + 1));
+                continue;
+            }
             for (int sample = 0; sample < samplesPerInterval; sample++) {
                 double t = sample / (double) samplesPerInterval;
                 double t2 = t * t;
@@ -299,7 +316,7 @@ public final class GoldMarketChartPresenter {
                 appendDistinct(result, new SharePoint(timestamp, yes, 100f - yes));
             }
         }
-        result.add(source.get(count - 1));
+        appendDistinct(result, source.get(count - 1));
         return result;
     }
 

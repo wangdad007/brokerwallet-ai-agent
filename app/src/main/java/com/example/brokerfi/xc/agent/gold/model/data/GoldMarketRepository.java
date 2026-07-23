@@ -409,11 +409,15 @@ public class GoldMarketRepository {
 
         try {
             JSONObject root = new JSONObject(trimmed);
-            JSONObject error = root.optJSONObject("error");
-            if (error != null) {
-                int code = error.optInt("code", Integer.MIN_VALUE);
-                String message = error.optString("message", trimmed);
-                return describeRpcMessage(code, message, trimmed);
+            if (root.has("error")) {
+                JSONObject errorObject = root.optJSONObject("error");
+                if (errorObject != null) {
+                    int code = errorObject.optInt("code", Integer.MIN_VALUE);
+                    String message = errorObject.optString("message", trimmed);
+                    return describeRpcMessage(code, message, trimmed);
+                }
+                return describeRpcMessage(Integer.MIN_VALUE,
+                        root.optString("error", trimmed), trimmed);
             }
             if (root.has("result")) {
                 return null;
@@ -433,7 +437,13 @@ public class GoldMarketRepository {
         String msg = message == null ? "" : message.trim();
         String lower = msg.toLowerCase();
 
-        if (lower.contains("insufficient funds")) {
+        if (lower.contains("addr not exist") || lower.contains("account not exist")) {
+            return "The selected wallet account is not registered on the local BrokerChain yet. "
+                    + "Return to the wallet home screen, use Faucet once to create and fund this account, "
+                    + "then retry the trade.";
+        }
+
+        if (lower.contains("insufficient funds") || lower.contains("not have enough token")) {
             Matcher matcher = INSUFFICIENT_FUNDS_PATTERN.matcher(msg);
             if (matcher.find()) {
                 BigInteger requiredWei = new BigInteger(matcher.group(1));

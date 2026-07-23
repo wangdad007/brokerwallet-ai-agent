@@ -8,6 +8,7 @@ import org.web3j.abi.datatypes.generated.Uint8;
 
 import com.example.brokerfi.xc.agent.gold.model.data.GoldMarketRepository;
 import com.example.brokerfi.xc.agent.gold.model.data.BackendApiClient;
+import com.example.brokerfi.xc.agent.gold.model.data.BrokerChainClient;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketSecurityPolicy;
 import com.example.brokerfi.xc.agent.gold.view.GoldNoteMarketActivity;
 
@@ -23,6 +24,16 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class GoldMarketRepositoryTest {
+    @Test
+    public void brokerChainClientDetectsMissingLocalAccountsBeforeAutomaticRegistration() {
+        assertTrue(BrokerChainClient.isAddressMissingResponse(
+                "{\"error\":\"addr not exist\"}"));
+        assertTrue(BrokerChainClient.isAddressMissingResponse(
+                "{\"error\":\"From account not exist\"}"));
+        assertFalse(BrokerChainClient.isAddressMissingResponse(
+                "{\"result\":\"0xabc\"}"));
+    }
+
     @Test
     public void parseTokenAmountToWei_acceptsDecimalBkcValues() {
         assertEquals(new BigInteger("1250000000000000000"),

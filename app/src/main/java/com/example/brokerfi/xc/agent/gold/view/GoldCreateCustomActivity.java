@@ -33,6 +33,8 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.bumptech.glide.Glide;
 import com.example.brokerfi.R;
+import com.example.brokerfi.xc.agent.gold.model.data.AppExecutors;
+import com.example.brokerfi.xc.agent.gold.model.data.BackendApiClient;
 import com.example.brokerfi.xc.agent.gold.model.data.GoldMarketRepository;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldBenchmarkCatalog;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketCreationPolicy;
@@ -61,6 +63,7 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
     private Calendar endCalendar;
     private TextView tvTemplateName;
     private TextView tvTemplateDetail;
+    private TextView tvObservationHint;
     private EditText etParam1;
     private EditText etParam2;
     private EditText etInitialLiquidity;
@@ -76,6 +79,10 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
     private Spinner spinnerDirection;
     private Spinner spinnerBenchmark;
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+    private boolean allowExpiredMarketCreation;
+    private long demoDurationSeconds = 1L;
+    private boolean runtimePolicyReady;
+    private boolean runtimePolicyLoading;
 
     private byte[] selectedImageData;
     private byte[] templateImageData;
@@ -107,11 +114,14 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
         String aiData = getIntent().getStringExtra("AI_PARSED_DATA");
         if (aiData != null) applyAiParsedData(aiData);
         observeViewModel();
+        loadRuntimePolicy();
     }
 
     private void observeViewModel() {
         viewModel.getIsDeploying().observe(this, deploying -> {
-            btnDeploy.setEnabled(!deploying);
+            btnDeploy.setEnabled(runtimePolicyReady && !deploying);
+            btnSelectStartTime.setEnabled(runtimePolicyReady && !deploying);
+            btnSelectTime.setEnabled(runtimePolicyReady && !deploying);
             btnDeploy.setText(deploying ? "Deploying…" : "Deploy Market");
         });
         viewModel.getTxStatus().observe(this, status -> {
@@ -132,6 +142,7 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
         findViewById(R.id.btn_back).setOnClickListener(v -> finish());
         tvTemplateName = findViewById(R.id.tv_template_name);
         tvTemplateDetail = findViewById(R.id.tv_template_detail);
+        tvObservationHint = findViewById(R.id.tv_observation_hint);
         etParam1 = findViewById(R.id.et_param1);
         etParam2 = findViewById(R.id.et_param2);
         etInitialLiquidity = findViewById(R.id.et_initial_liquidity);
@@ -152,6 +163,56 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
         btnSelectTime.setOnClickListener(v -> showDatePicker(false));
         btnSelectImage.setOnClickListener(v -> pickImage());
         btnDeploy.setOnClickListener(v -> attemptShowSummary());
+    }
+
+    private void loadRuntimePolicy() {
+        if (runtimePolicyLoading) return;
+        runtimePolicyLoading = true;
+        runtimePolicyReady = false;
+        btnDeploy.setEnabled(false);
+        btnSelectStartTime.setEnabled(false);
+        btnSelectTime.setEnabled(false);
+        tvObservationHint.setOnClickListener(null);
+        tvObservationHint.setText("Checking backend settlement mode…");
+        tvObservationHint.setTextColor(0xFF64748B);
+        AppExecutors.getInstance().networkIO().execute(() -> {
+            try {
+                BackendApiClient.RuntimePolicy policy = BackendApiClient.fetchRuntimePolicy();
+                runOnUiThread(() -> {
+                    runtimePolicyLoading = false;
+                    runtimePolicyReady = true;
+                    allowExpiredMarketCreation = policy.allowExpiredMarketCreation;
+                    demoDurationSeconds = Math.max(1L, policy.demoDurationSeconds);
+                    btnDeploy.setEnabled(true);
+                    btnSelectStartTime.setEnabled(true);
+                    btnSelectTime.setEnabled(true);
+                    if (allowExpiredMarketCreation) {
+                        GoldMarketCreationPolicy.Window demoWindow =
+                                GoldMarketCreationPolicy.latestExpiredWindow(
+                                        Calendar.getInstance(BEIJING), 2,
+                                        GoldMarketTemplateCatalog.TYPE_STREAK.equals(templateType));
+                        startCalendar = demoWindow.start;
+                        endCalendar = demoWindow.end;
+                        updateDateButtons();
+                        tvObservationHint.setText("Demo settlement mode is active. Historical 1–4 day observation periods are allowed; the new market will expire immediately and remain pending resolution.");
+                        tvObservationHint.setTextColor(0xFFB45309);
+                    } else {
+                        tvObservationHint.setText("The observation period must be 1–4 full days. Changing the start date adjusts the end date automatically.");
+                        tvObservationHint.setTextColor(0xFF8B96A9);
+                    }
+                });
+            } catch (Exception error) {
+                Log.w("GoldCreate", "Unable to load backend runtime policy; using safe defaults", error);
+                runOnUiThread(() -> {
+                    runtimePolicyLoading = false;
+                    runtimePolicyReady = false;
+                    allowExpiredMarketCreation = false;
+                    tvObservationHint.setText("Backend unavailable. Start the backend, then tap here to retry loading the settlement mode.");
+                    tvObservationHint.setTextColor(0xFFDC2626);
+                    tvObservationHint.setOnClickListener(view -> loadRuntimePolicy());
+                });
+            }
+        });
     }
 
     private void setupTemplateUI() {
@@ -285,7 +346,9 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
             updateDateButtons();
         }, target.get(Calendar.YEAR), target.get(Calendar.MONTH), target.get(Calendar.DAY_OF_MONTH));
         if (start) {
-            dialog.getDatePicker().setMinDate(System.currentTimeMillis() - 1000L);
+            if (!allowExpiredMarketCreation) {
+                dialog.getDatePicker().setMinDate(System.currentTimeMillis() - 1000L);
+            }
         } else {
             Calendar minEnd = (Calendar) startCalendar.clone();
             minEnd.add(Calendar.DAY_OF_YEAR, 1);
@@ -340,16 +403,19 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
             String condition = GoldMarketCreationPolicy.buildCondition(
                     templateType, param1, param2, direction, operator, window);
             Calendar now = Calendar.getInstance(BEIJING);
-            long duration = GoldMarketCreationPolicy.contractDurationSeconds(now, endCalendar);
+            boolean immediateExpiryDemo = !endCalendar.after(now);
+            long duration = GoldMarketCreationPolicy.contractDurationSeconds(
+                    now, endCalendar, allowExpiredMarketCreation, demoDurationSeconds);
             updateDateButtons();
-            showSummaryDialog(title, condition, rule, duration);
+            showSummaryDialog(title, condition, rule, duration, immediateExpiryDemo);
         } catch (Exception error) {
             Toast.makeText(this, error.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 
     private void showSummaryDialog(String title, String condition,
-                                   JSONObject rule, long durationSeconds) {
+                                   JSONObject rule, long durationSeconds,
+                                   boolean immediateExpiryDemo) {
         String liquidity = etInitialLiquidity.getText().toString().trim();
         if (liquidity.isEmpty()) liquidity = "1";
         final java.math.BigInteger liquidityWei = GoldMarketRepository.parseTokenAmountToWei(liquidity);
@@ -360,7 +426,10 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
         View content = LayoutInflater.from(this).inflate(R.layout.dialog_gold_pool_summary, null);
         ((TextView) content.findViewById(R.id.tv_summary_id)).setText("Ready to deploy: " + title);
         ((TextView) content.findViewById(R.id.tv_summary_logic)).setText(
-                condition + "\nInitial liquidity: " + liquidity + " BKC");
+                condition + "\nInitial liquidity: " + liquidity + " BKC"
+                        + (immediateExpiryDemo
+                        ? "\nDemo mode: expires immediately and waits for multi-AI resolution."
+                        : ""));
         ((TextView) content.findViewById(R.id.tv_summary_period)).setText(
                 dateFormat.format(startCalendar.getTime()) + " to "
                         + dateFormat.format(endCalendar.getTime()) + " (Beijing time)");
