@@ -182,7 +182,7 @@ public class GoldMyPositionsFragment extends Fragment {
                     String sideName = GoldMarketOptionText.holdingLabel(i);
                     heldOptionIndexes.add(i);
                     if (shareText.length() > 0) shareText.append('\n');
-                    shareText.append("持有 ").append(sideName).append("：")
+                    shareText.append(sideName).append("：")
                             .append(GoldNoteMarketActivity.formatShareAmount(shares)).append(" 份额");
                 }
             }

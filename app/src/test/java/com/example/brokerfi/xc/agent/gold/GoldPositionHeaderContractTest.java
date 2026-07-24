@@ -45,6 +45,14 @@ public class GoldPositionHeaderContractTest {
         assertFalse(source.contains("GoldMarketDetailPresenter.heroText"));
     }
 
+    @Test
+    public void positionCardDoesNotDuplicateTheHoldingPrefix() throws Exception {
+        String source = read("app/src/main/java/com/example/brokerfi/xc/agent/gold/view/GoldMyPositionsFragment.java");
+
+        assertTrue(source.contains("shareText.append(sideName).append(\"：\")"));
+        assertFalse(source.contains("shareText.append(\"持有 \").append(sideName)"));
+    }
+
     private static String read(String relativePath) throws Exception {
         Path path = Paths.get(relativePath);
         if (!Files.exists(path)) path = Paths.get("..").resolve(relativePath).normalize();
