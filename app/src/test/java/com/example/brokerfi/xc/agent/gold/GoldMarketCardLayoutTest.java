@@ -17,13 +17,19 @@ public class GoldMarketCardLayoutTest {
         String titleTag = openingTag(
                 layout, "androidx.appcompat.widget.AppCompatTextView", "tv_market_title");
         String statusTag = openingTag(layout, "TextView", "tv_market_status");
+        String fragment = read(
+                "app/src/main/java/com/example/brokerfi/xc/agent/gold/view/GoldMarketListFragment.java");
+        String fitter = read(
+                "app/src/main/java/com/example/brokerfi/xc/agent/gold/view/GoldMarketTitleFitter.java");
 
         assertTrue(titleTag.contains("android:maxLines=\"1\""));
         assertTrue(titleTag.contains("android:singleLine=\"true\""));
         assertTrue(titleTag.contains("android:ellipsize=\"end\""));
-        assertTrue(titleTag.contains("app:autoSizeTextType=\"uniform\""));
-        assertTrue(titleTag.contains("app:autoSizeMinTextSize=\"10sp\""));
+        assertTrue(titleTag.contains("android:textSize=\"18sp\""));
         assertTrue(titleTag.contains("app:layout_constraintEnd_toEndOf=\"parent\""));
+        assertTrue(fragment.contains("GoldMarketTitleFitter.apply(tvTitle"));
+        assertTrue(fitter.contains("Layout.getDesiredWidth"));
+        assertTrue(fitter.contains("MIN_TEXT_SP = 10f"));
         assertTrue(statusTag.contains(
                 "app:layout_constraintStart_toEndOf=\"@+id/tv_total_pool\""));
         assertTrue(statusTag.contains(

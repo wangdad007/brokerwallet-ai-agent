@@ -117,8 +117,9 @@ public class GoldMarketListFragment extends Fragment {
             TextView tvTitle = card.findViewById(R.id.tv_market_title);
             ImageView ivIcon = card.findViewById(R.id.iv_market_icon);
             String rawTitle = game.desc != null && !game.desc.isEmpty() ? game.desc : "博弈池 #" + game.id;
-            tvTitle.setText(GoldMarketTextStyler.style(
-                    GoldMarketCardPresenter.displayTitle(rawTitle, game.condition, game.deadlineSec), true));
+            GoldMarketTitleFitter.apply(tvTitle, GoldMarketTextStyler.style(
+                    GoldMarketCardPresenter.displayTitle(
+                            rawTitle, game.condition, game.deadlineSec), true));
 
             int templateIcon = GoldMarketTemplateIcon.forMarket(
                     game.avatarUrl, rawTitle, game.condition);
