@@ -31,6 +31,8 @@ import java.util.Locale;
 public class GoldNoteMarketActivity extends AppCompatActivity {
     private static final BigDecimal DISPLAY_TOKEN_UNIT = new BigDecimal("1000000000000000000");
     private GoldNoteMarketViewModel viewModel;
+    private ViewPager2 viewPager;
+    private String pendingCreateDraft = "";
     private TextView tvGoldPrice, tvGoldChange, tvGoldQuoteMeta;
     private boolean hasValidQuote = false;
     private boolean destroyed = false;
@@ -99,13 +101,13 @@ public class GoldNoteMarketActivity extends AppCompatActivity {
         tvGoldChange = findViewById(R.id.tv_gold_change);
         tvGoldQuoteMeta = findViewById(R.id.tv_gold_quote_meta);
         TabLayout tabLayout = findViewById(R.id.tab_layout);
-        ViewPager2 viewPager = findViewById(R.id.view_pager);
+        viewPager = findViewById(R.id.view_pager);
         viewPager.setAdapter(new FragmentStateAdapter(this) {
             @NonNull @Override public Fragment createFragment(int position) {
                 switch (position) {
                     case 0: return new GoldMarketListFragment();
                     case 1: return new GoldMyPositionsFragment();
-                    case 2: return new GoldCreatePoolFragment();
+                    case 2: return GoldCreatePoolFragment.newInstance(pendingCreateDraft);
                     case 3: return new AIChatFragment();
                     default: return new GoldMarketListFragment();
                 }
@@ -120,6 +122,29 @@ public class GoldNoteMarketActivity extends AppCompatActivity {
                 case 3: tab.setText("AI投研"); break;
             }
         }).attach();
+    }
+
+    /** Opens the existing market-creation flow with a user-approved natural-language draft. */
+    public void openCreateDraft(String draft) {
+        pendingCreateDraft = draft == null ? "" : draft.trim();
+        if (viewPager == null) return;
+        viewPager.setCurrentItem(2, true);
+        // FragmentStateAdapter creates an off-screen page asynchronously on some devices.
+        // Retry after the tab animation and also avoid depending on its internal f2 tag alone.
+        viewPager.postDelayed(() -> {
+            Fragment current = getSupportFragmentManager().findFragmentByTag("f2");
+            if (!(current instanceof GoldCreatePoolFragment)) {
+                for (Fragment fragment : getSupportFragmentManager().getFragments()) {
+                    if (fragment instanceof GoldCreatePoolFragment) {
+                        current = fragment;
+                        break;
+                    }
+                }
+            }
+            if (current instanceof GoldCreatePoolFragment) {
+                ((GoldCreatePoolFragment) current).applyAiDraft(pendingCreateDraft);
+            }
+        }, 260L);
     }
 
     private void updateGoldPriceUI(GoldAdvisoryManager.Advisory quote) {

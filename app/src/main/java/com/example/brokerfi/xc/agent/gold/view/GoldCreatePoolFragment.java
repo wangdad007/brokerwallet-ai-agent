@@ -31,11 +31,20 @@ import java.util.Locale;
 
 public class GoldCreatePoolFragment extends Fragment {
     private static final double CONFIDENCE_THRESHOLD = 0.7d;
+    private static final String ARG_AI_DRAFT = "ARG_AI_DRAFT";
 
     private EditText etAiInput;
     private AppCompatButton btnAiAnalyze;
     private final SimpleDateFormat dateFormat =
             new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+
+    public static GoldCreatePoolFragment newInstance(String aiDraft) {
+        GoldCreatePoolFragment fragment = new GoldCreatePoolFragment();
+        Bundle args = new Bundle();
+        args.putString(ARG_AI_DRAFT, aiDraft);
+        fragment.setArguments(args);
+        return fragment;
+    }
 
     @Nullable
     @Override
@@ -53,7 +62,17 @@ public class GoldCreatePoolFragment extends Fragment {
         btnAiAnalyze.setOnClickListener(v -> performAiAnalysis());
         bindCreateModeTabs(tabAiCreate, tabManualCreate, sectionAiCreate, sectionManualCreate);
         initTemplates(view.findViewById(R.id.template_grid));
+        String draft = getArguments() == null ? "" : getArguments().getString(ARG_AI_DRAFT, "");
+        applyAiDraft(draft);
         return view;
+    }
+
+    /** Called by the AI workbench after the user explicitly chooses to create a draft. */
+    public void applyAiDraft(String draft) {
+        if (etAiInput == null || draft == null || draft.trim().isEmpty()) return;
+        etAiInput.setText(draft.trim());
+        etAiInput.setSelection(etAiInput.length());
+        etAiInput.requestFocus();
     }
 
     public static String buildAiParserPrompt(String today) {

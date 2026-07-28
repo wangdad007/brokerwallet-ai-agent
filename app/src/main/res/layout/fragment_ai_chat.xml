@@ -5,7 +5,7 @@
     android:orientation="vertical"
     android:background="@color/white">
 
-    <!-- AI投研助手卡片 -->
+    <!-- AI 投研工作台：实时信号只是入口，下面的对话可以调起受限的产品能力。 -->
     <LinearLayout
         android:id="@+id/card_ai_advice"
         android:layout_width="match_parent"
@@ -29,7 +29,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="AI 投研助手"
+                android:text="AI 投研工作台"
                 android:textColor="#000000"
                 android:textSize="16sp"
                 android:textStyle="bold" />
@@ -70,7 +70,32 @@
                 android:textColor="#666666"
                 android:textSize="14sp" />
         </LinearLayout>
+
+        <TextView
+            android:id="@+id/tv_ai_meta"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="正在连接实时行情与链上市场快照"
+            android:textColor="#64748B"
+            android:textSize="12sp" />
     </LinearLayout>
+
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:fillViewport="false"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:id="@+id/quick_action_container"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingEnd="8dp" />
+    </HorizontalScrollView>
 
     <ScrollView
         android:id="@+id/message_scroll"
@@ -99,7 +124,7 @@
             android:layout_width="0dp"
             android:layout_height="48dp"
             android:layout_weight="1"
-            android:hint="询问黄金投研问题…"
+            android:hint="例如：比较 1 号池和 2 号池，或模拟买入…"
             android:paddingHorizontal="16dp"
             android:background="@drawable/custom_edittext_border"
             android:maxLines="3"

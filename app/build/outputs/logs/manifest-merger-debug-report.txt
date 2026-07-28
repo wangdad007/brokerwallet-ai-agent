@@ -1,4 +1,15 @@
 -- Merging decision tree log ---
+provider#androidx.core.content.FileProvider
+INJECTED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:211:9-219:20
+	android:grantUriPermissions
+		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:215:13-47
+	android:authorities
+		INJECTED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml
+		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:213:13-64
+	android:exported
+		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:214:13-37
+	android:name
+		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:212:13-62
 manifest
 ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:2:1-226:12
 INJECTED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:2:1-226:12
@@ -500,28 +511,18 @@ ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/m
 		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:208:13-59
 	android:name
 		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:206:13-51
-provider#androidx.core.content.FileProvider
-ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:211:9-219:20
-	android:grantUriPermissions
-		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:215:13-47
-	android:authorities
-		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:213:13-68
-	android:exported
-		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:214:13-37
-	android:name
-		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:212:13-62
-meta-data#android.support.FILE_PROVIDER_PATHS
-ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:216:13-218:54
-	android:resource
-		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:218:17-51
-	android:name
-		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:217:17-67
 meta-data#preloaded_fonts
 ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:221:9-223:57
 	android:resource
 		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:223:13-54
 	android:name
 		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:222:13-43
+meta-data#android.support.FILE_PROVIDER_PATHS
+ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:216:13-218:54
+	android:resource
+		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:218:17-51
+	android:name
+		ADDED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml:217:17-67
 uses-sdk
 INJECTED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from /Users/tangyucinder/开发/Polymarket/brokerwallet-ai-agent/app/src/main/AndroidManifest.xml
@@ -688,7 +689,7 @@ ADDED from [androidx.core:core:1.9.0] /Users/tangyucinder/.gradle/caches/9.4.1/t
 		ADDED from [androidx.core:core:1.9.0] /Users/tangyucinder/.gradle/caches/9.4.1/transforms/1d3264d97229e7251ad1e5005e1a528b/transformed/core-1.9.0/AndroidManifest.xml:24:9-44
 	android:name
 		ADDED from [androidx.core:core:1.9.0] /Users/tangyucinder/.gradle/caches/9.4.1/transforms/1d3264d97229e7251ad1e5005e1a528b/transformed/core-1.9.0/AndroidManifest.xml:23:9-81
-permission#com.example.brokerfi.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+permission#com.example.brokerfi.cn.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
 ADDED from [androidx.core:core:1.9.0] /Users/tangyucinder/.gradle/caches/9.4.1/transforms/1d3264d97229e7251ad1e5005e1a528b/transformed/core-1.9.0/AndroidManifest.xml:22:5-24:47
 	android:protectionLevel
 		ADDED from [androidx.core:core:1.9.0] /Users/tangyucinder/.gradle/caches/9.4.1/transforms/1d3264d97229e7251ad1e5005e1a528b/transformed/core-1.9.0/AndroidManifest.xml:24:9-44
@@ -698,7 +699,7 @@ uses-permission#${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
 ADDED from [androidx.core:core:1.9.0] /Users/tangyucinder/.gradle/caches/9.4.1/transforms/1d3264d97229e7251ad1e5005e1a528b/transformed/core-1.9.0/AndroidManifest.xml:26:5-97
 	android:name
 		ADDED from [androidx.core:core:1.9.0] /Users/tangyucinder/.gradle/caches/9.4.1/transforms/1d3264d97229e7251ad1e5005e1a528b/transformed/core-1.9.0/AndroidManifest.xml:26:22-94
-uses-permission#com.example.brokerfi.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+uses-permission#com.example.brokerfi.cn.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
 ADDED from [androidx.core:core:1.9.0] /Users/tangyucinder/.gradle/caches/9.4.1/transforms/1d3264d97229e7251ad1e5005e1a528b/transformed/core-1.9.0/AndroidManifest.xml:26:5-97
 	android:name
 		ADDED from [androidx.core:core:1.9.0] /Users/tangyucinder/.gradle/caches/9.4.1/transforms/1d3264d97229e7251ad1e5005e1a528b/transformed/core-1.9.0/AndroidManifest.xml:26:22-94
