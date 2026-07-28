@@ -9,12 +9,15 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
+import android.transition.AutoTransition;
+import android.transition.TransitionManager;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.GridLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -42,6 +45,7 @@ import java.util.List;
 import java.util.Locale;
 
 import io.noties.markwon.Markwon;
+import io.noties.markwon.ext.tables.TablePlugin;
 
 /**
  * Conversational research workbench for the gold market.
@@ -52,14 +56,15 @@ import io.noties.markwon.Markwon;
  */
 public class AIChatFragment extends Fragment {
     private LinearLayout messageContainer;
-    private LinearLayout quickActionContainer;
+    private GridLayout quickActionContainer;
     private ScrollView messageScroll;
     private EditText inputField;
     private ImageView sendBtn;
     private ImageView btnConfig;
     private TextView tvAiSignal;
     private TextView tvAiSummary;
-    private TextView tvAiMeta;
+    private TextView tvAiCardToggle;
+    private View aiAdviceContent;
     private LinearLayout cardAiAdvice;
     private Markwon markwon;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -89,7 +94,9 @@ public class AIChatFragment extends Fragment {
         if (!TextUtils.isEmpty(privateKey)) {
             marketRepository = new GoldMarketRepository(requireContext(), privateKey);
         }
-        markwon = Markwon.create(requireContext());
+        markwon = Markwon.builder(requireContext())
+                .usePlugin(TablePlugin.create(requireContext()))
+                .build();
         showWelcomeMessage();
         bindQuickActions();
         loadAiAdvice();
@@ -104,49 +111,71 @@ public class AIChatFragment extends Fragment {
         btnConfig = view.findViewById(R.id.btn_config);
         tvAiSignal = view.findViewById(R.id.tv_ai_signal);
         tvAiSummary = view.findViewById(R.id.tv_ai_summary);
-        tvAiMeta = view.findViewById(R.id.tv_ai_meta);
+        tvAiCardToggle = view.findViewById(R.id.tv_ai_card_toggle);
+        aiAdviceContent = view.findViewById(R.id.ai_advice_content);
         cardAiAdvice = view.findViewById(R.id.card_ai_advice);
+        tvAiSignal.setPadding(dp(10), dp(6), dp(10), dp(6));
         sendBtn.setOnClickListener(v -> onSendMessage());
         btnConfig.setOnClickListener(v -> showApiKeyDialog());
-        cardAiAdvice.setOnClickListener(v -> submitQuestion("请给出当前黄金市场评估，包括趋势、博弈池概率和主要风险"));
+        view.findViewById(R.id.ai_advice_header)
+                .setOnClickListener(v -> setAiAdviceExpanded(
+                        aiAdviceContent.getVisibility() != View.VISIBLE));
+        tvAiSummary.setOnClickListener(v -> submitQuestion(
+                "请给出当前黄金市场评估，包括趋势、博弈池概率和主要风险"));
     }
 
     private void bindQuickActions() {
         addQuickAction("市场速览", "请给出当前黄金市场评估，包括趋势、博弈池概率和主要风险");
-        addQuickAction("比较博弈池", "请比较当前活跃博弈池的隐含概率、流动性和风险");
-        addQuickAction("诊断持仓", "请诊断我的当前持仓、集中度和主要风险");
+        addQuickAction("博弈对比", "请比较当前活跃博弈池的隐含概率、流动性和风险");
+        addQuickAction("持仓诊断", "请诊断我的当前持仓、集中度和主要风险");
         addQuickAction("交易模拟", "帮我模拟买入 1 号池 YES 1 BKC");
-        addQuickAction("创建草稿", "创建一个未来两天黄金是否上涨的博弈池");
+        addQuickAction("创建市场", "创建一个未来两天黄金是否上涨的博弈池");
         addQuickAction("托管策略", "为 1 号池配置保守的 AI 自动托管策略");
     }
 
     private void addQuickAction(String label, String prompt) {
-        Button chip = new Button(requireContext());
+        TextView chip = new TextView(requireContext());
         chip.setText(label);
         chip.setTextSize(13);
-        chip.setAllCaps(false);
         chip.setTextColor(0xFF334155);
-        chip.setPadding(dp(12), 0, dp(12), 0);
-        chip.setBackground(chipBackground());
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, dp(38));
-        params.setMargins(0, 0, dp(8), 0);
+        chip.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        chip.setGravity(Gravity.CENTER);
+        chip.setPadding(dp(6), 0, dp(6), 0);
+        chip.setBackground(quickActionBackground());
+        chip.setElevation(dp(1));
+        GridLayout.LayoutParams params = new GridLayout.LayoutParams();
+        params.width = 0;
+        params.height = dp(44);
+        params.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
+        params.setMargins(0, 0, dp(8), dp(8));
         quickActionContainer.addView(chip, params);
-        chip.setOnClickListener(v -> submitQuestion(prompt));
+        chip.setOnClickListener(v -> {
+            setAiAdviceExpanded(false);
+            submitQuestion(prompt);
+        });
     }
 
-    private GradientDrawable chipBackground() {
+    private void setAiAdviceExpanded(boolean expanded) {
+        AutoTransition transition = new AutoTransition();
+        transition.setDuration(180L);
+        TransitionManager.beginDelayedTransition(cardAiAdvice, transition);
+        aiAdviceContent.setVisibility(expanded ? View.VISIBLE : View.GONE);
+        tvAiCardToggle.setText(expanded ? "收起 ︿" : "展开 ﹀");
+        tvAiCardToggle.setContentDescription(expanded ? "收起 AI 投研工作台" : "展开 AI 投研工作台");
+    }
+
+    private GradientDrawable quickActionBackground() {
         GradientDrawable background = new GradientDrawable();
-        background.setColor(0xFFF8FAFC);
-        background.setCornerRadius(dp(19));
-        background.setStroke(dp(1), 0xFFE2E8F0);
+        background.setColor(0xFFFFFFFF);
+        background.setCornerRadius(dp(12));
+        background.setStroke(dp(1), 0xFFDCE3EC);
         return background;
     }
 
     private void showWelcomeMessage() {
         addAgentCard("已就绪", "你好，我是黄金市场智能体",
-                "我可以完成市场分析、博弈池对比、持仓诊断，并准备交易模拟、创建市场和 AI 托管策略草稿。\n\n"
-                        + "涉及资金与策略启用时，我只会生成预览；你仍需在正式页面确认。请不要输入私钥或助记词。",
+                "问行情、比较博弈池或诊断持仓，也可以让我准备交易模拟、创建市场和托管策略。\n"
+                        + "涉及资金时只生成预览，仍需你在正式页面确认。",
                 Collections.emptyList());
     }
 
@@ -240,8 +269,9 @@ public class AIChatFragment extends Fragment {
                 showStrategyDraft(question, intent, loadingIndex);
                 return;
             case MARKET_COMPARE:
-                askWithCurrentContext("请以表格比较当前活跃博弈池：市场隐含概率、流动性、截止时间、"
-                        + "与当前黄金行情的关联和主要风险。不要保证收益。\n用户需求：" + question,
+                askWithCurrentContext("请比较当前活跃博弈池的市场隐含概率、流动性、截止时间、"
+                        + "与当前黄金行情的关联和主要风险。先给出简短结论，再逐个博弈池分析；"
+                        + "不要使用 Markdown 表格，不要保证收益。\n用户需求：" + question,
                         loadingIndex, intent.displayName);
                 return;
             case POSITION_DIAGNOSIS:
@@ -260,7 +290,11 @@ public class AIChatFragment extends Fragment {
     }
 
     private void askWithCurrentContext(String question, int loadingIndex, String taskName) {
-        String prompt = GoldMarketResearchPromptBuilder.withFollowUp(marketContext, question);
+        String mobileFormat = "\n\n【移动端排版要求】\n"
+                + "不要使用 Markdown 表格或 HTML。使用简短小标题、短段落和项目符号；"
+                + "每段尽量不超过 3 行，避免连续堆砌竖线、分隔符和超长句。";
+        String prompt = GoldMarketResearchPromptBuilder.withFollowUp(
+                marketContext, question + mobileFormat);
         AgentManager.getInstance().askGoldResearch(prompt, new AgentManager.AnalysisCallback() {
             @Override public void onBrokerReport(AgentManager.BrokerReport report) {
                 finishAnalysis(loadingIndex, report == null ? "" : report.rawAnalysis, taskName);
@@ -396,11 +430,9 @@ public class AIChatFragment extends Fragment {
         GoldAdvisoryManager.Advisory quote = latestQuote;
         String source = quote == null || TextUtils.isEmpty(quote.quoteSource) ? "行情来源暂不可用" : quote.quoteSource;
         String updated = quote == null || TextUtils.isEmpty(quote.quoteUpdatedAt) ? "刚刚获取" : quote.quoteUpdatedAt;
-        String body = "任务：" + taskName + "\n"
-                + "已读取：" + source + " 黄金行情、" + latestGames.size() + " 个链上博弈池快照\n"
-                + "快照时间：" + updated + "\n"
-                + "风险提示：市场概率不是事件真实概率；AI 输出仅供投研参考，不构成收益承诺。";
-        addAgentCard("数据与边界", "本次回答的依据", body, Collections.emptyList());
+        String body = source + " · " + latestGames.size() + " 个链上博弈池\n"
+                + updated + " · AI 观点仅供投研参考";
+        addAgentCard("数据快照", taskName + " · 已核验输入", body, Collections.emptyList());
     }
 
     private List<CardAction> marketButtons() {
@@ -441,7 +473,6 @@ public class AIChatFragment extends Fragment {
     private void loadAiAdvice() {
         if (!DeepSeekClient.isConfigured()) {
             tvAiSummary.setText("配置 API 密钥后获取 AI 市场速览");
-            tvAiMeta.setText("可先使用交易模拟、创建草稿和策略草稿");
             return;
         }
         tvAiSummary.setText("正在生成 AI 市场速览…");
@@ -450,7 +481,6 @@ public class AIChatFragment extends Fragment {
             @Override public void onError(String error) {
                 if (!destroyed && isAdded()) {
                     tvAiSummary.setText("加载失败 · 点击重试");
-                    tvAiMeta.setText("AI 市场速览暂不可用");
                 }
             }
         });
@@ -460,12 +490,14 @@ public class AIChatFragment extends Fragment {
         if (destroyed || !isAdded() || advisory == null) return;
         tvAiSignal.setText(displaySignal(advisory.signal));
         tvAiSummary.setText(advisory.summary);
-        tvAiMeta.setText("置信度 " + advisory.confidence + "% · "
-                + (TextUtils.isEmpty(advisory.quoteSource) ? "行情来源待确认" : advisory.quoteSource)
-                + " · 仅供投研参考");
         int color = "BUY".equals(advisory.signal) ? 0xFF047857
                 : "SELL".equals(advisory.signal) ? Color.RED : 0xFF0F172A;
         tvAiSignal.setTextColor(color);
+        int signalFill = "BUY".equals(advisory.signal) ? 0xFFECFDF5
+                : "SELL".equals(advisory.signal) ? 0xFFFFF1F2 : 0xFFF1F5F9;
+        int signalStroke = "BUY".equals(advisory.signal) ? 0xFFA7F3D0
+                : "SELL".equals(advisory.signal) ? 0xFFFECDD3 : 0xFFE2E8F0;
+        tvAiSignal.setBackground(panelBackground(signalFill, signalStroke));
     }
 
     @Override public void onDestroyView() {
@@ -484,6 +516,7 @@ public class AIChatFragment extends Fragment {
 
     private int addMessageNow(String sender, String text) {
         if ("你".equals(sender)) latestUserText = text;
+        boolean aiMessage = "AI".equals(sender);
         LinearLayout bubble = new LinearLayout(requireContext());
         bubble.setOrientation(LinearLayout.VERTICAL);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
@@ -491,20 +524,30 @@ public class AIChatFragment extends Fragment {
         params.setMargins(0, 0, 0, dp(16));
         bubble.setLayoutParams(params);
         TextView senderView = new TextView(requireContext());
-        senderView.setText(sender);
+        senderView.setText(aiMessage ? "AI 智能体" : sender);
         senderView.setTextSize(12);
-        senderView.setTextColor("AI".equals(sender) ? 0xFF2563EB : 0xFF475569);
-        senderView.setPadding(0, 0, 0, dp(4));
+        senderView.setTextColor(aiMessage ? 0xFF2563EB : 0xFF64748B);
+        senderView.setPadding(dp(2), 0, dp(2), dp(5));
         bubble.addView(senderView);
         TextView textView = new TextView(requireContext());
         textView.setTextSize(15);
-        textView.setTextColor("AI".equals(sender) ? 0xFF0F172A : Color.WHITE);
+        textView.setTextColor(aiMessage ? 0xFF0F172A : Color.WHITE);
         textView.setLineSpacing(dp(3), 1f);
         textView.setPadding(dp(16), dp(12), dp(16), dp(12));
-        textView.setBackground("AI".equals(sender) ? panelBackground(0xFFF1F5F9, 0xFFE2E8F0) : panelBackground(0xFF111827, 0xFF111827));
-        if ("AI".equals(sender) && markwon != null) markwon.setMarkdown(textView, text); else textView.setText(text);
-        bubble.addView(textView);
-        bubble.setGravity("AI".equals(sender) ? Gravity.START : Gravity.END);
+        textView.setBackground(aiMessage
+                ? panelBackground(0xFFF4F7FB, 0xFFDCE5F0)
+                : panelBackground(0xFF172033, 0xFF172033));
+        LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(
+                aiMessage ? LinearLayout.LayoutParams.MATCH_PARENT
+                        : LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        if (!aiMessage) {
+            textView.setMaxWidth(Math.round(getResources().getDisplayMetrics().widthPixels * .82f));
+            textParams.gravity = Gravity.END;
+        }
+        if (aiMessage && markwon != null) markwon.setMarkdown(textView, text); else textView.setText(text);
+        bubble.addView(textView, textParams);
+        bubble.setGravity(aiMessage ? Gravity.START : Gravity.END);
         messageContainer.addView(bubble);
         int index = messageContainer.getChildCount() - 1;
         scrollToBottom();

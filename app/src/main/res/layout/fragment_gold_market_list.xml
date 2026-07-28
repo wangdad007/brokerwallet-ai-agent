@@ -23,6 +23,35 @@
                 android:textSize="20sp"
                 android:textStyle="bold" />
 
+            <EditText
+                android:id="@+id/market_search_input"
+                android:layout_width="match_parent"
+                android:layout_height="46dp"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_gold_search_field"
+                android:drawableStart="@drawable/ic_search_gold"
+                android:drawablePadding="8dp"
+                android:hint="搜索标题、规则或博弈池编号"
+                android:imeOptions="actionSearch"
+                android:inputType="text"
+                android:paddingHorizontal="14dp"
+                android:singleLine="true"
+                android:textColor="#0F172A"
+                android:textColorHint="#94A3B8"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/market_search_empty"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:gravity="center"
+                android:padding="20dp"
+                android:text="没有找到匹配的博弈池"
+                android:textColor="#64748B"
+                android:textSize="14sp"
+                android:visibility="gone" />
+
             <LinearLayout
                 android:id="@+id/market_list_container"
                 android:layout_width="match_parent"

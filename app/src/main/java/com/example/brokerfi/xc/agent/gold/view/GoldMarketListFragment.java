@@ -5,10 +5,13 @@ import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -25,6 +28,7 @@ import com.example.brokerfi.xc.agent.gold.model.data.PinataClient;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldAdvisoryManager;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketCardPresenter;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketOptionText;
+import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketSearchMatcher;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketStatusStyle;
 import com.example.brokerfi.xc.agent.gold.viewmodel.GoldMarketViewModel;
 import com.bumptech.glide.Glide;
@@ -41,6 +45,8 @@ public class GoldMarketListFragment extends Fragment {
     private final List<GoldMarketRepository.GameModel> availableGames = new ArrayList<>();
 
     private LinearLayout marketListContainer;
+    private TextView marketSearchEmpty;
+    private String searchQuery = "";
     private SwipeRefreshLayout swipeRefresh;
     private final Handler dataRefreshHandler = new Handler(Looper.getMainLooper());
     private final Runnable dataRefreshRunnable = new Runnable() {
@@ -68,8 +74,18 @@ public class GoldMarketListFragment extends Fragment {
 
     private void initViews(View v) {
         marketListContainer = v.findViewById(R.id.market_list_container);
+        marketSearchEmpty = v.findViewById(R.id.market_search_empty);
+        EditText searchInput = v.findViewById(R.id.market_search_input);
         swipeRefresh = v.findViewById(R.id.swipe_refresh);
         swipeRefresh.setOnRefreshListener(() -> viewModel.loadData());
+        searchInput.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence text, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence text, int start, int before, int count) {
+                searchQuery = text == null ? "" : text.toString();
+                renderMarketList();
+            }
+            @Override public void afterTextChanged(Editable editable) {}
+        });
     }
 
     private void observeViewModel() {
@@ -112,7 +128,10 @@ public class GoldMarketListFragment extends Fragment {
     private void renderMarketList() {
         marketListContainer.removeAllViews();
         LayoutInflater inflater = LayoutInflater.from(requireContext());
+        int visibleCount = 0;
         for (GoldMarketRepository.GameModel game : availableGames) {
+            if (!GoldMarketSearchMatcher.matches(game, searchQuery)) continue;
+            visibleCount++;
             View card = inflater.inflate(R.layout.item_gold_market_card, marketListContainer, false);
             TextView tvTitle = card.findViewById(R.id.tv_market_title);
             ImageView ivIcon = card.findViewById(R.id.iv_market_icon);
@@ -168,6 +187,9 @@ public class GoldMarketListFragment extends Fragment {
             });
             marketListContainer.addView(card);
         }
+        marketSearchEmpty.setText(searchQuery.trim().isEmpty()
+                ? "当前没有可展示的博弈池" : "没有找到匹配的博弈池");
+        marketSearchEmpty.setVisibility(visibleCount == 0 ? View.VISIBLE : View.GONE);
     }
 
     private GradientDrawable makeRoundedBackground(int color, int radiusDp) {

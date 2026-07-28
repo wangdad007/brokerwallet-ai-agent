@@ -65,6 +65,7 @@ dependencies {
     
     // Markdown 解析库
     implementation("io.noties.markwon:core:4.6.2")
+    implementation("io.noties.markwon:ext-tables:4.6.2")
     
     // OpenCV for document scanning - using a manual approach
     // Note: OpenCV Android SDK needs to be downloaded manually and added as a module

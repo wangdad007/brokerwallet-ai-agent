@@ -16,73 +16,106 @@
             android:padding="16dp">
 
             <!-- Total Holdings Summary Card (Premium Dark) -->
-            <RelativeLayout
+            <LinearLayout
+                android:id="@+id/portfolio_summary_card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:padding="24dp"
                 android:background="@drawable/custom_button_background"
-                android:elevation="8dp">
-
-                <TextView
-                    android:id="@+id/label_balance"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="个人总持有估值"
-                    android:textColor="#CCFFFFFF"
-                    android:textSize="13sp" />
-
-                <TextView
-                    android:id="@+id/tv_total_balance"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_below="@id/label_balance"
-                    android:layout_marginTop="8dp"
-                    android:text="0.00 BKC"
-                    android:textColor="#FFFFFF"
-                    android:textSize="34sp"
-                    android:textStyle="bold" />
+                android:elevation="8dp"
+                android:orientation="vertical"
+                android:padding="24dp">
 
                 <LinearLayout
-                    android:id="@+id/portfolio_chart_section"
+                    android:id="@+id/portfolio_summary_header"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_below="@id/tv_total_balance"
-                    android:layout_marginTop="14dp"
-                    android:orientation="vertical">
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/label_balance"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="个人总持有估值"
+                            android:textColor="#CCFFFFFF"
+                            android:textSize="13sp" />
+
+                        <TextView
+                            android:id="@+id/tv_total_balance"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="0.00 BKC"
+                            android:textColor="#FFFFFF"
+                            android:textSize="34sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
 
                     <TextView
+                        android:id="@+id/tv_portfolio_toggle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="资产估值走势"
-                        android:textColor="#99FFFFFF"
-                        android:textSize="11sp" />
-
-                    <com.github.mikephil.charting.charts.LineChart
-                        android:id="@+id/chart_portfolio_value"
-                        android:layout_width="match_parent"
-                        android:layout_height="116dp"
-                        android:layout_marginTop="4dp" />
+                        android:layout_marginStart="12dp"
+                        android:paddingHorizontal="10dp"
+                        android:paddingVertical="7dp"
+                        android:text="收起 ︿"
+                        android:textColor="#B8C2D1"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
                 </LinearLayout>
 
-                <View
-                    android:id="@+id/divider_card"
+                <LinearLayout
+                    android:id="@+id/portfolio_details"
                     android:layout_width="match_parent"
-                    android:layout_height="0.5dp"
-                    android:layout_below="@id/portfolio_chart_section"
-                    android:layout_marginTop="12dp"
-                    android:background="#33FFFFFF" />
-
-                <TextView
-                    android:id="@+id/tv_total_pnl"
-                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_below="@id/divider_card"
-                    android:layout_marginTop="16dp"
-                    android:text="累计参与 0 个博弈池"
-                    android:textColor="#AAFFFFFF"
-                    android:textSize="14sp" />
+                    android:orientation="vertical">
 
-            </RelativeLayout>
+                    <LinearLayout
+                        android:id="@+id/portfolio_chart_section"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="资产估值走势"
+                            android:textColor="#99FFFFFF"
+                            android:textSize="11sp" />
+
+                        <com.github.mikephil.charting.charts.LineChart
+                            android:id="@+id/chart_portfolio_value"
+                            android:layout_width="match_parent"
+                            android:layout_height="116dp"
+                            android:layout_marginTop="4dp" />
+                    </LinearLayout>
+
+                    <View
+                        android:id="@+id/divider_card"
+                        android:layout_width="match_parent"
+                        android:layout_height="0.5dp"
+                        android:layout_marginTop="12dp"
+                        android:background="#33FFFFFF" />
+
+                    <TextView
+                        android:id="@+id/tv_total_pnl"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:text="累计参与 0 个博弈池"
+                        android:textColor="#AAFFFFFF"
+                        android:textSize="14sp" />
+                </LinearLayout>
+            </LinearLayout>
 
             <TextView
                 android:layout_width="match_parent"
@@ -92,6 +125,35 @@
                 android:textColor="#000000"
                 android:textSize="20sp"
                 android:textStyle="bold" />
+
+            <EditText
+                android:id="@+id/position_search_input"
+                android:layout_width="match_parent"
+                android:layout_height="46dp"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_gold_search_field"
+                android:drawableStart="@drawable/ic_search_gold"
+                android:drawablePadding="8dp"
+                android:hint="搜索持仓标题、规则或博弈池编号"
+                android:imeOptions="actionSearch"
+                android:inputType="text"
+                android:paddingHorizontal="14dp"
+                android:singleLine="true"
+                android:textColor="#0F172A"
+                android:textColorHint="#94A3B8"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/position_search_empty"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:gravity="center"
+                android:padding="20dp"
+                android:text="没有找到匹配的持仓"
+                android:textColor="#64748B"
+                android:textSize="14sp"
+                android:visibility="gone" />
 
             <LinearLayout
                 android:id="@+id/positions_container"

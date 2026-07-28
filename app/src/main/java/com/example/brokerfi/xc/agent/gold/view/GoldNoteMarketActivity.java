@@ -33,7 +33,7 @@ public class GoldNoteMarketActivity extends AppCompatActivity {
     private GoldNoteMarketViewModel viewModel;
     private ViewPager2 viewPager;
     private String pendingCreateDraft = "";
-    private TextView tvGoldPrice, tvGoldChange, tvGoldQuoteMeta;
+    private TextView tvGoldPrice, tvGoldChange;
     private boolean hasValidQuote = false;
     private boolean destroyed = false;
     private String activeWalletAddress;
@@ -83,7 +83,6 @@ public class GoldNoteMarketActivity extends AppCompatActivity {
             if (err != null && !hasValidQuote) {
                 tvGoldPrice.setText("XAU $---.--/oz");
                 tvGoldChange.setText("--.--%");
-                tvGoldQuoteMeta.setText("行情暂不可用 · 正在自动重试");
             }
         });
     }
@@ -99,7 +98,6 @@ public class GoldNoteMarketActivity extends AppCompatActivity {
         findViewById(R.id.btn_back).setOnClickListener(v -> finish());
         tvGoldPrice = findViewById(R.id.tv_gold_price);
         tvGoldChange = findViewById(R.id.tv_gold_change);
-        tvGoldQuoteMeta = findViewById(R.id.tv_gold_quote_meta);
         TabLayout tabLayout = findViewById(R.id.tab_layout);
         viewPager = findViewById(R.id.view_pager);
         viewPager.setAdapter(new FragmentStateAdapter(this) {
@@ -149,7 +147,6 @@ public class GoldNoteMarketActivity extends AppCompatActivity {
 
     private void updateGoldPriceUI(GoldAdvisoryManager.Advisory quote) {
         if (quote == null || quote.priceUsd <= 0) {
-            if (!hasValidQuote) tvGoldQuoteMeta.setText("行情暂不可用 · 正在自动重试");
             return;
         }
         hasValidQuote = true;
@@ -159,8 +156,6 @@ public class GoldNoteMarketActivity extends AppCompatActivity {
         tvGoldChange.setTextColor(!quote.changeAvailable ? 0xFF64748B
                 : quote.change24h > 0 ? 0xFF059669
                 : quote.change24h < 0 ? 0xFFE11D48 : 0xFF64748B);
-        tvGoldQuoteMeta.setText(GoldQuotePresenter.quoteMeta(
-                quote.quoteSource, quote.quoteUpdatedAt, quote.quoteDelayed));
     }
 
     public static String formatShareAmount(BigInteger value) {

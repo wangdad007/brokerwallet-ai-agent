@@ -6,17 +6,22 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
+import android.text.Editable;
 import android.text.Spannable;
 import android.text.SpannableStringBuilder;
+import android.text.TextWatcher;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.StyleSpan;
 import android.os.Handler;
 import android.os.Looper;
+import android.transition.AutoTransition;
+import android.transition.TransitionManager;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.LinearLayout;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -33,6 +38,7 @@ import com.example.brokerfi.xc.agent.gold.model.data.PinataClient;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketCardPresenter;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketOptionText;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketStatusStyle;
+import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketSearchMatcher;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldPortfolioHistoryPresenter;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldPositionValuation;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldPositionVisibility;
@@ -67,10 +73,13 @@ public class GoldMyPositionsFragment extends Fragment {
     private final List<GoldMarketRepository.GameModel> myPositions = new ArrayList<>();
     private final List<BackendApiClient.PortfolioHistoryPointDTO> savedPortfolioHistory = new ArrayList<>();
 
-    private TextView tvTotalBalance, tvTotalPnl;
+    private TextView tvTotalBalance, tvTotalPnl, tvPortfolioToggle;
     private LineChart portfolioChart;
-    private View portfolioChartSection;
+    private View portfolioChartSection, portfolioDetails;
+    private LinearLayout portfolioSummaryCard;
     private LinearLayout positionsContainer;
+    private TextView positionSearchEmpty;
+    private String searchQuery = "";
     private SwipeRefreshLayout swipeRefresh;
     private double lastTotalBalance = 0.0;
     private final Handler dataRefreshHandler = new Handler(Looper.getMainLooper());
@@ -89,10 +98,35 @@ public class GoldMyPositionsFragment extends Fragment {
         tvTotalPnl = view.findViewById(R.id.tv_total_pnl);
         portfolioChart = view.findViewById(R.id.chart_portfolio_value);
         portfolioChartSection = view.findViewById(R.id.portfolio_chart_section);
+        portfolioDetails = view.findViewById(R.id.portfolio_details);
+        portfolioSummaryCard = view.findViewById(R.id.portfolio_summary_card);
+        tvPortfolioToggle = view.findViewById(R.id.tv_portfolio_toggle);
         positionsContainer = view.findViewById(R.id.positions_container);
+        positionSearchEmpty = view.findViewById(R.id.position_search_empty);
+        EditText searchInput = view.findViewById(R.id.position_search_input);
         swipeRefresh = view.findViewById(R.id.swipe_refresh);
         swipeRefresh.setOnRefreshListener(() -> viewModel.loadPositions());
+        view.findViewById(R.id.portfolio_summary_header)
+                .setOnClickListener(v -> setPortfolioExpanded(
+                        portfolioDetails.getVisibility() != View.VISIBLE));
+        searchInput.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence text, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence text, int start, int before, int count) {
+                searchQuery = text == null ? "" : text.toString();
+                renderPositions();
+            }
+            @Override public void afterTextChanged(Editable editable) {}
+        });
         return view;
+    }
+
+    private void setPortfolioExpanded(boolean expanded) {
+        AutoTransition transition = new AutoTransition();
+        transition.setDuration(180L);
+        TransitionManager.beginDelayedTransition(portfolioSummaryCard, transition);
+        portfolioDetails.setVisibility(expanded ? View.VISIBLE : View.GONE);
+        tvPortfolioToggle.setText(expanded ? "收起 ︿" : "展开 ﹀");
+        tvPortfolioToggle.setContentDescription(expanded ? "收起资产估值走势" : "展开资产估值走势");
     }
 
     @Override
@@ -151,7 +185,10 @@ public class GoldMyPositionsFragment extends Fragment {
     private void renderPositions() {
         positionsContainer.removeAllViews();
         LayoutInflater inflater = LayoutInflater.from(requireContext());
+        int visibleCount = 0;
         for (GoldMarketRepository.GameModel game : myPositions) {
+            if (!GoldMarketSearchMatcher.matches(game, searchQuery)) continue;
+            visibleCount++;
             View card = inflater.inflate(R.layout.item_gold_position_card, positionsContainer, false);
             TextView tvTitle = card.findViewById(R.id.tv_position_title);
             ImageView ivIcon = card.findViewById(R.id.iv_position_icon);
@@ -208,6 +245,9 @@ public class GoldMyPositionsFragment extends Fragment {
             });
             positionsContainer.addView(card);
         }
+        positionSearchEmpty.setText(searchQuery.trim().isEmpty()
+                ? "当前没有可展示的持仓" : "没有找到匹配的持仓");
+        positionSearchEmpty.setVisibility(visibleCount == 0 ? View.VISIBLE : View.GONE);
     }
 
     private GradientDrawable makeRoundedBackground(int color, int radiusDp) {
