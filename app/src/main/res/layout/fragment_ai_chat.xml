@@ -108,6 +108,18 @@
                 android:columnCount="3"
                 android:rowCount="2"
                 android:useDefaultMargins="false" />
+
+            <TextView
+                android:id="@+id/btn_ai_decision_center"
+                android:layout_width="match_parent"
+                android:layout_height="46dp"
+                android:layout_marginTop="4dp"
+                android:background="@drawable/bg_ai_center_cta"
+                android:gravity="center"
+                android:text="查看策略与市场机会  →"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold" />
         </LinearLayout>
     </LinearLayout>
 

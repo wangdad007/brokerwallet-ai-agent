@@ -330,6 +330,14 @@ public class BackendApiClient {
         return gson.fromJson(arr.toString(), listType);
     }
 
+    /** 获取 AI 智能决策中心的只读聚合数据。 */
+    public static AiDecisionCenterDTO fetchAiDecisionCenter(String userAddress) throws Exception {
+        String safeAddress = userAddress == null ? "" :
+                java.net.URLEncoder.encode(userAddress, "UTF-8");
+        String body = doGet("/ai-center?user_address=" + safeAddress);
+        return gson.fromJson(body, AiDecisionCenterDTO.class);
+    }
+
     // ==================== 交易同步 API ====================
 
     /**
@@ -746,5 +754,87 @@ public class BackendApiClient {
 
         @SerializedName("my_shares_no_after")
         public String mySharesNOAfter;
+    }
+
+    public static class AiDecisionCenterDTO {
+        @SerializedName("generated_at") public String generatedAt;
+        @SerializedName("cache") public AiCenterCacheDTO cache;
+        @SerializedName("stats") public AiCenterStatsDTO stats;
+        @SerializedName("managed_decisions") public List<AiManagedDecisionDTO> managedDecisions = new ArrayList<>();
+        @SerializedName("settlement_audits") public List<AiSettlementAuditDTO> settlementAudits = new ArrayList<>();
+        @SerializedName("opportunities") public List<AiOpportunityDTO> opportunities = new ArrayList<>();
+    }
+
+    public static class AiCenterCacheDTO {
+        @SerializedName("enabled") public boolean enabled;
+        @SerializedName("hit") public boolean hit;
+        @SerializedName("mode") public String mode;
+        @SerializedName("ttl_seconds") public long ttlSeconds;
+    }
+
+    public static class AiCenterStatsDTO {
+        @SerializedName("managed_markets") public int managedMarkets;
+        @SerializedName("recent_decisions") public int recentDecisions;
+        @SerializedName("settled_audits") public int settledAudits;
+        @SerializedName("opportunities") public int opportunities;
+    }
+
+    public static class AiManagedDecisionDTO implements java.io.Serializable {
+        @SerializedName("id") public long id;
+        @SerializedName("game_id") public int gameId;
+        @SerializedName("contract_address") public String contractAddress;
+        @SerializedName("market_title") public String marketTitle;
+        @SerializedName("observed_at") public long observedAt;
+        @SerializedName("action") public String action;
+        @SerializedName("confidence") public double confidence;
+        @SerializedName("estimated_prob_yes") public double estimatedProbYES;
+        @SerializedName("market_prob_yes") public double marketProbYES;
+        @SerializedName("probability_edge_percent") public double probabilityEdgePercent;
+        @SerializedName("reason") public String reason;
+        @SerializedName("history_points") public int historyPoints;
+        @SerializedName("outcome") public String outcome;
+        @SerializedName("tx_hash") public String txHash;
+        @SerializedName("error_summary") public String errorSummary;
+    }
+
+    public static class AiModelOpinionDTO implements java.io.Serializable {
+        @SerializedName("model_name") public String modelName;
+        @SerializedName("model_id") public String modelId;
+        @SerializedName("decision") public String decision;
+        @SerializedName("confidence") public double confidence;
+        @SerializedName("reasoning") public String reasoning;
+        @SerializedName("error") public String error;
+        @SerializedName("is_final") public boolean isFinal;
+    }
+
+    public static class AiSettlementAuditDTO implements java.io.Serializable {
+        @SerializedName("id") public long id;
+        @SerializedName("game_id") public int gameId;
+        @SerializedName("contract_address") public String contractAddress;
+        @SerializedName("market_title") public String marketTitle;
+        @SerializedName("rule_summary") public String ruleSummary;
+        @SerializedName("deterministic_candidate") public String deterministicCandidate;
+        @SerializedName("opinions") public List<AiModelOpinionDTO> opinions = new ArrayList<>();
+        @SerializedName("final_decision") public String finalDecision;
+        @SerializedName("final_confidence") public double finalConfidence;
+        @SerializedName("consensus_ratio") public double consensusRatio;
+        @SerializedName("final_summary") public String finalSummary;
+        @SerializedName("resolved_at") public String resolvedAt;
+    }
+
+    public static class AiOpportunityDTO implements java.io.Serializable {
+        @SerializedName("decision_id") public long decisionId;
+        @SerializedName("game_id") public int gameId;
+        @SerializedName("contract_address") public String contractAddress;
+        @SerializedName("market_title") public String marketTitle;
+        @SerializedName("side") public String side;
+        @SerializedName("confidence") public double confidence;
+        @SerializedName("estimated_probability") public double estimatedProbability;
+        @SerializedName("market_probability") public double marketProbability;
+        @SerializedName("edge_percent") public double edgePercent;
+        @SerializedName("liquidity_bkc") public double liquidityBKC;
+        @SerializedName("deadline_sec") public long deadlineSec;
+        @SerializedName("reason") public String reason;
+        @SerializedName("observed_at") public long observedAt;
     }
 }

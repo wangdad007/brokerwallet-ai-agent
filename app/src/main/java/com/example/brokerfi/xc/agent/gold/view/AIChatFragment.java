@@ -117,6 +117,8 @@ public class AIChatFragment extends Fragment {
         tvAiSignal.setPadding(dp(10), dp(6), dp(10), dp(6));
         sendBtn.setOnClickListener(v -> onSendMessage());
         btnConfig.setOnClickListener(v -> showApiKeyDialog());
+        view.findViewById(R.id.btn_ai_decision_center).setOnClickListener(v ->
+                startActivity(new Intent(requireContext(), AiDecisionCenterActivity.class)));
         view.findViewById(R.id.ai_advice_header)
                 .setOnClickListener(v -> setAiAdviceExpanded(
                         aiAdviceContent.getVisibility() != View.VISIBLE));

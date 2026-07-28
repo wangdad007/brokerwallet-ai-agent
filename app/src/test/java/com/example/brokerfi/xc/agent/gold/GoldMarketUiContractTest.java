@@ -82,14 +82,14 @@ public class GoldMarketUiContractTest {
     public void globalResearchChatRefreshesQuoteAndPoolSnapshotBeforeEveryQuestion()
             throws Exception {
         String source = readUtf8(AI_CHAT_FRAGMENT_PATH);
-        String refresh = blockAfter(source, "private void loadLiveContextAndAsk");
+        String refresh = blockAfter(source, "private void loadLiveContextAndHandle");
         assertTrue(refresh.contains("GoldAdvisoryManager.fetchPrice"));
-        String pools = blockAfter(source, "private void loadMarketsAndAsk");
+        String pools = blockAfter(source, "private void loadMarketsAndHandle");
         assertTrue(pools.contains("marketRepository.getAllGamesInfo"));
         assertTrue(pools.contains("GoldMarketResearchPromptBuilder.buildMarketOverview"));
-        assertTrue(pools.contains("askWithCurrentContext"));
+        assertTrue(pools.contains("handleIntentWithSnapshot"));
         String submit = blockAfter(source, "private void submitQuestion");
-        assertInOrder(submit, "beginLoading", "loadLiveContextAndAsk");
+        assertInOrder(submit, "beginLoading", "loadLiveContextAndHandle");
     }
 
     @Test
