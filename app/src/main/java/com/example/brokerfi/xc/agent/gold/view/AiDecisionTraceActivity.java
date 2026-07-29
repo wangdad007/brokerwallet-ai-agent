@@ -46,13 +46,15 @@ public class AiDecisionTraceActivity extends AppCompatActivity {
                 0xFF0891B2, false));
 
         boolean edgeKnown = item.estimatedProbYES > 0 && item.marketProbYES > 0;
-        boolean isNO = "buy_no".equals(item.action);
-        double sideEdge = isNO ? -item.probabilityEdgePercent : item.probabilityEdgePercent;
-        boolean edgePass = ("buy_yes".equals(item.action) || isNO) && sideEdge >= 5;
+        boolean targetsNO = "buy_no".equals(item.action) || "sell_yes".equals(item.action);
+        boolean hasTradeDirection = "buy_yes".equals(item.action) || "sell_no".equals(item.action)
+                || targetsNO;
+        double sideEdge = targetsNO ? -item.probabilityEdgePercent : item.probabilityEdgePercent;
+        boolean edgePass = hasTradeDirection && sideEdge >= 5;
         trace.addView(AiDecisionUi.node(this, "04", "概率优势门控",
                 edgeKnown
                         ? String.format(Locale.getDefault(), "%s · %s 相对市场优势 %.1f%%，最低门槛 5%%。",
-                        edgePass ? "通过" : "未通过", isNO ? "NO" : "YES", Math.max(0, sideEdge))
+                        edgePass ? "通过" : "未通过", targetsNO ? "NO" : "YES", Math.max(0, sideEdge))
                         : "历史记录未保存独立概率字段；该条记录仅展示当时保存的最终方向。",
                 edgePass ? AiDecisionUi.YES : AiDecisionUi.AMBER, false));
 
@@ -79,8 +81,10 @@ public class AiDecisionTraceActivity extends AppCompatActivity {
     }
 
     private String action(String value) {
-        if ("buy_yes".equals(value)) return "看涨";
-        if ("buy_no".equals(value)) return "看跌";
+        if ("buy_yes".equals(value)) return "买入 YES";
+        if ("buy_no".equals(value)) return "买入 NO";
+        if ("sell_yes".equals(value)) return "减持 YES";
+        if ("sell_no".equals(value)) return "减持 NO";
         return "观望";
     }
 
@@ -98,7 +102,11 @@ public class AiDecisionTraceActivity extends AppCompatActivity {
 
     private String outcomeDetail(BackendApiClient.AiManagedDecisionDTO item) {
         String value = item.outcome;
-        if ("traded".equals(value)) return "全部门控通过，后端调用 buyShares 并保存交易记录。";
+        if ("traded".equals(value)) {
+            return item.action != null && item.action.startsWith("sell_")
+                    ? "全部门控通过，后端按最低到账保护调用 sellShares，BKC 返回托管钱包并保存交易记录。"
+                    : "全部门控通过，后端调用 buyShares 并保存交易记录。";
+        }
         if ("cooldown".equals(value)) return "同方向交易仍处于冷却期，本轮不重复追单。";
         if ("low_confidence".equals(value)) return "置信度未达到用户/系统门槛，本轮强制 HOLD。";
         if ("market_signal_unavailable".equals(value)) {

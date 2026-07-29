@@ -42,6 +42,13 @@ contract PolymarketGoldV2 is Ownable, ReentrancyGuard {
 
     event GameCreated(uint256 indexed gameId, string ipfsCID, uint256 liquidity);
     event SharesBought(uint256 indexed gameId, address indexed buyer, uint8 optionId, uint256 amountIn, uint256 sharesOut);
+    event SharesSold(
+        uint256 indexed gameId,
+        address indexed seller,
+        uint8 optionId,
+        uint256 sharesIn,
+        uint256 amountOut
+    );
     event GameResolved(uint256 indexed gameId, uint8 winningOption);
     event RewardClaimed(uint256 indexed gameId, address indexed user, uint256 reward);
 
@@ -94,6 +101,117 @@ contract PolymarketGoldV2 is Ownable, ReentrancyGuard {
         game.totalPool += amount;
 
         emit SharesBought(_gameId, msg.sender, _optionId, amount, sharesToUser);
+    }
+
+    /**
+     * @notice Returns the BKC collateral received for selling outcome shares.
+     *
+     * Selling is the exact inverse of buyShares. For a YES sale of S shares,
+     * collateral x is chosen so that:
+     *
+     *   (reserveYES + S - x) * (reserveNO - x)
+     *     >= reserveYES * reserveNO
+     *
+     * Integer rounding is deliberately conservative: the pool invariant may
+     * increase by a few wei, but it can never decrease.
+     */
+    function quoteSellShares(
+        uint256 _gameId,
+        uint8 _optionId,
+        uint256 _shareAmount
+    ) public view returns (uint256 amountOut) {
+        Game storage game = games[_gameId];
+        require(_gameId > 0 && _gameId <= gameCount, "Game does not exist");
+        require(_optionId < 2, "Only YES(0) and NO(1) options allowed");
+        require(_shareAmount > 0, "Share amount must be > 0");
+
+        if (_optionId == 0) {
+            return _calculateSellReturn(game.reserveYES, game.reserveNO, _shareAmount);
+        }
+        return _calculateSellReturn(game.reserveNO, game.reserveYES, _shareAmount);
+    }
+
+    /**
+     * @notice Sells YES or NO shares back to the AMM before the deadline.
+     * @param _minAmountOut User-provided slippage protection in wei.
+     */
+    function sellShares(
+        uint256 _gameId,
+        uint8 _optionId,
+        uint256 _shareAmount,
+        uint256 _minAmountOut
+    ) external nonReentrant {
+        Game storage game = games[_gameId];
+        require(_gameId > 0 && _gameId <= gameCount, "Game does not exist");
+        require(!game.isResolved && !game.isRefunded, "Game already ended");
+        require(block.timestamp < game.deadlineSec, "Past deadline");
+        require(_optionId < 2, "Only YES(0) and NO(1) options allowed");
+        require(_shareAmount > 0, "Share amount must be > 0");
+        require(
+            userShares[_gameId][msg.sender][_optionId] >= _shareAmount,
+            "Insufficient shares"
+        );
+
+        uint256 amountOut = quoteSellShares(_gameId, _optionId, _shareAmount);
+        require(amountOut > 0, "Sale amount is too small");
+        require(amountOut >= _minAmountOut, "Slippage limit exceeded");
+        require(amountOut <= game.totalPool, "Insufficient pool collateral");
+        require(amountOut <= address(this).balance, "Insufficient contract balance");
+
+        userShares[_gameId][msg.sender][_optionId] -= _shareAmount;
+        if (_optionId == 0) {
+            // amountOut YES and NO are merged into collateral. The remaining
+            // sold YES shares return to the virtual reserve.
+            game.reserveYES += _shareAmount - amountOut;
+            game.reserveNO -= amountOut;
+        } else {
+            game.reserveNO += _shareAmount - amountOut;
+            game.reserveYES -= amountOut;
+        }
+        game.totalPool -= amountOut;
+
+        (bool success, ) = payable(msg.sender).call{value: amountOut}("");
+        require(success, "Transfer failed");
+
+        emit SharesSold(_gameId, msg.sender, _optionId, _shareAmount, amountOut);
+    }
+
+    function _calculateSellReturn(
+        uint256 heldReserve,
+        uint256 oppositeReserve,
+        uint256 shareAmount
+    ) internal pure returns (uint256) {
+        uint256 b = heldReserve + oppositeReserve + shareAmount;
+        uint256 discriminant = b * b - 4 * oppositeReserve * shareAmount;
+        uint256 root = _sqrt(discriminant);
+        if (root * root < discriminant) {
+            root += 1;
+        }
+        return (b - root) / 2;
+    }
+
+    function _sqrt(uint256 value) internal pure returns (uint256 result) {
+        if (value == 0) return 0;
+        uint256 x = 1 << ((log2(value) + 1) >> 1);
+        unchecked {
+            for (uint256 i = 0; i < 7; ++i) {
+                x = (x + value / x) >> 1;
+            }
+            result = x < value / x ? x : value / x;
+        }
+    }
+
+    function log2(uint256 value) internal pure returns (uint256 result) {
+        unchecked {
+            if (value >> 128 > 0) { value >>= 128; result += 128; }
+            if (value >> 64 > 0) { value >>= 64; result += 64; }
+            if (value >> 32 > 0) { value >>= 32; result += 32; }
+            if (value >> 16 > 0) { value >>= 16; result += 16; }
+            if (value >> 8 > 0) { value >>= 8; result += 8; }
+            if (value >> 4 > 0) { value >>= 4; result += 4; }
+            if (value >> 2 > 0) { value >>= 2; result += 2; }
+            if (value >> 1 > 0) { result += 1; }
+        }
     }
 
     function resolveGame(uint256 _gameId, uint8 _winningOption) external onlyOwner {

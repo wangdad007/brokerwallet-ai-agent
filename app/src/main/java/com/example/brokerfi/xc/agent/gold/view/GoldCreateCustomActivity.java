@@ -417,7 +417,11 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
                                    JSONObject rule, long durationSeconds,
                                    boolean immediateExpiryDemo) {
         String liquidity = etInitialLiquidity.getText().toString().trim();
-        if (liquidity.isEmpty()) liquidity = "1";
+        if (liquidity.isEmpty()) {
+            etInitialLiquidity.setError("请输入初始流动性；池深越低，单笔交易的价格影响越大");
+            etInitialLiquidity.requestFocus();
+            return;
+        }
         final java.math.BigInteger liquidityWei = GoldMarketRepository.parseTokenAmountToWei(liquidity);
         if (liquidityWei == null) {
             Toast.makeText(this, "初始流动性金额无效", Toast.LENGTH_SHORT).show();

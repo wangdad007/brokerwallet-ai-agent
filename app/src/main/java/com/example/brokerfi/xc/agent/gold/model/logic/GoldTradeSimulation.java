@@ -20,7 +20,7 @@ public final class GoldTradeSimulation {
         if (game == null) return Result.invalid("未找到对应博弈池");
         if (game.isResolved || game.isRefunded) return Result.invalid("该博弈池已经结束，不能继续买入");
         if (amountWei == null || amountWei.signum() <= 0) return Result.invalid("请输入大于 0 的 BKC 金额");
-        if (optionId != 0 && optionId != 1) return Result.invalid("只能模拟买入 YES 或 NO");
+        if (optionId != 0 && optionId != 1) return Result.invalid("只能研判买入 YES 或 NO");
         List<BigInteger> reserves = game.virtualReserves;
         if (reserves == null || reserves.size() < 2 || reserves.get(0) == null || reserves.get(1) == null
                 || reserves.get(0).signum() <= 0 || reserves.get(1).signum() <= 0) {
@@ -37,11 +37,11 @@ public final class GoldTradeSimulation {
         if (optionId == 0) {
             afterNo = reserveNo.add(amountWei);
             afterYes = invariant.divide(afterNo);
-            sharesOut = reserveYes.subtract(afterYes);
+            sharesOut = amountWei.add(reserveYes.subtract(afterYes));
         } else {
             afterYes = reserveYes.add(amountWei);
             afterNo = invariant.divide(afterYes);
-            sharesOut = reserveNo.subtract(afterNo);
+            sharesOut = amountWei.add(reserveNo.subtract(afterNo));
         }
         if (sharesOut.signum() <= 0) return Result.invalid("金额过小，按合约整数精度不能换出有效份额");
 

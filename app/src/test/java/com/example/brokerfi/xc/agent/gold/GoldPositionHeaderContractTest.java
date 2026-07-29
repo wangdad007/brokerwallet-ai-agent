@@ -12,7 +12,7 @@ import static org.junit.Assert.assertTrue;
 
 public class GoldPositionHeaderContractTest {
     @Test
-    public void positionHeaderUsesSharedMarketStylingAndShowsFullJudgmentLogic()
+    public void positionHeaderUsesSharedMarketStylingAndCollapsibleJudgmentLogic()
             throws Exception {
         String source = read("app/src/main/java/com/example/brokerfi/xc/agent/gold/view/GoldPositionDetailActivity.java");
         String layout = read("app/src/main/res/layout/activity_gold_position_detail.xml");
@@ -23,16 +23,26 @@ public class GoldPositionHeaderContractTest {
         assertTrue(source.contains("GoldMarketDetailPresenter.formatResolutionRule(rawCondition)"));
         assertTrue(layout.contains("@drawable/bg_gold_detail_hero"));
         assertTrue(layout.contains("@drawable/bg_gold_condition_strip"));
+        assertTrue(layout.contains("@+id/btn_position_rule_toggle"));
+        String detailsTag = openingTag(
+                layout, "LinearLayout", "layout_position_rule_details");
+        assertTrue(detailsTag.contains("android:visibility=\"gone\""));
+        assertTrue(source.contains("private void togglePositionRules()"));
 
         String titleTag = openingTag(layout, "TextView", "tv_pool_desc");
         assertTrue(titleTag.contains("android:layout_width=\"match_parent\""));
-        assertFalse(titleTag.contains("android:maxLines"));
-        assertFalse(titleTag.contains("android:ellipsize"));
+        assertTrue(titleTag.contains("android:maxLines=\"1\""));
+        assertTrue(titleTag.contains("android:ellipsize=\"end\""));
+        assertTrue(source.contains(
+                "GoldMarketTitleFitter.apply(tvPoolDesc, GoldMarketTextStyler.style("));
 
         String conditionTag = openingTag(layout, "TextView", "tv_pool_condition");
         assertTrue(conditionTag.contains("android:layout_width=\"match_parent\""));
         assertFalse(conditionTag.contains("android:maxLines"));
         assertFalse(conditionTag.contains("android:ellipsize"));
+        assertFalse(layout.contains("@+id/btn_manage_position"));
+        assertFalse(layout.contains("查看博弈池完整行情"));
+        assertFalse(source.contains("R.id.btn_manage_position"));
     }
 
     @Test

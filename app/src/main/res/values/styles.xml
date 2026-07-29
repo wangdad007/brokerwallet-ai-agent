@@ -6,20 +6,20 @@
     </style>
     <style name="AiCenterHeroStat">
         <item name="android:layout_width">0dp</item>
-        <item name="android:layout_height">50dp</item>
+        <item name="android:layout_height">56dp</item>
         <item name="android:layout_weight">1</item>
         <item name="android:background">@drawable/bg_ai_center_hero_stat</item>
         <item name="android:gravity">center</item>
         <item name="android:lineSpacingExtra">2dp</item>
-        <item name="android:textColor">#E6F0F5</item>
-        <item name="android:textSize">11sp</item>
+        <item name="android:textColor">#334155</item>
+        <item name="android:textSize">12sp</item>
         <item name="android:textStyle">bold</item>
     </style>
     <style name="AiCenterSectionTitle">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:textColor">#0F172A</item>
-        <item name="android:textSize">18sp</item>
+        <item name="android:textSize">17sp</item>
         <item name="android:textStyle">bold</item>
     </style>
     <style name="AiCenterSectionSubtitle">

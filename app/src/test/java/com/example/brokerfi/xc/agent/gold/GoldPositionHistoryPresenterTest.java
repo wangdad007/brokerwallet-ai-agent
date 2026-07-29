@@ -42,6 +42,7 @@ public class GoldPositionHistoryPresenterTest {
         buy.tradeType = "BUY";
         buy.optionId = 0;
         buy.shareAmountWei = "10";
+        buy.isSuccess = true;
 
         List<BackendApiClient.TradeDTO> rows =
                 GoldPositionHistoryPresenter.visibleRows(game, Collections.singletonList(buy));
@@ -49,5 +50,30 @@ public class GoldPositionHistoryPresenterTest {
         assertEquals(1, rows.size());
         assertFalse(GoldPositionHistoryPresenter.isSnapshotRow(rows.get(0)));
         assertEquals("10", rows.get(0).shareAmountWei);
+    }
+
+    @Test
+    public void includesSuccessfulSellTradesInPositionHistory() {
+        GoldMarketRepository.GameModel game = new GoldMarketRepository.GameModel();
+        game.myShares = Arrays.asList(BigInteger.TEN, BigInteger.ZERO);
+
+        BackendApiClient.TradeDTO buy = new BackendApiClient.TradeDTO();
+        buy.tradeType = "BUY";
+        buy.optionId = 0;
+        buy.shareAmountWei = "20";
+        buy.isSuccess = true;
+
+        BackendApiClient.TradeDTO sell = new BackendApiClient.TradeDTO();
+        sell.tradeType = "SELL";
+        sell.optionId = 0;
+        sell.shareAmountWei = "10";
+        sell.isSuccess = true;
+
+        List<BackendApiClient.TradeDTO> rows =
+                GoldPositionHistoryPresenter.visibleRows(game, Arrays.asList(sell, buy));
+
+        assertEquals(2, rows.size());
+        assertEquals("SELL", rows.get(0).tradeType);
+        assertEquals("BUY", rows.get(1).tradeType);
     }
 }

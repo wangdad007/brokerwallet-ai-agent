@@ -14,6 +14,21 @@ public class GoldAgentIntentRouterTest {
         assertEquals(GoldAgentIntentRouter.Intent.TRADE_SIMULATION, result.intent);
         assertEquals(-1, result.gameId);
         assertEquals(1d, result.amountBkc, .00001);
+
+        GoldAgentIntentRouter.Result sell = GoldAgentIntentRouter.route(
+                "模拟卖出 3 号池 NO 12.5 份额");
+        assertEquals(GoldAgentIntentRouter.Intent.TRADE_SIMULATION, sell.intent);
+        assertEquals(3, sell.gameId);
+        assertEquals(12.5d, sell.amountBkc, .00001);
+    }
+
+    @Test
+    public void directionJudgmentUsesTheStructuredResearchWorkflow() {
+        GoldAgentIntentRouter.Result result =
+                GoldAgentIntentRouter.route("方向研判：买入 NO 2 BKC");
+        assertEquals(GoldAgentIntentRouter.Intent.DIRECTION_JUDGMENT, result.intent);
+        assertEquals("博弈方向研判", result.displayName);
+        assertEquals(2d, result.amountBkc, .00001);
     }
 
     @Test
@@ -23,6 +38,12 @@ public class GoldAgentIntentRouterTest {
         assertEquals(GoldAgentIntentRouter.Intent.AI_MANAGED_STRATEGY, result.intent);
         assertEquals(12, result.gameId);
         assertEquals(.5d, result.amountBkc, .00001);
+
+        GoldAgentIntentRouter.Result needsSelection =
+                GoldAgentIntentRouter.route("我想配置 AI 自动托管策略");
+        assertEquals(GoldAgentIntentRouter.Intent.AI_MANAGED_STRATEGY,
+                needsSelection.intent);
+        assertEquals(-1, needsSelection.gameId);
     }
 
     @Test

@@ -6,9 +6,6 @@ import java.math.BigInteger;
 import java.util.List;
 
 public final class GoldPositionValuation {
-    private static final BigInteger TWO = BigInteger.valueOf(2);
-    private static final BigInteger FOUR = TWO.multiply(TWO);
-
     private GoldPositionValuation() {
     }
 
@@ -40,10 +37,12 @@ public final class GoldPositionValuation {
         BigInteger reserveYes = game.virtualReserves.get(1);
         BigInteger value = BigInteger.ZERO;
         if (yesShares.signum() > 0) {
-            value = value.add(calculateSellReturn(reserveYes, reserveNo, yesShares));
+            value = value.add(GoldSellSimulation.calculateSellReturn(
+                    reserveYes, reserveNo, yesShares));
         }
         if (noShares.signum() > 0) {
-            value = value.add(calculateSellReturn(reserveNo, reserveYes, noShares));
+            value = value.add(GoldSellSimulation.calculateSellReturn(
+                    reserveNo, reserveYes, noShares));
         }
         return MarketValue.complete(value);
     }
@@ -63,32 +62,6 @@ public final class GoldPositionValuation {
             }
         }
         return new PortfolioValue(value, unavailableMarketCount);
-    }
-
-    private static BigInteger calculateSellReturn(
-            BigInteger heldReserve, BigInteger oppositeReserve, BigInteger shareAmount) {
-        BigInteger b = heldReserve.add(oppositeReserve).add(shareAmount);
-        BigInteger c = oppositeReserve.multiply(shareAmount);
-        BigInteger discriminant = b.multiply(b).subtract(FOUR.multiply(c));
-        return b.subtract(sqrtFloor(discriminant)).divide(TWO);
-    }
-
-    private static BigInteger sqrtFloor(BigInteger value) {
-        if (value.signum() < 0) {
-            return BigInteger.ZERO;
-        }
-        if (value.compareTo(BigInteger.ONE) <= 0) {
-            return value;
-        }
-
-        BigInteger estimate = BigInteger.ONE.shiftLeft((value.bitLength() + 1) / 2);
-        while (true) {
-            BigInteger next = estimate.add(value.divide(estimate)).divide(TWO);
-            if (next.compareTo(estimate) >= 0) {
-                return estimate;
-            }
-            estimate = next;
-        }
     }
 
     private static BigInteger positiveShareAt(List<BigInteger> shares, int index) {

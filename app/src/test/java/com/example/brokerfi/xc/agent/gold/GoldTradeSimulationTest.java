@@ -21,7 +21,8 @@ public class GoldTradeSimulationTest {
         GoldTradeSimulation.Result result = GoldTradeSimulation.simulate(game, 0, amount(10));
 
         assertTrue(result.valid);
-        assertEquals(amount(100).subtract(amount(100).multiply(amount(100)).divide(amount(110))),
+        assertEquals(amount(10).add(
+                        amount(100).subtract(amount(100).multiply(amount(100)).divide(amount(110)))),
                 result.sharesOutWei);
         assertEquals("50.00", result.beforeYesProbability.toPlainString());
         assertTrue(result.afterYesProbability.doubleValue() > result.beforeYesProbability.doubleValue());
@@ -32,6 +33,25 @@ public class GoldTradeSimulationTest {
         GoldTradeSimulation.Result result = GoldTradeSimulation.simulate(activeGame(), 1, amount(10));
         assertTrue(result.valid);
         assertTrue(result.afterYesProbability.doubleValue() < result.beforeYesProbability.doubleValue());
+    }
+
+    @Test
+    public void shallowLiquidityCorrectlyProducesLargePriceImpact() {
+        GoldMarketRepository.GameModel shallow = activeGame();
+        shallow.virtualReserves = Arrays.asList(amount(1), amount(1));
+        GoldTradeSimulation.Result shallowResult =
+                GoldTradeSimulation.simulate(shallow, 0, amount(2));
+
+        GoldMarketRepository.GameModel deep = activeGame();
+        GoldTradeSimulation.Result deepResult =
+                GoldTradeSimulation.simulate(deep, 0, amount(2));
+
+        assertTrue(shallowResult.valid);
+        assertEquals("90.00", shallowResult.afterYesProbability.toPlainString());
+        assertTrue(shallowResult.afterYesProbability.subtract(shallowResult.beforeYesProbability)
+                .doubleValue()
+                > deepResult.afterYesProbability.subtract(deepResult.beforeYesProbability)
+                .doubleValue());
     }
 
     @Test

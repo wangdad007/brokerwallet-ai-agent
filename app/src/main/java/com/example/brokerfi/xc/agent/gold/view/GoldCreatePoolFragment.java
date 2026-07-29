@@ -131,18 +131,8 @@ public class GoldCreatePoolFragment extends Fragment {
 
     private void handleAiResponse(String response) {
         try {
-            JSONObject json = new JSONObject(extractJson(response));
+            JSONObject json = parseAndValidateAiResponse(response);
             String type = json.optString("type", "").trim();
-            double confidence = json.optDouble("confidence", 0d);
-            if (!GoldMarketTemplateCatalog.isCreatable(type)) {
-                throw new IllegalArgumentException("AI 返回了不支持的博弈池类型");
-            }
-            if (confidence < CONFIDENCE_THRESHOLD) {
-                throw new IllegalArgumentException("请补充数值、方向和整日观察周期");
-            }
-            String validation = validateTemplateFields(type, json);
-            if (validation != null) throw new IllegalArgumentException(validation);
-
             GoldMarketTemplateCatalog.Template template = GoldMarketTemplateCatalog.forType(type);
             Intent intent = new Intent(requireContext(), GoldCreateCustomActivity.class);
             intent.putExtra("TEMPLATE_TYPE", type);
@@ -154,7 +144,27 @@ public class GoldCreatePoolFragment extends Fragment {
         }
     }
 
-    private String validateTemplateFields(String type, JSONObject json) {
+    /**
+     * Shared strict parser used by both the create page and the conversational workbench.
+     * Keeping validation here guarantees that a chat preview can only open a supported,
+     * editable template configuration.
+     */
+    public static JSONObject parseAndValidateAiResponse(String response) throws Exception {
+        JSONObject json = new JSONObject(extractJson(response));
+        String type = json.optString("type", "").trim();
+        double confidence = json.optDouble("confidence", 0d);
+        if (!GoldMarketTemplateCatalog.isCreatable(type)) {
+            throw new IllegalArgumentException("AI 返回了不支持的博弈池类型");
+        }
+        if (confidence < CONFIDENCE_THRESHOLD) {
+            throw new IllegalArgumentException("请补充数值、方向和整日观察周期");
+        }
+        String validation = validateTemplateFields(type, json);
+        if (validation != null) throw new IllegalArgumentException(validation);
+        return json;
+    }
+
+    private static String validateTemplateFields(String type, JSONObject json) {
         int startDays = json.optInt("startDaysFromNow", -1);
         int durationDays = json.optInt("durationDays", -1);
         if (startDays < 0) return "开始日期偏移必须大于等于 0";

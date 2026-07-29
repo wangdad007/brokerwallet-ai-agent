@@ -289,7 +289,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
-                android:text="初始流动性会按 50/50 注入等额的虚拟 YES 与 NO 储备，不会形成创建者个人持仓，并将在开奖前保持锁定。"
+                android:text="初始流动性会按 50/50 注入等额的虚拟 YES 与 NO 储备，不会形成创建者个人持仓。池深越低，单笔交易造成的概率与成交价变化越大，建议至少注入 100 BKC。"
                 android:textColor="#64748B"
                 android:textSize="12sp" />
 

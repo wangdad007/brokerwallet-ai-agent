@@ -1,67 +1,76 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.swiperefreshlayout.widget.SwipeRefreshLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/swipe_refresh"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F7F9FC"
-    android:fitsSystemWindows="true">
+    android:background="#F5F7FA"
+    android:fitsSystemWindows="true"
+    android:orientation="vertical">
 
-    <ScrollView
+    <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:clipToPadding="false"
-        android:fillViewport="true">
+        android:layout_height="64dp"
+        android:background="#FFFFFF"
+        android:elevation="1dp"
+        android:paddingHorizontal="16dp">
 
-        <LinearLayout
-            android:layout_width="match_parent"
+        <ImageView
+            android:id="@+id/btn_back"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_centerVertical="true"
+            android:contentDescription="返回"
+            android:padding="8dp"
+            android:src="@drawable/up_circle" />
+
+        <TextView
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingHorizontal="16dp"
-            android:paddingBottom="32dp">
+            android:layout_centerInParent="true"
+            android:text="投研中心"
+            android:textColor="#0F172A"
+            android:textSize="18sp"
+            android:textStyle="bold" />
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="64dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
+        <TextView
+            android:id="@+id/tv_live_status"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:background="@drawable/bg_ai_center_hero_status"
+            android:gravity="center"
+            android:paddingHorizontal="12dp"
+            android:text="更新中"
+            android:textColor="#047857"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+    </RelativeLayout>
 
-                <TextView
-                    android:id="@+id/btn_back"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:gravity="center"
-                    android:text="‹"
-                    android:textColor="#0F172A"
-                    android:textSize="34sp" />
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/swipe_refresh"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
 
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="投研中心"
-                    android:textColor="#0F172A"
-                    android:textSize="19sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/tv_live_status"
-                    android:layout_width="wrap_content"
-                    android:layout_height="32dp"
-                    android:background="@drawable/bg_ai_center_segment_idle"
-                    android:gravity="center"
-                    android:paddingHorizontal="12dp"
-                    android:text="更新中"
-                    android:textColor="#0F766E"
-                    android:textSize="12sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
+        <androidx.core.widget.NestedScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:fillViewport="true">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_ai_center_hero"
                 android:orientation="vertical"
-                android:padding="18dp">
+                android:padding="16dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_gold_detail_panel"
+                android:elevation="2dp"
+                android:orientation="vertical"
+                android:padding="16dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -70,35 +79,54 @@
                     android:orientation="horizontal">
 
                     <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="黄金策略总览"
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_trade_primary"
+                        android:gravity="center"
+                        android:text="AI"
                         android:textColor="#FFFFFF"
-                        android:textSize="20sp"
+                        android:textSize="14sp"
                         android:textStyle="bold" />
 
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="黄金策略总览"
+                            android:textColor="#0F172A"
+                            android:textSize="18sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tv_hero_subtitle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:ellipsize="end"
+                            android:maxLines="2"
+                            android:text="正在同步市场判断与执行状态"
+                            android:textColor="#64748B"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
                     <TextView
+                        android:id="@+id/tv_runtime_status"
                         android:layout_width="wrap_content"
-                        android:layout_height="30dp"
+                        android:layout_height="28dp"
                         android:background="@drawable/bg_ai_center_hero_status"
                         android:gravity="center"
-                        android:paddingHorizontal="11dp"
-                        android:text="●  运行中"
-                        android:textColor="#5EEAD4"
+                        android:paddingHorizontal="10dp"
+                        android:text="运行中"
+                        android:textColor="#047857"
                         android:textSize="11sp"
                         android:textStyle="bold" />
                 </LinearLayout>
-
-                <TextView
-                    android:id="@+id/tv_hero_subtitle"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:lineSpacingExtra="2dp"
-                    android:text="正在更新市场判断与执行状态…"
-                    android:textColor="#B9CFDC"
-                    android:textSize="13sp" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -125,85 +153,95 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <TextView
-                style="@style/AiCenterSectionTitle"
-                android:layout_marginTop="22dp"
-                android:text="近期策略" />
+                <TextView
+                    style="@style/AiCenterSectionTitle"
+                    android:layout_marginTop="24dp"
+                    android:text="近期策略" />
 
-            <TextView
-                style="@style/AiCenterSectionSubtitle"
-                android:text="按博弈池聚合，仅显示最新判断" />
+                <TextView
+                    style="@style/AiCenterSectionSubtitle"
+                    android:text="每个市场仅展示最近一次判断" />
 
-            <LinearLayout
-                android:id="@+id/managed_container"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:orientation="vertical" />
-
-            <TextView
-                style="@style/AiCenterSectionTitle"
-                android:layout_marginTop="22dp"
-                android:text="结算复核" />
-
-            <TextView
-                style="@style/AiCenterSectionSubtitle"
-                android:text="到期市场的证据与最终结果" />
-
-            <LinearLayout
-                android:id="@+id/settlement_container"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:orientation="vertical" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
+                <LinearLayout
+                    android:id="@+id/managed_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="vertical" />
 
                 <TextView
                     style="@style/AiCenterSectionTitle"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:text="市场机会" />
+                    android:layout_marginTop="22dp"
+                    android:text="结算复核" />
 
                 <TextView
-                    android:id="@+id/tab_yes"
-                    android:layout_width="62dp"
-                    android:layout_height="36dp"
-                    android:background="@drawable/bg_ai_center_segment_active"
-                    android:gravity="center"
-                    android:text="YES"
-                    android:textColor="#FFFFFF"
-                    android:textSize="12sp"
-                    android:textStyle="bold" />
+                    style="@style/AiCenterSectionSubtitle"
+                    android:text="查看到期市场的证据与裁决结果" />
+
+                <LinearLayout
+                    android:id="@+id/settlement_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="vertical" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        style="@style/AiCenterSectionTitle"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:text="市场机会" />
+
+                    <LinearLayout
+                        android:layout_width="124dp"
+                        android:layout_height="40dp"
+                        android:background="@drawable/bg_ai_center_filter"
+                        android:orientation="horizontal"
+                        android:padding="3dp">
+
+                        <TextView
+                            android:id="@+id/tab_yes"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:background="@drawable/bg_ai_center_segment_active"
+                            android:gravity="center"
+                            android:text="YES"
+                            android:textColor="#FFFFFF"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tab_no"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:background="@drawable/bg_ai_center_segment_idle"
+                            android:gravity="center"
+                            android:text="NO"
+                            android:textColor="#64748B"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+                </LinearLayout>
 
                 <TextView
-                    android:id="@+id/tab_no"
-                    android:layout_width="62dp"
-                    android:layout_height="36dp"
-                    android:layout_marginStart="6dp"
-                    android:background="@drawable/bg_ai_center_segment_idle"
-                    android:gravity="center"
-                    android:text="NO"
-                    android:textColor="#64748B"
-                    android:textSize="12sp"
-                    android:textStyle="bold" />
+                    style="@style/AiCenterSectionSubtitle"
+                    android:text="仅展示达到策略门槛的方向" />
+
+                <LinearLayout
+                    android:id="@+id/opportunity_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="vertical" />
             </LinearLayout>
-
-            <TextView
-                style="@style/AiCenterSectionSubtitle"
-                android:text="只展示达到策略门槛的方向" />
-
-            <LinearLayout
-                android:id="@+id/opportunity_container"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:orientation="vertical" />
-        </LinearLayout>
-    </ScrollView>
-</androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+        </androidx.core.widget.NestedScrollView>
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+</LinearLayout>

@@ -16,16 +16,18 @@ public final class GoldPositionHistoryPresenter {
     public static List<BackendApiClient.TradeDTO> visibleRows(
             GoldMarketRepository.GameModel game,
             List<BackendApiClient.TradeDTO> tradeHistory) {
-        List<BackendApiClient.TradeDTO> buyTrades = new ArrayList<>();
+        List<BackendApiClient.TradeDTO> executedTrades = new ArrayList<>();
         if (tradeHistory != null) {
             for (BackendApiClient.TradeDTO trade : tradeHistory) {
-                if (trade != null && "BUY".equalsIgnoreCase(trade.tradeType)) {
-                    buyTrades.add(trade);
+                if (trade == null || !trade.isSuccess) continue;
+                if ("BUY".equalsIgnoreCase(trade.tradeType)
+                        || "SELL".equalsIgnoreCase(trade.tradeType)) {
+                    executedTrades.add(trade);
                 }
             }
         }
-        if (!buyTrades.isEmpty()) {
-            return buyTrades;
+        if (!executedTrades.isEmpty()) {
+            return executedTrades;
         }
         return snapshotRows(game);
     }

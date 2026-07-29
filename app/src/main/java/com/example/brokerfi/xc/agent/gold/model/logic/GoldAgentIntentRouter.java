@@ -17,7 +17,7 @@ public final class GoldAgentIntentRouter {
             "(?:#\\s*(\\d+)|第\\s*(\\d+)\\s*号?(?:池|博弈池|市场)?|(\\d+)\\s*号(?:池|博弈池|市场))",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern AMOUNT = Pattern.compile(
-            "(\\d+(?:\\.\\d+)?)\\s*(?:BKC|bkc|币)", Pattern.CASE_INSENSITIVE);
+            "(\\d+(?:\\.\\d+)?)\\s*(?:BKC|bkc|币|份额|份)", Pattern.CASE_INSENSITIVE);
 
     private GoldAgentIntentRouter() {
     }
@@ -36,10 +36,15 @@ public final class GoldAgentIntentRouter {
             return new Result(Intent.CREATE_MARKET_DRAFT, gameId, amount,
                     "博弈池创建草稿", false);
         }
+        if (containsAny(lower, "方向研判", "选项研判", "交易方向", "方向判断")) {
+            return new Result(Intent.DIRECTION_JUDGMENT, gameId, amount,
+                    "博弈方向研判", false);
+        }
         if (containsAny(lower, "买入", "购买", "下注", "下单", "买 yes", "买 no",
-                "买yes", "买no", "投入", "交易模拟", "模拟交易")) {
+                "买yes", "买no", "投入", "卖出", "减持", "卖 yes", "卖 no",
+                "卖yes", "卖no", "交易模拟", "模拟交易")) {
             return new Result(Intent.TRADE_SIMULATION, gameId, amount,
-                    "链上交易模拟", true);
+                    "交易方向研判", true);
         }
         if (containsAny(lower, "持仓", "我的仓位", "我的收益", "我的亏损", "仓位风险", "诊断")) {
             return new Result(Intent.POSITION_DIAGNOSIS, gameId, amount,
@@ -93,6 +98,7 @@ public final class GoldAgentIntentRouter {
         MARKET_ANALYSIS,
         MARKET_COMPARE,
         POSITION_DIAGNOSIS,
+        DIRECTION_JUDGMENT,
         TRADE_SIMULATION,
         CREATE_MARKET_DRAFT,
         AI_MANAGED_STRATEGY,

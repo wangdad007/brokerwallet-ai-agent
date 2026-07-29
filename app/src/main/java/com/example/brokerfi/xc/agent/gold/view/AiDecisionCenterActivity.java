@@ -38,6 +38,7 @@ public class AiDecisionCenterActivity extends AppCompatActivity {
     private LinearLayout settlementContainer;
     private LinearLayout opportunityContainer;
     private TextView tvStatus;
+    private TextView tvRuntimeStatus;
     private TextView tvSubtitle;
     private TextView tvManaged;
     private TextView tvDecisions;
@@ -57,6 +58,7 @@ public class AiDecisionCenterActivity extends AppCompatActivity {
         settlementContainer = findViewById(R.id.settlement_container);
         opportunityContainer = findViewById(R.id.opportunity_container);
         tvStatus = findViewById(R.id.tv_live_status);
+        tvRuntimeStatus = findViewById(R.id.tv_runtime_status);
         tvSubtitle = findViewById(R.id.tv_hero_subtitle);
         tvManaged = findViewById(R.id.tv_stat_managed);
         tvDecisions = findViewById(R.id.tv_stat_decisions);
@@ -73,7 +75,7 @@ public class AiDecisionCenterActivity extends AppCompatActivity {
 
     private void load() {
         swipeRefresh.setRefreshing(true);
-        tvStatus.setText("更新中");
+        updateConnectionStatus("同步中", "同步中", AiDecisionUi.BLUE, 0xFFEFF6FF);
         String privateKey = StorageUtil.getCurrentPrivatekey(this);
         String wallet = TextUtils.isEmpty(privateKey) ? "" : BrokerChainClient.getAddress(privateKey);
         executor.execute(() -> {
@@ -91,7 +93,7 @@ public class AiDecisionCenterActivity extends AppCompatActivity {
     private void render(BackendApiClient.AiDecisionCenterDTO loaded) {
         data = loaded;
         swipeRefresh.setRefreshing(false);
-        tvStatus.setText("已更新");
+        updateConnectionStatus("已更新", "运行中", AiDecisionUi.YES, 0xFFECFDF5);
         if (loaded.stats != null) {
             tvManaged.setText(loaded.stats.managedMarkets + "\n托管中");
             tvDecisions.setText(loaded.stats.recentDecisions + "\n24h 判断");
@@ -189,12 +191,13 @@ public class AiDecisionCenterActivity extends AppCompatActivity {
         statusParams.topMargin = AiDecisionUi.dp(this, 9);
         statusRow.addView(AiDecisionUi.pill(this, actionText(item.action),
                 actionColor(item.action), actionFill(item.action)), statusParams);
-        double sideEdge = "buy_no".equals(item.action)
+        boolean targetsNO = "buy_no".equals(item.action) || "sell_yes".equals(item.action);
+        double sideEdge = targetsNO
                 ? -item.probabilityEdgePercent : item.probabilityEdgePercent;
         String advantage = Math.abs(sideEdge) < .01 || "hold".equals(item.action)
                 ? ""
                 : String.format(Locale.getDefault(), " · %s 优势 %.1f%%",
-                "buy_no".equals(item.action) ? "NO" : "YES", Math.max(0, sideEdge));
+                targetsNO ? "NO" : "YES", Math.max(0, sideEdge));
         TextView detail = AiDecisionUi.text(this,
                 String.format(Locale.getDefault(), "%s · 置信度 %.0f%%%s",
                         outcomeText(item.outcome), item.confidence * 100, advantage),
@@ -277,7 +280,7 @@ public class AiDecisionCenterActivity extends AppCompatActivity {
 
     private void renderError(Exception error) {
         swipeRefresh.setRefreshing(false);
-        tvStatus.setText("连接中断");
+        updateConnectionStatus("连接中断", "待连接", AiDecisionUi.NO, 0xFFFFF1F2);
         managedContainer.removeAllViews();
         settlementContainer.removeAllViews();
         opportunityContainer.removeAllViews();
@@ -286,6 +289,18 @@ public class AiDecisionCenterActivity extends AppCompatActivity {
         settlementContainer.addView(emptyCard("暂时无法读取复核结果", "连接恢复后自动更新。"));
         opportunityContainer.addView(emptyCard("暂时无法更新市场机会", "连接恢复后自动筛选。"));
         Toast.makeText(this, "投研中心连接失败", Toast.LENGTH_SHORT).show();
+    }
+
+    private void updateConnectionStatus(String headerText, String runtimeText,
+                                        int color, int fill) {
+        styleStatus(tvStatus, headerText, color, fill);
+        styleStatus(tvRuntimeStatus, runtimeText, color, fill);
+    }
+
+    private void styleStatus(TextView view, String text, int color, int fill) {
+        view.setText(text);
+        view.setTextColor(color);
+        view.setBackground(AiDecisionUi.rounded(fill, 0, 999, this));
     }
 
     private void showLoadingCards() {
@@ -316,7 +331,7 @@ public class AiDecisionCenterActivity extends AppCompatActivity {
     }
 
     private String safeTitle(String value, int gameId) {
-        return TextUtils.isEmpty(value) ? "博弈池 #" + gameId : value.trim();
+        return TextUtils.isEmpty(value) ? "未命名博弈池" : value.trim();
     }
 
     private String formatUnix(long seconds) {
@@ -324,20 +339,22 @@ public class AiDecisionCenterActivity extends AppCompatActivity {
     }
 
     private String actionText(String action) {
-        if ("buy_yes".equals(action)) return "看涨";
-        if ("buy_no".equals(action)) return "看跌";
+        if ("buy_yes".equals(action)) return "买入 YES";
+        if ("buy_no".equals(action)) return "买入 NO";
+        if ("sell_yes".equals(action)) return "减持 YES";
+        if ("sell_no".equals(action)) return "减持 NO";
         return "观望";
     }
 
     private int actionColor(String action) {
-        if ("buy_yes".equals(action)) return AiDecisionUi.YES;
-        if ("buy_no".equals(action)) return AiDecisionUi.NO;
+        if ("buy_yes".equals(action) || "sell_no".equals(action)) return AiDecisionUi.YES;
+        if ("buy_no".equals(action) || "sell_yes".equals(action)) return AiDecisionUi.NO;
         return AiDecisionUi.AMBER;
     }
 
     private int actionFill(String action) {
-        if ("buy_yes".equals(action)) return 0xFFECFDF5;
-        if ("buy_no".equals(action)) return 0xFFFFF1F2;
+        if ("buy_yes".equals(action) || "sell_no".equals(action)) return 0xFFECFDF5;
+        if ("buy_no".equals(action) || "sell_yes".equals(action)) return 0xFFFFF1F2;
         return 0xFFFFF7ED;
     }
 

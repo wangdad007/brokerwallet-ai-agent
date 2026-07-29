@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#F8FAFC"
+    android:background="#F5F7FA"
     android:fitsSystemWindows="true">
 
     <!-- Premium Header -->
@@ -28,7 +28,7 @@
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
             android:text="博弈池详情"
-            android:textColor="#000000"
+            android:textColor="#0F172A"
             android:textSize="18sp"
             android:textStyle="bold" />
     </RelativeLayout>
@@ -39,6 +39,7 @@
         android:layout_height="match_parent">
 
         <androidx.core.widget.NestedScrollView
+            android:id="@+id/detail_scroll"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:fillViewport="true">
@@ -56,157 +57,199 @@
                     android:background="@drawable/bg_gold_detail_hero"
                     android:elevation="2dp"
                     android:orientation="vertical"
-                    android:padding="18dp">
+                    android:padding="16dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:gravity="top"
+                        android:gravity="center_vertical"
                         android:orientation="horizontal">
 
                         <ImageView
                             android:id="@+id/iv_market_detail_icon"
-                            android:layout_width="76dp"
-                            android:layout_height="76dp"
+                            android:layout_width="56dp"
+                            android:layout_height="56dp"
                             android:scaleType="centerCrop"
                             android:src="@drawable/apartment_icon" />
 
-                        <LinearLayout
+                        <TextView
+                            android:id="@+id/tv_market_desc"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="18dp"
+                            android:layout_marginStart="14dp"
                             android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:id="@+id/tv_market_desc"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:lineSpacingExtra="5dp"
-                                android:text="博弈池"
-                                android:textColor="#111827"
-                                android:textSize="27sp"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:id="@+id/tv_market_time"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="8dp"
-                                android:text="--"
-                                android:textColor="#64748B"
-                                android:textSize="17sp"
-                                android:textStyle="bold" />
-                        </LinearLayout>
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:text="博弈池"
+                            android:textColor="#0F172A"
+                            android:textSize="18sp"
+                            android:textStyle="bold" />
                     </LinearLayout>
-
-                    <TextView
-                        android:id="@+id/tv_market_condition"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="22dp"
-                        android:background="@drawable/bg_gold_condition_strip"
-                        android:lineSpacingExtra="5dp"
-                        android:paddingHorizontal="16dp"
-                        android:paddingVertical="14dp"
-                        android:text="暂无判定规则详情"
-                        android:textColor="#475569"
-                        android:textSize="15sp" />
-                </LinearLayout>
-
-                <!-- Status Card -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:orientation="vertical"
-                    android:padding="18dp"
-                    android:background="@drawable/bg_gold_detail_panel"
-                    android:elevation="2dp">
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="博弈池概览"
-                        android:textColor="#0F172A"
-                        android:textSize="17sp"
-                        android:textStyle="bold" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="18dp"
+                        android:layout_marginTop="12dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:id="@+id/tv_market_time"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:drawablePadding="6dp"
+                            android:text="截止时间 --"
+                            android:textColor="#64748B"
+                            android:textSize="13sp" />
+
+                        <TextView
+                            android:id="@+id/btn_market_rule_toggle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="36dp"
+                            android:background="@drawable/bg_trade_segment_idle"
+                            android:gravity="center"
+                            android:minWidth="88dp"
+                            android:paddingHorizontal="12dp"
+                            android:text="查看规则⌄"
+                            android:textColor="#475569"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/layout_market_rule_details"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:background="@drawable/bg_gold_condition_strip"
+                        android:orientation="vertical"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:id="@+id/tv_market_condition"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:lineSpacingExtra="5dp"
+                            android:paddingHorizontal="14dp"
+                            android:paddingVertical="12dp"
+                            android:text="暂无判定规则详情"
+                            android:textColor="#475569"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Compact market snapshot -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_gold_detail_panel"
+                    android:elevation="2dp"
+                    android:orientation="vertical"
+                    android:padding="14dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="实时概率"
+                            android:textColor="#64748B"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tv_countdown"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="距结束 --"
+                            android:textColor="#64748B"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="52dp"
+                        android:layout_marginTop="10dp"
                         android:orientation="horizontal"
                         android:weightSum="2">
 
                         <LinearLayout
                             android:id="@+id/card_metric_yes"
                             android:layout_width="0dp"
-                            android:layout_height="wrap_content"
+                            android:layout_height="match_parent"
                             android:layout_weight="1"
                             android:layout_marginEnd="6dp"
                             android:background="@drawable/bg_gold_metric_yes"
-                            android:orientation="vertical"
-                            android:padding="14dp">
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingHorizontal="12dp">
 
                             <TextView
                                 android:id="@+id/tv_up_label"
-                                android:layout_width="wrap_content"
+                                android:layout_width="0dp"
                                 android:layout_height="wrap_content"
+                                android:layout_weight="1"
                                 android:text="YES 份额"
                                 android:textColor="#047857"
-                                android:textSize="13sp"
+                                android:textSize="12sp"
                                 android:textStyle="bold" />
 
                             <TextView
                                 android:id="@+id/tv_up_pct"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="6dp"
                                 android:text="50.0%"
                                 android:textColor="#047857"
-                                android:textSize="24sp"
+                                android:textSize="18sp"
                                 android:textStyle="bold" />
                         </LinearLayout>
 
                         <LinearLayout
                             android:id="@+id/card_metric_no"
                             android:layout_width="0dp"
-                            android:layout_height="wrap_content"
+                            android:layout_height="match_parent"
                             android:layout_marginStart="6dp"
                             android:layout_weight="1"
                             android:background="@drawable/bg_gold_metric_no"
-                            android:gravity="end"
-                            android:orientation="vertical"
-                            android:padding="14dp">
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingHorizontal="12dp">
 
                             <TextView
                                 android:id="@+id/tv_down_label"
-                                android:layout_width="wrap_content"
+                                android:layout_width="0dp"
                                 android:layout_height="wrap_content"
+                                android:layout_weight="1"
                                 android:text="NO 份额"
                                 android:textColor="#E11D48"
-                                android:textSize="13sp"
+                                android:textSize="12sp"
                                 android:textStyle="bold" />
 
                             <TextView
                                 android:id="@+id/tv_down_pct"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="6dp"
                                 android:text="50.0%"
                                 android:textColor="#E11D48"
-                                android:textSize="24sp"
+                                android:textSize="18sp"
                                 android:textStyle="bold" />
                         </LinearLayout>
                     </LinearLayout>
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="10dp"
-                        android:layout_marginTop="16dp"
-                        android:orientation="horizontal"
+                        android:layout_height="6dp"
+                        android:layout_marginTop="10dp"
                         android:background="#EEF2F7"
+                        android:orientation="horizontal"
                         android:weightSum="100">
 
                         <View
@@ -224,64 +267,14 @@
                             android:background="#E11D48" />
                     </LinearLayout>
 
-                    <LinearLayout
+                    <TextView
+                        android:id="@+id/tv_pool"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="18dp"
-                        android:orientation="horizontal"
-                        android:weightSum="2">
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="流动性"
-                                android:textColor="#94A3B8"
-                                android:textSize="12sp"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:id="@+id/tv_pool"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="4dp"
-                                android:text="-- BKC"
-                                android:textColor="#334155"
-                                android:textSize="15sp"
-                                android:textStyle="bold" />
-                        </LinearLayout>
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:gravity="end"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="博弈池状态"
-                                android:textColor="#94A3B8"
-                                android:textSize="12sp"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:id="@+id/tv_countdown"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="4dp"
-                                android:text="距结束 --"
-                                android:textColor="#64748B"
-                                android:textSize="15sp"
-                                android:textStyle="bold" />
-                        </LinearLayout>
-                    </LinearLayout>
+                        android:layout_marginTop="9dp"
+                        android:text="流动性 · -- BKC"
+                        android:textColor="#64748B"
+                        android:textSize="12sp" />
                 </LinearLayout>
 
                 <!-- Market share history -->
@@ -289,11 +282,11 @@
                     android:id="@+id/layout_chart_container"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="20dp"
+                    android:layout_marginTop="14dp"
                     android:background="@drawable/bg_gold_detail_panel"
                     android:elevation="2dp"
                     android:orientation="vertical"
-                    android:padding="18dp"
+                    android:padding="16dp"
                     android:visibility="gone">
 
                     <LinearLayout
@@ -306,15 +299,15 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="YES/NO 份额走势"
+                            android:text="市场概率走势"
                             android:textColor="#0F172A"
-                            android:textSize="17sp"
+                            android:textSize="16sp"
                             android:textStyle="bold" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="● YES 份额"
+                            android:text="● YES"
                             android:textColor="#059669"
                             android:textSize="11sp"
                             android:textStyle="bold" />
@@ -323,106 +316,97 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="10dp"
-                            android:text="● NO 份额"
+                            android:text="● NO"
                             android:textColor="#E11D48"
                             android:textSize="11sp"
                             android:textStyle="bold" />
                     </LinearLayout>
 
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="5dp"
-                        android:text="曲线包含博弈池全部交易 · 标记仅显示当前用户的购买记录"
-                        android:textColor="#64748B"
-                        android:textSize="10sp" />
-
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="9dp"
-                        android:background="@drawable/bg_gold_condition_strip"
-                        android:orientation="vertical"
-                        android:paddingHorizontal="11dp"
-                        android:paddingVertical="9dp">
+                        android:layout_height="28dp"
+                        android:layout_marginTop="6dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
 
                         <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
+                            android:layout_width="wrap_content"
+                            android:layout_height="28dp"
+                            android:background="@drawable/bg_chart_legend_chip"
                             android:gravity="center_vertical"
-                            android:orientation="horizontal">
+                            android:orientation="horizontal"
+                            android:paddingHorizontal="7dp">
 
                             <TextView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:text="您的购买标记"
-                                android:textColor="#0F172A"
-                                android:textSize="12sp"
+                                android:layout_width="18dp"
+                                android:layout_height="18dp"
+                                android:background="@drawable/bg_chart_manual_marker"
+                                android:gravity="center"
+                                android:text="M"
+                                android:textColor="#FFFFFF"
+                                android:textSize="7sp"
                                 android:textStyle="bold" />
 
                             <TextView
-                                android:id="@+id/tv_trade_bucket_hint"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="1 天 · 每 2 小时聚合为一个标记"
-                                android:textColor="#64748B"
+                                android:layout_marginStart="5dp"
+                                android:text="手动"
+                                android:textColor="#475569"
                                 android:textSize="10sp"
                                 android:textStyle="bold" />
                         </LinearLayout>
 
                         <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="7dp"
+                            android:layout_width="wrap_content"
+                            android:layout_height="28dp"
+                            android:layout_marginStart="7dp"
+                            android:background="@drawable/bg_chart_legend_chip"
                             android:gravity="center_vertical"
-                            android:orientation="horizontal">
+                            android:orientation="horizontal"
+                            android:paddingHorizontal="7dp">
 
                             <TextView
-                                android:layout_width="22dp"
-                                android:layout_height="22dp"
-                                android:background="@drawable/bg_chart_manual_marker"
-                                android:gravity="center"
-                                android:text="M"
-                                android:textColor="#FFFFFF"
-                                android:textSize="8sp"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="6dp"
-                                android:text="手动购买"
-                                android:textColor="#475569"
-                                android:textSize="11sp" />
-
-                            <TextView
-                                android:layout_width="22dp"
-                                android:layout_height="22dp"
-                                android:layout_marginStart="18dp"
+                                android:layout_width="18dp"
+                                android:layout_height="18dp"
                                 android:background="@drawable/bg_chart_deepseek_marker"
                                 android:gravity="center"
                                 android:text="DS"
                                 android:textColor="#FFFFFF"
-                                android:textSize="8sp"
+                                android:textSize="7sp"
                                 android:textStyle="bold" />
 
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_marginStart="6dp"
-                                android:text="DeepSeek 托管"
+                                android:layout_marginStart="5dp"
+                                android:text="AI 托管"
                                 android:textColor="#475569"
-                                android:textSize="11sp" />
+                                android:textSize="10sp"
+                                android:textStyle="bold" />
                         </LinearLayout>
+
+                        <View
+                            android:layout_width="0dp"
+                            android:layout_height="1dp"
+                            android:layout_weight="1" />
+
+                        <TextView
+                            android:id="@+id/tv_trade_bucket_hint"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="1H · 5分钟/点"
+                            android:textColor="#94A3B8"
+                            android:textSize="9sp"
+                            android:textStyle="bold" />
                     </LinearLayout>
 
                     <LinearLayout
                         android:id="@+id/layout_chart_ranges"
                         android:layout_width="match_parent"
-                        android:layout_height="36dp"
+                        android:layout_height="38dp"
                         android:layout_marginTop="10dp"
-                        android:background="#F8FAFC"
+                        android:background="@drawable/bg_trade_quote"
                         android:gravity="center_vertical"
                         android:orientation="horizontal"
                         android:padding="3dp">
@@ -471,8 +455,9 @@
                     <com.github.mikephil.charting.charts.LineChart
                         android:id="@+id/line_chart"
                         android:layout_width="match_parent"
-                        android:layout_height="250dp"
-                        android:layout_marginTop="10dp" />
+                        android:layout_height="224dp"
+                        android:layout_marginTop="12dp"
+                        android:background="@drawable/bg_gold_chart_surface" />
                 </LinearLayout>
 
                 <!-- AI Section -->
@@ -480,14 +465,14 @@
                     android:id="@+id/card_market_ai"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="20dp"
-                    android:background="@drawable/bg_position_ai_card"
+                    android:layout_marginTop="14dp"
+                    android:background="@drawable/bg_gold_detail_panel"
                     android:clickable="true"
                     android:focusable="true"
                     android:foreground="?attr/selectableItemBackground"
                     android:orientation="vertical"
-                    android:padding="18dp"
-                    android:elevation="3dp"
+                    android:padding="16dp"
+                    android:elevation="2dp"
                     android:animateLayoutChanges="true">
 
                     <LinearLayout
@@ -499,7 +484,7 @@
                         <TextView
                             android:layout_width="42dp"
                             android:layout_height="42dp"
-                            android:background="@drawable/bg_position_ai_badge"
+                            android:background="@drawable/bg_trade_primary"
                             android:gravity="center"
                             android:text="AI"
                             android:textColor="#FFFFFF"
@@ -517,7 +502,7 @@
                                 android:layout_height="wrap_content"
                                 android:text="AI 投研分析"
                                 android:textColor="#0F172A"
-                                android:textSize="17sp"
+                            android:textSize="16sp"
                                 android:textStyle="bold" />
                             <TextView
                                 android:layout_width="wrap_content"
@@ -533,18 +518,18 @@
                             style="?android:attr/progressBarStyleSmall"
                             android:layout_width="24dp"
                             android:layout_height="24dp"
-                            android:indeterminateTint="#4F46E5"
+                            android:indeterminateTint="#2563EB"
                             android:visibility="gone" />
 
                         <TextView
                             android:id="@+id/tv_market_ai_status"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:background="@drawable/bg_position_ai_chip"
+                            android:background="@drawable/bg_trade_segment_idle"
                             android:paddingHorizontal="10dp"
                             android:paddingVertical="5dp"
                             android:text="点击分析 ›"
-                            android:textColor="#4F46E5"
+                            android:textColor="#2563EB"
                             android:textSize="11sp"
                             android:textStyle="bold" />
                     </LinearLayout>
@@ -556,7 +541,7 @@
                         android:layout_marginTop="15dp"
                         android:text="点击生成结构化 AI 投研报告"
                         android:textColor="#1E293B"
-                        android:textSize="15sp"
+                        android:textSize="14sp"
                         android:textStyle="bold"
                         android:lineSpacingExtra="4dp" />
 
@@ -573,7 +558,7 @@
                             android:id="@+id/tv_market_ai_stance"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:background="@drawable/bg_position_ai_chip"
+                            android:background="@drawable/bg_trade_segment_idle"
                             android:paddingHorizontal="11dp"
                             android:paddingVertical="6dp"
                             android:text="观望"
@@ -606,7 +591,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="1dp"
                             android:layout_marginBottom="14dp"
-                            android:background="#DDE5F5" />
+                            android:background="#E2E8F0" />
 
                         <TextView
                             android:layout_width="wrap_content"
@@ -668,7 +653,7 @@
                                 android:minWidth="72dp"
                                 android:paddingHorizontal="8dp"
                                 android:text="重新分析"
-                                android:textColor="#4F46E5"
+                                android:textColor="#2563EB"
                                 android:textSize="12sp"
                                 android:textStyle="bold" />
                         </LinearLayout>
@@ -679,7 +664,7 @@
                         android:layout_height="1dp"
                         android:layout_marginTop="16dp"
                         android:layout_marginBottom="12dp"
-                        android:background="#DDE5F5" />
+                        android:background="#E2E8F0" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -731,67 +716,21 @@
                             android:background="@drawable/bg_ai_strategy_preset"
                             android:gravity="center"
                             android:text="配置 AI 托管策略 ›"
-                            android:textColor="#4F46E5"
+                            android:textColor="#2563EB"
                             android:textSize="13sp"
                             android:textStyle="bold" />
                     </LinearLayout>
                 </LinearLayout>
 
-                <!-- Trading Actions -->
-                <TextView
+                <!-- Inline AMM trading -->
+                <include
+                    android:id="@+id/inline_trade_panel"
+                    layout="@layout/dialog_gold_trade"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="32dp"
-                    android:text="立即下注"
-                    android:textColor="#000000"
-                    android:textSize="17sp"
-                    android:textStyle="bold" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:orientation="horizontal"
-                    android:weightSum="2">
-
-                    <androidx.appcompat.widget.AppCompatButton
-                        android:id="@+id/btn_buy_up"
-                        android:layout_width="0dp"
-                        android:layout_height="64dp"
-                        android:layout_weight="1"
-                        android:layout_marginEnd="8dp"
-                        android:background="@drawable/bg_bet_yes"
-                        android:text="买入 YES"
-                        android:textAllCaps="false"
-                        android:textColor="#FFFFFF"
-                        android:textSize="17sp"
-                        android:textStyle="bold"
-                        android:padding="0dp" />
-
-                    <androidx.appcompat.widget.AppCompatButton
-                        android:id="@+id/btn_buy_down"
-                        android:layout_width="0dp"
-                        android:layout_height="64dp"
-                        android:layout_weight="1"
-                        android:layout_marginStart="8dp"
-                        android:background="@drawable/bg_bet_no"
-                        android:text="买入 NO"
-                        android:textAllCaps="false"
-                        android:textColor="#FFFFFF"
-                        android:textSize="17sp"
-                        android:textStyle="bold"
-                        android:padding="0dp" />
-                </LinearLayout>
+                    android:layout_marginTop="14dp" />
 
                 <!-- Positions -->
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="32dp"
-                    android:text="个人持有"
-                    android:textColor="#000000"
-                    android:textSize="17sp"
-                    android:textStyle="bold" />
 
                 <LinearLayout
                     android:id="@+id/layout_holdings_container"
@@ -846,6 +785,17 @@
                             android:textColor="#059669"
                             android:textSize="15sp"
                             android:textStyle="bold" />
+                        <TextView
+                            android:id="@+id/btn_sell_yes"
+                            android:layout_width="58dp"
+                            android:layout_height="36dp"
+                            android:layout_marginStart="12dp"
+                            android:background="@drawable/bg_sell_outline_yes"
+                            android:gravity="center"
+                            android:text="卖出"
+                            android:textColor="#047857"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
                     </LinearLayout>
 
                     <!-- NO Holding Card -->
@@ -879,6 +829,17 @@
                             android:text="0.00 份额"
                             android:textColor="#E11D48"
                             android:textSize="15sp"
+                            android:textStyle="bold" />
+                        <TextView
+                            android:id="@+id/btn_sell_no"
+                            android:layout_width="58dp"
+                            android:layout_height="36dp"
+                            android:layout_marginStart="12dp"
+                            android:background="@drawable/bg_sell_outline_no"
+                            android:gravity="center"
+                            android:text="卖出"
+                            android:textColor="#BE123C"
+                            android:textSize="13sp"
                             android:textStyle="bold" />
                     </LinearLayout>
                 </LinearLayout>

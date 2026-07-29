@@ -293,6 +293,26 @@ public class GoldMarketDetailViewModel extends AndroidViewModel {
         });
     }
 
+    public void sellShares(int gameId, String contractAddress, int optionId,
+                           BigInteger shareAmountWei, BigInteger minAmountOutWei,
+                           BigInteger quotedAmountOutWei) {
+        repositoryFor(contractAddress).sellShares(
+                gameId, optionId, shareAmountWei, minAmountOutWei, quotedAmountOutWei,
+                new GoldMarketRepository.TxCallback() {
+                    @Override public void onTxSent(String txHash) {
+                        txStatus.postValue("卖出交易已提交");
+                    }
+                    @Override public void onConfirmed(String msg) {
+                        txStatus.postValue("卖出成功，BKC 已返回钱包");
+                        loadGameInfo(gameId, contractAddress);
+                        loadChartData(gameId, selectedChartRange);
+                    }
+                    @Override public void onError(String err) {
+                        tradeError.postValue("卖出失败：\n\n" + err);
+                    }
+                });
+    }
+
     public void claimReward(int gameId, int optionId) {
         claimReward(gameId, null, optionId);
     }

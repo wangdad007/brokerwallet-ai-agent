@@ -36,9 +36,8 @@ public final class GoldMarketResearchPromptBuilder {
         if (game == null) {
             lines.add("博弈池数据不可用");
         } else {
-            lines.add("博弈池 #" + game.id);
+            lines.add("博弈池标题：" + displayMarketTitle(game));
             lines.add(UNTRUSTED_MARKET_DATA_WARNING);
-            addIfPresent(lines, "标题/描述：", game.desc);
             addIfPresent(lines, "判定规则：", game.condition);
             addIfPresent(lines, "详细信息：", game.detailedInfo);
             addOptions(lines, game.optionNames);
@@ -139,8 +138,7 @@ public final class GoldMarketResearchPromptBuilder {
             List<String> lines,
             GoldMarketRepository.GameModel game,
             long nowMillis) {
-        lines.add("博弈池 #" + game.id);
-        addIfPresent(lines, "标题/描述：", game.desc);
+        lines.add("博弈池标题：" + displayMarketTitle(game));
         addIfPresent(lines, "判定规则：", game.condition);
         addOptions(lines, game.optionNames);
         addShares(lines, game.virtualReserves);
@@ -152,6 +150,14 @@ public final class GoldMarketResearchPromptBuilder {
         lines.add("剩余时间：" + (game.deadlineSec <= 0
                 ? "不可用" : formatRemainingTime(remaining)));
         addHoldings(lines, game.optionNames, game.myShares);
+    }
+
+    private static String displayMarketTitle(GoldMarketRepository.GameModel game) {
+        if (game == null) return "未命名博弈池";
+        String description = sanitizeMarketText(game.desc);
+        if (!description.isEmpty()) return description;
+        String condition = sanitizeMarketText(game.condition);
+        return condition.isEmpty() ? "未命名博弈池" : condition;
     }
 
     private static void addIfPresent(

@@ -16,7 +16,7 @@ import static org.junit.Assert.assertTrue;
 public class GoldPositionValuationTest {
     private static final BigInteger E18 = new BigInteger("1000000000000000000");
     private static final BigInteger ACTIVE_YES_VALUE =
-            new BigInteger("11610373207469340365");
+            new BigInteger("11610373207469340364");
     private static final BigInteger ACTIVE_NO_VALUE =
             new BigInteger("7622607971430032108");
 
@@ -51,7 +51,7 @@ public class GoldPositionValuationTest {
         GoldPositionValuation.MarketValue value =
                 GoldPositionValuation.calculateMarket(game);
 
-        assertEquals(new BigInteger("19232981178899372473"), value.getValueWei());
+        assertEquals(new BigInteger("19232981178899372472"), value.getValueWei());
         assertTrue(value.isComplete());
     }
 
@@ -119,7 +119,7 @@ public class GoldPositionValuationTest {
                 GoldPositionValuation.calculatePortfolio(
                         Arrays.asList(active, resolved, refunded));
 
-        assertEquals(new BigInteger("16610373207469340365"), value.getValueWei());
+        assertEquals(new BigInteger("16610373207469340364"), value.getValueWei());
         assertEquals(1, value.getUnavailableMarketCount());
     }
 

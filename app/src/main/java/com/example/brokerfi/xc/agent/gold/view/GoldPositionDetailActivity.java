@@ -1,5 +1,6 @@
 package com.example.brokerfi.xc.agent.gold.view;
 
+import android.app.AlertDialog;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
@@ -53,13 +54,16 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
     private List<BackendApiClient.TradeDTO> tradeHistory = new ArrayList<>();
 
     private ImageView ivPoolIcon;
-    private TextView tvPoolDesc, tvPoolCondition, tvStatusBadge;
+    private TextView tvPoolDesc, tvPoolCondition, tvStatusBadge, tvPoolTime;
+    private TextView btnPositionRuleToggle;
     private TextView tvPosYesLabel, tvPosYesShares, tvPosNoLabel, tvPosNoShares;
+    private TextView btnSellPositionYes, btnSellPositionNo;
     private TextView tvPositionEmpty, tvCurrentValue, tvTotalInvested, tvReturnRate;
     private View rowPositionYes, rowPositionNo, rowReturnRate;
     private LinearLayout tradeHistoryContainer;
     private TextView tvTradeEmpty;
     private View cardPositionAi, layoutPositionAiResult, layoutPositionAiDetails;
+    private View layoutPositionRuleDetails;
     private TextView tvPositionAiStatus, tvPositionAiPlaceholder, tvPositionAiStance;
     private TextView tvPositionAiRisk, tvPositionAiSummary, tvPositionAiDrivers;
     private TextView tvPositionAiActions, tvPositionAiDisclaimer, btnPositionAiRefresh;
@@ -72,6 +76,7 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
     private boolean tradeHistoryLoadedOnce;
     private boolean positionAnalysisHasResult;
     private boolean positionAnalysisExpanded = true;
+    private boolean positionRulesExpanded;
     private boolean destroyed;
     private final Handler dataRefreshHandler = new Handler(Looper.getMainLooper());
     private final Runnable dataRefreshRunnable = new Runnable() {
@@ -109,11 +114,19 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
         tvPoolDesc = findViewById(R.id.tv_pool_desc);
         tvPoolCondition = findViewById(R.id.tv_pool_condition);
         tvStatusBadge = findViewById(R.id.tv_status_badge);
+        tvPoolTime = findViewById(R.id.tv_pool_time);
+        btnPositionRuleToggle = findViewById(R.id.btn_position_rule_toggle);
+        layoutPositionRuleDetails = findViewById(R.id.layout_position_rule_details);
+        btnPositionRuleToggle.setOnClickListener(v -> togglePositionRules());
 
         tvPosYesLabel = findViewById(R.id.tv_pos_yes_label);
         tvPosYesShares = findViewById(R.id.tv_pos_yes_shares);
         tvPosNoLabel = findViewById(R.id.tv_pos_no_label);
         tvPosNoShares = findViewById(R.id.tv_pos_no_shares);
+        btnSellPositionYes = findViewById(R.id.btn_sell_position_yes);
+        btnSellPositionNo = findViewById(R.id.btn_sell_position_no);
+        btnSellPositionYes.setOnClickListener(v -> showSellDialog(0));
+        btnSellPositionNo.setOnClickListener(v -> showSellDialog(1));
         tvPositionEmpty = findViewById(R.id.tv_position_empty);
         rowPositionYes = findViewById(R.id.row_position_yes);
         rowPositionNo = findViewById(R.id.row_position_no);
@@ -162,6 +175,18 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
         viewModel.getError().observe(this, err -> {
             if (err != null && !err.isEmpty()) {
                 swipeRefresh.setRefreshing(false);
+            }
+        });
+        viewModel.getTxStatus().observe(this, status -> {
+            if (status == null || status.trim().isEmpty()) return;
+            Toast.makeText(this, status, Toast.LENGTH_SHORT).show();
+            if (status.contains("卖出成功")) {
+                loadTradeHistory();
+            }
+        });
+        viewModel.getTradeError().observe(this, err -> {
+            if (err != null && !err.trim().isEmpty()) {
+                showTradeErrorDialog(err);
             }
         });
     }
@@ -228,8 +253,13 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
                 ? currentGame.desc : "博弈池 #" + currentGame.id;
         String rawCondition = currentGame.condition == null ? "" : currentGame.condition;
         String condition = GoldMarketDetailPresenter.formatResolutionRule(rawCondition);
-        tvPoolDesc.setText(GoldMarketTextStyler.style(
-                GoldMarketCardPresenter.displayTitle(rawTitle, rawCondition, currentGame.deadlineSec), true));
+        GoldMarketDetailPresenter.HeroText hero =
+                GoldMarketDetailPresenter.heroText(rawTitle, currentGame.deadlineSec);
+        GoldMarketTitleFitter.apply(tvPoolDesc, GoldMarketTextStyler.style(
+                GoldMarketCardPresenter.displayTitle(
+                        rawTitle, rawCondition, currentGame.deadlineSec), true));
+        tvPoolTime.setText(hero.timeSubtitle == null || hero.timeSubtitle.trim().isEmpty()
+                ? "结算规则已冻结" : hero.timeSubtitle + " · 规则已冻结");
         tvPoolCondition.setText(GoldMarketTextStyler.style(condition, false));
 
         int templateIcon = GoldMarketTemplateIcon.forMarket(
@@ -260,6 +290,14 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
         swipeRefresh.setRefreshing(false);
     }
 
+    private void togglePositionRules() {
+        positionRulesExpanded = !positionRulesExpanded;
+        layoutPositionRuleDetails.setVisibility(
+                positionRulesExpanded ? View.VISIBLE : View.GONE);
+        btnPositionRuleToggle.setText(
+                positionRulesExpanded ? "收起规则⌃" : "查看规则⌄");
+    }
+
     private GradientDrawable makeStatusBackground(int color) {
         GradientDrawable drawable = new GradientDrawable();
         drawable.setColor(color);
@@ -282,6 +320,10 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
         BigInteger sNo = currentGame.myShares.get(1);
         boolean hasYes = sYes != null && sYes.signum() > 0;
         boolean hasNo = sNo != null && sNo.signum() > 0;
+        boolean canSell = GoldNoteMarketActivity.remainingSecondsUntilDeadline(
+                currentGame.deadlineSec, System.currentTimeMillis()) > 0
+                && !currentGame.isResolved
+                && !currentGame.isRefunded;
 
         if (!hasYes && !hasNo) {
             showEmptyPosition();
@@ -301,6 +343,7 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
             rowPositionYes.setVisibility(View.VISIBLE);
             tvPosYesLabel.setText(yesName);
             tvPosYesShares.setText(GoldNoteMarketActivity.formatShareAmount(sYes) + " 份额");
+            btnSellPositionYes.setVisibility(canSell ? View.VISIBLE : View.GONE);
         } else {
             rowPositionYes.setVisibility(View.GONE);
         }
@@ -309,6 +352,7 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
             rowPositionNo.setVisibility(View.VISIBLE);
             tvPosNoLabel.setText(noName);
             tvPosNoShares.setText(GoldNoteMarketActivity.formatShareAmount(sNo) + " 份额");
+            btnSellPositionNo.setVisibility(canSell ? View.VISIBLE : View.GONE);
         } else {
             rowPositionNo.setVisibility(View.GONE);
         }
@@ -331,11 +375,48 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
         positionAnalysisExpanded = true;
         rowPositionYes.setVisibility(View.GONE);
         rowPositionNo.setVisibility(View.GONE);
+        btnSellPositionYes.setVisibility(View.GONE);
+        btnSellPositionNo.setVisibility(View.GONE);
         tvPositionEmpty.setVisibility(View.VISIBLE);
         tvCurrentValue.setText("-- BKC");
         tvTotalInvested.setText("-- BKC");
         rowReturnRate.setVisibility(View.GONE);
         showPositionAnalysisEmpty();
+    }
+
+    private void showSellDialog(int optionId) {
+        if (currentGame == null) {
+            showTradeErrorDialog("卖出失败：持仓数据尚未加载完成");
+            return;
+        }
+        GoldTradeDialog.show(this, currentGame, GoldTradeDialog.Side.SELL, optionId,
+                new GoldTradeDialog.Listener() {
+                    @Override
+                    public void onBuy(int selectedOption, BigInteger amountWei) {
+                        Toast.makeText(GoldPositionDetailActivity.this,
+                                "正在按 AMM 报价提交买入…", Toast.LENGTH_SHORT).show();
+                        viewModel.buyShares(gameId, resolveContractAddress(),
+                                selectedOption, amountWei);
+                    }
+
+                    @Override
+                    public void onSell(int selectedOption, BigInteger shareAmountWei,
+                                       BigInteger minimumAmountOutWei,
+                                       BigInteger quotedAmountOutWei) {
+                        Toast.makeText(GoldPositionDetailActivity.this,
+                                "正在按 AMM 报价提交卖出…", Toast.LENGTH_SHORT).show();
+                        viewModel.sellShares(gameId, resolveContractAddress(), selectedOption,
+                                shareAmountWei, minimumAmountOutWei, quotedAmountOutWei);
+                    }
+                });
+    }
+
+    private void showTradeErrorDialog(String message) {
+        new AlertDialog.Builder(this)
+                .setTitle("交易未执行")
+                .setMessage(message)
+                .setPositiveButton("知道了", null)
+                .show();
     }
 
     private boolean hasPosition() {
@@ -512,15 +593,19 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
             return;
         }
 
-        // Sum all BUY trade amounts
+        // 累计投入保留所有成功 BUY；已卖出到账单独计入总收益。
         BigInteger totalInvestedWei = BigInteger.ZERO;
+        BigInteger totalSellProceedsWei = BigInteger.ZERO;
         for (BackendApiClient.TradeDTO trade : tradeHistory) {
-            if ("BUY".equalsIgnoreCase(trade.tradeType) && trade.isSuccess) {
-                try {
-                    BigInteger amount = new BigInteger(trade.amountWei);
+            if (!trade.isSuccess) continue;
+            try {
+                BigInteger amount = new BigInteger(trade.amountWei);
+                if ("BUY".equalsIgnoreCase(trade.tradeType)) {
                     totalInvestedWei = totalInvestedWei.add(amount);
-                } catch (NumberFormatException ignored) {}
-            }
+                } else if ("SELL".equalsIgnoreCase(trade.tradeType)) {
+                    totalSellProceedsWei = totalSellProceedsWei.add(amount);
+                }
+            } catch (NumberFormatException ignored) {}
         }
 
         BigDecimal investedBkc = new BigDecimal(totalInvestedWei).divide(
@@ -535,10 +620,12 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
         }
 
         BigInteger currentValueWei = marketValue.getValueWei();
-        // Return rate = (currentValue - invested) / invested * 100%
+        // 总收益率 =（当前剩余持仓估值 + 已卖出到账 - 累计投入）/ 累计投入。
         BigDecimal currentBkc = new BigDecimal(currentValueWei).divide(
                 new BigDecimal("1000000000000000000"), 6, RoundingMode.HALF_UP);
-        BigDecimal diff = currentBkc.subtract(investedBkc);
+        BigDecimal sellProceedsBkc = new BigDecimal(totalSellProceedsWei).divide(
+                new BigDecimal("1000000000000000000"), 6, RoundingMode.HALF_UP);
+        BigDecimal diff = currentBkc.add(sellProceedsBkc).subtract(investedBkc);
         double rate = diff.divide(investedBkc, 4, RoundingMode.HALF_UP)
                 .multiply(new BigDecimal("100")).doubleValue();
 
@@ -551,10 +638,10 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
     private void updateTradeHistoryUI() {
         tradeHistoryContainer.removeAllViews();
 
-        List<BackendApiClient.TradeDTO> buyTrades =
+        List<BackendApiClient.TradeDTO> tradeRows =
                 GoldPositionHistoryPresenter.visibleRows(currentGame, tradeHistory);
 
-        if (buyTrades.isEmpty()) {
+        if (tradeRows.isEmpty()) {
             tvTradeEmpty.setVisibility(View.VISIBLE);
             tradeHistoryContainer.addView(tvTradeEmpty);
             return;
@@ -563,7 +650,7 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
         tvTradeEmpty.setVisibility(View.GONE);
         LayoutInflater inflater = LayoutInflater.from(this);
 
-        for (BackendApiClient.TradeDTO trade : buyTrades) {
+        for (BackendApiClient.TradeDTO trade : tradeRows) {
             View row = inflater.inflate(R.layout.item_trade_history, tradeHistoryContainer, false);
 
             // Side indicator color
@@ -576,13 +663,14 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
 
             // YES=0, NO=1
             boolean isYes = (trade.optionId == 0);
+            boolean isSell = "SELL".equalsIgnoreCase(trade.tradeType);
             if (isYes) {
                 indicator.setBackgroundColor(0xFF059669);
-                tvSideBadge.setText(GoldMarketOptionText.shortName(0));
+                tvSideBadge.setText((isSell ? "卖出 " : "") + GoldMarketOptionText.shortName(0));
                 tvSideBadge.setBackgroundResource(R.drawable.bg_badge_yes);
             } else {
                 indicator.setBackgroundColor(0xFFE11D48);
-                tvSideBadge.setText(GoldMarketOptionText.shortName(1));
+                tvSideBadge.setText((isSell ? "卖出 " : "") + GoldMarketOptionText.shortName(1));
                 tvSideBadge.setBackgroundResource(R.drawable.bg_badge_no);
             }
 
@@ -615,7 +703,8 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
                     BigInteger amountWei = new BigInteger(trade.amountWei);
                     BigDecimal bkc = new BigDecimal(amountWei).divide(
                             new BigDecimal("1000000000000000000"), 2, RoundingMode.HALF_UP);
-                    tvTradeAmount.setText(String.format(Locale.getDefault(), "%s BKC",
+                    tvTradeAmount.setText(String.format(Locale.getDefault(), "%s%s BKC",
+                            isSell ? "到账 " : "",
                             bkc.stripTrailingZeros().toPlainString()));
                 } catch (NumberFormatException e) {
                     tvTradeAmount.setText("-- BKC");
@@ -624,7 +713,9 @@ public class GoldPositionDetailActivity extends AppCompatActivity {
 
             // Share amount
             String shareAmountText = formatShareAmount(trade.shareAmountWei);
-            tvTradeShares.setText(shareAmountText != null ? shareAmountText : "份额同步中…");
+            tvTradeShares.setText(shareAmountText != null
+                    ? (isSell ? "卖出 " : "") + shareAmountText
+                    : "份额同步中…");
 
             tradeHistoryContainer.addView(row);
         }

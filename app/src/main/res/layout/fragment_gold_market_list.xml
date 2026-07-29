@@ -31,7 +31,7 @@
                 android:background="@drawable/bg_gold_search_field"
                 android:drawableStart="@drawable/ic_search_gold"
                 android:drawablePadding="8dp"
-                android:hint="搜索标题、规则或博弈池编号"
+                android:hint="搜索博弈池标题或规则"
                 android:imeOptions="actionSearch"
                 android:inputType="text"
                 android:paddingHorizontal="14dp"

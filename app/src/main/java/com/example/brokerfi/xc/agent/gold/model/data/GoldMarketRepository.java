@@ -294,7 +294,7 @@ public class GoldMarketRepository {
             try {
                 String data = FunctionEncoder.encode(function);
                 PostTxState preState = shouldCapturePreTradeState(tradeInfo)
-                        ? queryPreTradeShareState(tradeInfo.gameId) : null;
+                        ? queryPostTxState(tradeInfo.gameId) : null;
                 if (useLocalRpc) {
                     // ── Local RPC 模式 ──
                     String txHash = sendLocalRpc(value, data, callback);
@@ -680,7 +680,7 @@ public class GoldMarketRepository {
             tradeReq.userAddress = walletAddress;
             tradeReq.tradeType = tradeInfo.tradeType;
             tradeReq.optionId = tradeInfo.optionId;
-            tradeReq.amountWei = tradeInfo.amountWei;
+            tradeReq.amountWei = resolveTradeAmountWei(tradeInfo, preState, postState);
             tradeReq.txHash = txHash;
             tradeReq.isSuccess = true;
             tradeReq.isAiManaged = tradeInfo.isAiManaged;
@@ -790,7 +790,24 @@ public class GoldMarketRepository {
         if (delta.signum() < 0) {
             delta = BigInteger.ZERO;
         }
+        if (delta.signum() == 0 && tradeInfo.shareAmountWei != null) {
+            return tradeInfo.shareAmountWei;
+        }
         return delta.toString();
+    }
+
+    private String resolveTradeAmountWei(TradeSyncInfo tradeInfo, PostTxState preState, PostTxState postState) {
+        if (tradeInfo == null) return "0";
+        if (!"SELL".equalsIgnoreCase(tradeInfo.tradeType)) {
+            return tradeInfo.amountWei == null ? "0" : tradeInfo.amountWei;
+        }
+        BigInteger beforePool = preState == null ? BigInteger.ZERO : parseBigInteger(preState.totalPool);
+        BigInteger afterPool = postState == null ? BigInteger.ZERO : parseBigInteger(postState.totalPool);
+        BigInteger received = beforePool.subtract(afterPool);
+        if (received.signum() > 0) {
+            return received.toString();
+        }
+        return tradeInfo.amountWei == null ? "0" : tradeInfo.amountWei;
     }
 
     private BigInteger shareOfOption(PostTxState state, int optionId) {
@@ -914,10 +931,10 @@ public class GoldMarketRepository {
                     m.history.add(hp);
                 }
             } else {
-                m.history = generateMockHistory(m.virtualReserves);
+                m.history = generateCurrentSnapshotHistory(m.virtualReserves);
             }
         } catch (Exception e) {
-            m.history = generateMockHistory(m.virtualReserves);
+            m.history = generateCurrentSnapshotHistory(m.virtualReserves);
         }
 
         return m;
@@ -1047,7 +1064,7 @@ public class GoldMarketRepository {
     private void enrichFromIPFS(GameModel model) {
         if (model.ipfsCID == null || model.ipfsCID.isEmpty()) {
             model.desc = "博弈池 #" + model.id;
-            model.history = generateMockHistory(model.virtualReserves);
+            model.history = generateCurrentSnapshotHistory(model.virtualReserves);
             return;
         }
         try {
@@ -1075,16 +1092,16 @@ public class GoldMarketRepository {
                         model.history.add(hp);
                     }
                 } else {
-                    model.history = generateMockHistory(model.virtualReserves);
+                    model.history = generateCurrentSnapshotHistory(model.virtualReserves);
                 }
             } else {
                 model.desc = "博弈池 #" + model.id;
-                model.history = generateMockHistory(model.virtualReserves);
+                model.history = generateCurrentSnapshotHistory(model.virtualReserves);
             }
         } catch (Exception e) {
             Log.e(TAG, "IPFS enrich failed for game " + model.id + ": " + e.getMessage());
             model.desc = "博弈池 #" + model.id;
-            model.history = generateMockHistory(model.virtualReserves);
+            model.history = generateCurrentSnapshotHistory(model.virtualReserves);
         }
     }
 
@@ -1313,7 +1330,7 @@ public class GoldMarketRepository {
                     }
                     GameModel m = buildModelFromBackend(meta, state);
                     if (m.history == null || m.history.isEmpty()) {
-                        m.history = generateMockHistory(m.virtualReserves);
+                        m.history = generateCurrentSnapshotHistory(m.virtualReserves);
                     }
                     models.add(m);
                 }
@@ -1530,7 +1547,7 @@ public class GoldMarketRepository {
                         m.desc = "Market #" + state.gameId;
                     }
                     if (m.history == null || m.history.isEmpty()) {
-                        m.history = generateMockHistory(m.virtualReserves);
+                        m.history = generateCurrentSnapshotHistory(m.virtualReserves);
                     }
                     models.add(m);
                 }
@@ -1693,20 +1710,27 @@ public class GoldMarketRepository {
         sendTransaction(amountWei, f, "Purchase confirmed", callback, tradeInfo);
     }
 
-    public void sellShares(int gameId, int optionId, BigInteger shareAmount, TxCallback callback) {
+    public void sellShares(int gameId, int optionId, BigInteger shareAmount,
+                           BigInteger minAmountOut, BigInteger quotedAmountOut,
+                           TxCallback callback) {
         // optionId 与当前合约保持一致：0=YES, 1=NO
         int contractOption = toContractOption(optionId);
         org.web3j.abi.datatypes.Function f = new org.web3j.abi.datatypes.Function(
-            "sellShares", Arrays.asList(new Uint256(gameId), new Uint8(contractOption), new Uint256(shareAmount)), Collections.emptyList());
+            "sellShares", Arrays.asList(
+                    new Uint256(BigInteger.valueOf(gameId)),
+                    new Uint8(BigInteger.valueOf(contractOption)),
+                    new Uint256(shareAmount),
+                    new Uint256(minAmountOut)), Collections.emptyList());
 
         // 构建交易同步信息（链上状态由 sendTransaction 在交易确认后通过 eth_call 查询真实值）
         TradeSyncInfo tradeInfo = new TradeSyncInfo();
         tradeInfo.gameId = gameId;
         tradeInfo.tradeType = "SELL";
         tradeInfo.optionId = optionId;
-        tradeInfo.amountWei = shareAmount.toString();
+        tradeInfo.amountWei = quotedAmountOut.toString();
+        tradeInfo.shareAmountWei = shareAmount.toString();
 
-        sendTransaction(BigInteger.ZERO, f, "Sale confirmed", callback, tradeInfo);
+        sendTransaction(BigInteger.ZERO, f, "卖出交易已确认", callback, tradeInfo);
     }
 
     /**
@@ -2074,28 +2098,25 @@ public class GoldMarketRepository {
         });
     }
 
-    // ── 模拟历史数据 ──
+    // ── 后端历史缺失时的当前快照 ──
 
-    private List<HistoryPoint> generateMockHistory(List<BigInteger> reserves) {
+    private List<HistoryPoint> generateCurrentSnapshotHistory(List<BigInteger> reserves) {
         List<HistoryPoint> list = new ArrayList<>();
         if (reserves == null || reserves.size() < 2) return list;
 
-        double yes = reserves.get(0).doubleValue();
-        double no = reserves.get(1).doubleValue();
-        double total = yes + no;
+        double reserveNo = reserves.get(0).doubleValue();
+        double reserveYes = reserves.get(1).doubleValue();
+        double total = reserveNo + reserveYes;
         if (total <= 0) return list;
 
-        float currentYesPct = (float)(yes / total * 100);
-        long now = System.currentTimeMillis() / 1000;
-
-        for (int i = 7; i >= 0; i--) {
-            HistoryPoint p = new HistoryPoint();
-            p.time = now - (long)i * 86400;
-            float noise = (float)((Math.random() - 0.5) * 10 * (i / 7.0));
-            p.yesPrice = Math.max(5, Math.min(95, currentYesPct + noise));
-            p.noPrice = 100 - p.yesPrice;
-            list.add(p);
-        }
+        // Missing history is not permission to invent past price movement. Keep one
+        // verifiable current snapshot; the detail chart obtains its real time series
+        // from the backend sampler and will show no trend when that series is absent.
+        HistoryPoint point = new HistoryPoint();
+        point.time = System.currentTimeMillis() / 1000;
+        point.yesPrice = (float) (reserveNo / total * 100);
+        point.noPrice = 100 - point.yesPrice;
+        list.add(point);
         return list;
     }
 
@@ -2146,6 +2167,7 @@ public class GoldMarketRepository {
         String tradeType;       // "BUY", "SELL", "CLAIM", "RESOLVE"
         int optionId;
         String amountWei;
+        String shareAmountWei;
         boolean isAiManaged;
         // 交易后的链上状态（可选，后端可自行从链上刷新）
         String totalPoolAfter;
