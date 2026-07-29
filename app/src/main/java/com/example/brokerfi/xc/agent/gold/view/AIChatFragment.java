@@ -193,9 +193,9 @@ public class AIChatFragment extends Fragment {
 
     private GradientDrawable quickActionBackground() {
         GradientDrawable background = new GradientDrawable();
-        background.setColor(0xFFF8FAFC);
+        background.setColor(0xFFFFFFFF);
         background.setCornerRadius(dp(12));
-        background.setStroke(dp(1), 0xFFE2E8F0);
+        background.setStroke(dp(1), 0xFFCBD5E1);
         return background;
     }
 

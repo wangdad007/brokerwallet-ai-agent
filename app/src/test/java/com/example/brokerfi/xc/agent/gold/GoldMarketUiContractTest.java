@@ -310,10 +310,10 @@ public class GoldMarketUiContractTest {
         assertFalse(layout.contains("@drawable/bg_ai_center_cta"));
         assertFalse(layout.contains("android:background=\"#EEF2F6\""));
         assertTrue(layout.contains("android:text=\"策略与市场机会  ›\""));
-        assertTrue(layout.contains("@drawable/bg_ai_strategy_preset"));
+        assertTrue(layout.contains("@drawable/bg_ai_center_entry"));
         assertTrue(source.contains("chip.setElevation(0f)"));
-        assertTrue(source.contains("background.setColor(0xFFF8FAFC)"));
-        assertTrue(source.contains("background.setStroke(dp(1), 0xFFE2E8F0)"));
+        assertTrue(source.contains("background.setColor(0xFFFFFFFF)"));
+        assertTrue(source.contains("background.setStroke(dp(1), 0xFFCBD5E1)"));
     }
 
     @Test
