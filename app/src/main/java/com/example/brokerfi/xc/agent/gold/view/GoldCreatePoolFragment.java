@@ -226,6 +226,8 @@ public class GoldCreatePoolFragment extends Fragment {
         params.width = 0;
         params.height = ViewGroup.LayoutParams.WRAP_CONTENT;
         params.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
+        int gap = Math.round(5 * getResources().getDisplayMetrics().density);
+        params.setMargins(gap, gap, gap, gap);
         card.setLayoutParams(params);
         card.setOnClickListener(v -> {
             Intent intent = new Intent(requireContext(), GoldCreateCustomActivity.class);

@@ -2,9 +2,13 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 contract PolymarketGoldV2 is Ownable, ReentrancyGuard {
+    uint256 public constant TRADING_FEE_BPS = 100;
+    uint256 private constant BPS_DENOMINATOR = 10_000;
+    uint256 private constant FEE_ACCUMULATOR_SCALE = 1e18;
 
     // ------------------- 核心数据结构 (IPFS 瘦身版) -------------------
     struct Game {
@@ -40,6 +44,20 @@ contract PolymarketGoldV2 is Ownable, ReentrancyGuard {
     // 用户持仓: gameId => userAddress => optionId => 持有的币数量
     mapping(uint256 => mapping(address => mapping(uint8 => uint256))) public userShares;
 
+    // LP 权益：创建者的初始流动性会铸造成首批 LP 份额，后续提供者按池深度增发。
+    mapping(uint256 => uint256) public totalLiquidityShares;
+    mapping(uint256 => mapping(address => uint256)) public liquidityShares;
+    // The creator's first LP tranche anchors the market. It cannot be
+    // withdrawn while trading is active; settlement or refund unlocks it.
+    mapping(uint256 => address) public gameCreators;
+    mapping(uint256 => uint256) public creatorLockedLiquidityShares;
+
+    // 1% 交易费由当前 LP 按份额累计，新增 LP 不会分走加入前已经产生的费用。
+    mapping(uint256 => uint256) public liquidityFeePool;
+    mapping(uint256 => uint256) public accumulatedFeePerLiquidityShare;
+    mapping(uint256 => mapping(address => uint256)) public liquidityFeeDebt;
+    mapping(uint256 => mapping(address => uint256)) public unclaimedLiquidityFees;
+
     event GameCreated(uint256 indexed gameId, string ipfsCID, uint256 liquidity);
     event SharesBought(uint256 indexed gameId, address indexed buyer, uint8 optionId, uint256 amountIn, uint256 sharesOut);
     event SharesSold(
@@ -48,6 +66,24 @@ contract PolymarketGoldV2 is Ownable, ReentrancyGuard {
         uint8 optionId,
         uint256 sharesIn,
         uint256 amountOut
+    );
+    event TradingFeeAccrued(uint256 indexed gameId, uint256 feeAmount);
+    event LiquidityAdded(
+        uint256 indexed gameId,
+        address indexed provider,
+        uint256 amountIn,
+        uint256 liquiditySharesOut,
+        uint256 returnedYES,
+        uint256 returnedNO
+    );
+    event LiquidityRemoved(
+        uint256 indexed gameId,
+        address indexed provider,
+        uint256 liquiditySharesIn,
+        uint256 collateralOut,
+        uint256 feeOut,
+        uint256 returnedYES,
+        uint256 returnedNO
     );
     event GameResolved(uint256 indexed gameId, uint8 winningOption);
     event RewardClaimed(uint256 indexed gameId, address indexed user, uint256 reward);
@@ -69,8 +105,13 @@ contract PolymarketGoldV2 is Ownable, ReentrancyGuard {
         newGame.totalPool = msg.value;
         newGame.reserveYES = msg.value;
         newGame.reserveNO = msg.value;
+        totalLiquidityShares[gameCount] = msg.value;
+        liquidityShares[gameCount][msg.sender] = msg.value;
+        gameCreators[gameCount] = msg.sender;
+        creatorLockedLiquidityShares[gameCount] = msg.value;
 
         emit GameCreated(gameCount, _ipfsCID, msg.value);
+        emit LiquidityAdded(gameCount, msg.sender, msg.value, msg.value, 0, 0);
     }
 
     function buyShares(uint256 _gameId, uint8 _optionId) external payable nonReentrant {
@@ -81,17 +122,20 @@ contract PolymarketGoldV2 is Ownable, ReentrancyGuard {
         require(block.timestamp < game.deadlineSec, "Past deadline");
         require(_optionId < 2, "Only YES(0) and NO(1) options allowed");
 
+        uint256 fee = Math.mulDiv(amount, TRADING_FEE_BPS, BPS_DENOMINATOR);
+        uint256 netAmount = amount - fee;
+        require(netAmount > 0, "Amount is too small after fee");
+
         uint256 k = game.reserveYES * game.reserveNO;
-        uint256 sharesToUser = amount;
+        uint256 sharesToUser = netAmount;
 
         if (_optionId == 0) {
-            game.reserveNO += amount;
+            game.reserveNO += netAmount;
             uint256 newReserveYES = k / game.reserveNO;
             sharesToUser += (game.reserveYES - newReserveYES);
             game.reserveYES = newReserveYES;
         } else {
-            // 修复了原代码中这里的缩进问题
-            game.reserveYES += amount;
+            game.reserveYES += netAmount;
             uint256 newReserveNO = k / game.reserveYES;
             sharesToUser += (game.reserveNO - newReserveNO);
             game.reserveNO = newReserveNO;
@@ -99,6 +143,7 @@ contract PolymarketGoldV2 is Ownable, ReentrancyGuard {
 
         userShares[_gameId][msg.sender][_optionId] += sharesToUser;
         game.totalPool += amount;
+        _accrueTradingFee(_gameId, fee);
 
         emit SharesBought(_gameId, msg.sender, _optionId, amount, sharesToUser);
     }
@@ -125,10 +170,11 @@ contract PolymarketGoldV2 is Ownable, ReentrancyGuard {
         require(_optionId < 2, "Only YES(0) and NO(1) options allowed");
         require(_shareAmount > 0, "Share amount must be > 0");
 
-        if (_optionId == 0) {
-            return _calculateSellReturn(game.reserveYES, game.reserveNO, _shareAmount);
-        }
-        return _calculateSellReturn(game.reserveNO, game.reserveYES, _shareAmount);
+        uint256 grossAmountOut = _optionId == 0
+            ? _calculateSellReturn(game.reserveYES, game.reserveNO, _shareAmount)
+            : _calculateSellReturn(game.reserveNO, game.reserveYES, _shareAmount);
+        uint256 fee = Math.mulDiv(grossAmountOut, TRADING_FEE_BPS, BPS_DENOMINATOR);
+        return grossAmountOut - fee;
     }
 
     /**
@@ -152,7 +198,11 @@ contract PolymarketGoldV2 is Ownable, ReentrancyGuard {
             "Insufficient shares"
         );
 
-        uint256 amountOut = quoteSellShares(_gameId, _optionId, _shareAmount);
+        uint256 grossAmountOut = _optionId == 0
+            ? _calculateSellReturn(game.reserveYES, game.reserveNO, _shareAmount)
+            : _calculateSellReturn(game.reserveNO, game.reserveYES, _shareAmount);
+        uint256 fee = Math.mulDiv(grossAmountOut, TRADING_FEE_BPS, BPS_DENOMINATOR);
+        uint256 amountOut = grossAmountOut - fee;
         require(amountOut > 0, "Sale amount is too small");
         require(amountOut >= _minAmountOut, "Slippage limit exceeded");
         require(amountOut <= game.totalPool, "Insufficient pool collateral");
@@ -162,18 +212,261 @@ contract PolymarketGoldV2 is Ownable, ReentrancyGuard {
         if (_optionId == 0) {
             // amountOut YES and NO are merged into collateral. The remaining
             // sold YES shares return to the virtual reserve.
-            game.reserveYES += _shareAmount - amountOut;
-            game.reserveNO -= amountOut;
+            game.reserveYES += _shareAmount - grossAmountOut;
+            game.reserveNO -= grossAmountOut;
         } else {
-            game.reserveNO += _shareAmount - amountOut;
-            game.reserveYES -= amountOut;
+            game.reserveNO += _shareAmount - grossAmountOut;
+            game.reserveYES -= grossAmountOut;
         }
         game.totalPool -= amountOut;
+        _accrueTradingFee(_gameId, fee);
 
         (bool success, ) = payable(msg.sender).call{value: amountOut}("");
         require(success, "Transfer failed");
 
         emit SharesSold(_gameId, msg.sender, _optionId, _shareAmount, amountOut);
+    }
+
+    /**
+     * @notice Quotes a BKC liquidity contribution without changing the market probability.
+     * The contribution is split into a complete YES/NO set. Only the proportional
+     * amounts enter the pool; any surplus single-sided shares are returned to the LP.
+     */
+    function quoteAddLiquidity(
+        uint256 _gameId,
+        uint256 _amount
+    ) public view returns (
+        uint256 liquiditySharesOut,
+        uint256 returnedYES,
+        uint256 returnedNO
+    ) {
+        Game storage game = games[_gameId];
+        require(_gameId > 0 && _gameId <= gameCount, "Game does not exist");
+        require(_amount > 0, "Amount must be > 0");
+
+        uint256 supply = totalLiquidityShares[_gameId];
+        uint256 maxReserve = Math.max(game.reserveYES, game.reserveNO);
+        require(supply > 0 && maxReserve > 0, "Liquidity pool is unavailable");
+
+        liquiditySharesOut = Math.mulDiv(_amount, supply, maxReserve);
+        require(liquiditySharesOut > 0, "Liquidity amount is too small");
+
+        uint256 depositYES = Math.mulDiv(game.reserveYES, _amount, maxReserve);
+        uint256 depositNO = Math.mulDiv(game.reserveNO, _amount, maxReserve);
+        returnedYES = _amount - depositYES;
+        returnedNO = _amount - depositNO;
+    }
+
+    /**
+     * @notice Adds BKC liquidity and mints transferable-value LP accounting shares.
+     * @param _minLiquidityShares Slippage protection for the LP shares minted.
+     */
+    function addLiquidity(
+        uint256 _gameId,
+        uint256 _minLiquidityShares
+    ) external payable nonReentrant {
+        Game storage game = games[_gameId];
+        require(_gameId > 0 && _gameId <= gameCount, "Game does not exist");
+        require(!game.isResolved && !game.isRefunded, "Game already ended");
+        require(block.timestamp < game.deadlineSec, "Past deadline");
+        require(msg.value > 0, "Amount must be > 0");
+
+        _settleLiquidityFees(_gameId, msg.sender);
+
+        (
+            uint256 liquiditySharesOut,
+            uint256 returnedYES,
+            uint256 returnedNO
+        ) = quoteAddLiquidity(_gameId, msg.value);
+        require(
+            liquiditySharesOut >= _minLiquidityShares,
+            "Liquidity slippage limit exceeded"
+        );
+
+        uint256 depositYES = msg.value - returnedYES;
+        uint256 depositNO = msg.value - returnedNO;
+        game.reserveYES += depositYES;
+        game.reserveNO += depositNO;
+        game.totalPool += msg.value;
+
+        totalLiquidityShares[_gameId] += liquiditySharesOut;
+        liquidityShares[_gameId][msg.sender] += liquiditySharesOut;
+        _syncLiquidityFeeDebt(_gameId, msg.sender);
+
+        if (returnedYES > 0) {
+            userShares[_gameId][msg.sender][0] += returnedYES;
+        }
+        if (returnedNO > 0) {
+            userShares[_gameId][msg.sender][1] += returnedNO;
+        }
+
+        emit LiquidityAdded(
+            _gameId,
+            msg.sender,
+            msg.value,
+            liquiditySharesOut,
+            returnedYES,
+            returnedNO
+        );
+    }
+
+    /**
+     * @notice Quotes LP withdrawal. Before settlement, equal YES/NO inventory
+     * is merged back to BKC and surplus inventory is returned as outcome shares.
+     * After settlement, the LP receives its proportional winning reserve.
+     */
+    function quoteRemoveLiquidity(
+        uint256 _gameId,
+        address _provider,
+        uint256 _liquidityShareAmount
+    ) public view returns (
+        uint256 collateralOut,
+        uint256 feeOut,
+        uint256 returnedYES,
+        uint256 returnedNO
+    ) {
+        Game storage game = games[_gameId];
+        require(_gameId > 0 && _gameId <= gameCount, "Game does not exist");
+        uint256 supply = totalLiquidityShares[_gameId];
+        require(_liquidityShareAmount > 0, "LP share amount must be > 0");
+        require(_liquidityShareAmount <= liquidityShares[_gameId][_provider], "Insufficient LP shares");
+        require(supply > 0, "Liquidity pool is unavailable");
+        if (!game.isResolved && !game.isRefunded) {
+            require(block.timestamp < game.deadlineSec, "Settlement is pending");
+            require(_liquidityShareAmount < supply, "Cannot remove all active liquidity");
+            if (_provider == gameCreators[_gameId]) {
+                require(
+                    liquidityShares[_gameId][_provider] - _liquidityShareAmount
+                        >= creatorLockedLiquidityShares[_gameId],
+                    "Creator initial liquidity is locked"
+                );
+            }
+        }
+
+        uint256 reserveYESOut = _liquidityShareAmount == supply
+            ? game.reserveYES
+            : Math.mulDiv(game.reserveYES, _liquidityShareAmount, supply);
+        uint256 reserveNOOut = _liquidityShareAmount == supply
+            ? game.reserveNO
+            : Math.mulDiv(game.reserveNO, _liquidityShareAmount, supply);
+
+        if (game.isResolved) {
+            collateralOut = game.winningOption == 0 ? reserveYESOut : reserveNOOut;
+        } else if (game.isRefunded) {
+            collateralOut = Math.min(reserveYESOut, reserveNOOut);
+        } else {
+            collateralOut = Math.min(reserveYESOut, reserveNOOut);
+            returnedYES = reserveYESOut - collateralOut;
+            returnedNO = reserveNOOut - collateralOut;
+        }
+        feeOut = _pendingLiquidityFees(_gameId, _provider);
+    }
+
+    /**
+     * @notice Burns LP shares and returns proportional BKC plus accrued trading fees.
+     */
+    function removeLiquidity(
+        uint256 _gameId,
+        uint256 _liquidityShareAmount,
+        uint256 _minAmountOut
+    ) external nonReentrant {
+        Game storage game = games[_gameId];
+        _settleLiquidityFees(_gameId, msg.sender);
+
+        (
+            uint256 collateralOut,
+            uint256 feeOut,
+            uint256 returnedYES,
+            uint256 returnedNO
+        ) = quoteRemoveLiquidity(_gameId, msg.sender, _liquidityShareAmount);
+        uint256 totalAmountOut = collateralOut + feeOut;
+        require(totalAmountOut >= _minAmountOut, "Liquidity slippage limit exceeded");
+        require(totalAmountOut <= game.totalPool, "Insufficient pool collateral");
+        require(totalAmountOut <= address(this).balance, "Insufficient contract balance");
+
+        uint256 supply = totalLiquidityShares[_gameId];
+        uint256 reserveYESOut = _liquidityShareAmount == supply
+            ? game.reserveYES
+            : Math.mulDiv(game.reserveYES, _liquidityShareAmount, supply);
+        uint256 reserveNOOut = _liquidityShareAmount == supply
+            ? game.reserveNO
+            : Math.mulDiv(game.reserveNO, _liquidityShareAmount, supply);
+
+        game.reserveYES -= reserveYESOut;
+        game.reserveNO -= reserveNOOut;
+        totalLiquidityShares[_gameId] = supply - _liquidityShareAmount;
+        liquidityShares[_gameId][msg.sender] -= _liquidityShareAmount;
+        unclaimedLiquidityFees[_gameId][msg.sender] = 0;
+        liquidityFeePool[_gameId] -= feeOut;
+        game.totalPool -= totalAmountOut;
+        _syncLiquidityFeeDebt(_gameId, msg.sender);
+
+        if (returnedYES > 0) {
+            userShares[_gameId][msg.sender][0] += returnedYES;
+        }
+        if (returnedNO > 0) {
+            userShares[_gameId][msg.sender][1] += returnedNO;
+        }
+
+        if (totalAmountOut > 0) {
+            (bool success, ) = payable(msg.sender).call{value: totalAmountOut}("");
+            require(success, "Transfer failed");
+        }
+
+        emit LiquidityRemoved(
+            _gameId,
+            msg.sender,
+            _liquidityShareAmount,
+            collateralOut,
+            feeOut,
+            returnedYES,
+            returnedNO
+        );
+    }
+
+    function _accrueTradingFee(uint256 _gameId, uint256 _fee) internal {
+        if (_fee == 0) return;
+        uint256 supply = totalLiquidityShares[_gameId];
+        require(supply > 0, "Liquidity pool is unavailable");
+        liquidityFeePool[_gameId] += _fee;
+        accumulatedFeePerLiquidityShare[_gameId] +=
+            Math.mulDiv(_fee, FEE_ACCUMULATOR_SCALE, supply);
+        emit TradingFeeAccrued(_gameId, _fee);
+    }
+
+    function _settleLiquidityFees(uint256 _gameId, address _provider) internal {
+        uint256 accrued = Math.mulDiv(
+            liquidityShares[_gameId][_provider],
+            accumulatedFeePerLiquidityShare[_gameId],
+            FEE_ACCUMULATOR_SCALE
+        );
+        uint256 debt = liquidityFeeDebt[_gameId][_provider];
+        if (accrued > debt) {
+            unclaimedLiquidityFees[_gameId][_provider] += accrued - debt;
+        }
+        liquidityFeeDebt[_gameId][_provider] = accrued;
+    }
+
+    function _syncLiquidityFeeDebt(uint256 _gameId, address _provider) internal {
+        liquidityFeeDebt[_gameId][_provider] = Math.mulDiv(
+            liquidityShares[_gameId][_provider],
+            accumulatedFeePerLiquidityShare[_gameId],
+            FEE_ACCUMULATOR_SCALE
+        );
+    }
+
+    function _pendingLiquidityFees(
+        uint256 _gameId,
+        address _provider
+    ) internal view returns (uint256) {
+        uint256 accrued = Math.mulDiv(
+            liquidityShares[_gameId][_provider],
+            accumulatedFeePerLiquidityShare[_gameId],
+            FEE_ACCUMULATOR_SCALE
+        );
+        uint256 debt = liquidityFeeDebt[_gameId][_provider];
+        uint256 pending = accrued > debt ? accrued - debt : 0;
+        return unclaimedLiquidityFees[_gameId][_provider] + pending;
     }
 
     function _calculateSellReturn(
@@ -223,12 +516,6 @@ contract PolymarketGoldV2 is Ownable, ReentrancyGuard {
         game.isResolved = true;
         game.winningOption = _winningOption;
 
-        uint256 poolWinningShares = (_winningOption == 0) ? game.reserveYES : game.reserveNO;
-        if (poolWinningShares > 0) {
-            (bool success, ) = payable(owner()).call{value: poolWinningShares}("");
-            require(success, "Admin liquidity reclaim failed");
-        }
-
         emit GameResolved(_gameId, _winningOption);
     }
 
@@ -242,6 +529,8 @@ contract PolymarketGoldV2 is Ownable, ReentrancyGuard {
 
         uint256 payout = shares;
         userShares[_gameId][msg.sender][_optionId] = 0;
+        require(payout <= game.totalPool, "Insufficient pool collateral");
+        game.totalPool -= payout;
 
         (bool success, ) = payable(msg.sender).call{value: payout}("");
         require(success, "Transfer failed");
@@ -276,6 +565,23 @@ contract PolymarketGoldV2 is Ownable, ReentrancyGuard {
         _myShares[1] = userShares[_gameId][_user][1];
 
         return (_virtualReserves, _myShares);
+    }
+
+    function getLiquidityPosition(
+        uint256 _gameId,
+        address _provider
+    ) external view returns (
+        uint256 _totalLiquidityShares,
+        uint256 _myLiquidityShares,
+        uint256 _claimableFees,
+        uint256 _feePool
+    ) {
+        return (
+            totalLiquidityShares[_gameId],
+            liquidityShares[_gameId][_provider],
+            _pendingLiquidityFees(_gameId, _provider),
+            liquidityFeePool[_gameId]
+        );
     }
 
     // =========================================================
@@ -336,7 +642,7 @@ contract PolymarketGoldV2 is Ownable, ReentrancyGuard {
     }
 
     // =========================================================
-    // 专属视图：一次性只返回该用户参与过（有持仓）的博弈池，极致节省带宽
+    // 专属视图：一次性只返回该用户参与过（持有结果份额或 LP 份额）的博弈池
     // =========================================================
 
     function getMyParticipatedGames(address _user) external view returns (ParticipatedGameDTO[] memory) {
@@ -345,7 +651,11 @@ contract PolymarketGoldV2 is Ownable, ReentrancyGuard {
 
         // 第一遍：统计该地址参与过的博弈池数量，用于在内存中分配固定长度的数组
         for (uint256 i = 1; i <= total; i++) {
-            if (userShares[i][_user][0] > 0 || userShares[i][_user][1] > 0) {
+            if (
+                userShares[i][_user][0] > 0 ||
+                userShares[i][_user][1] > 0 ||
+                liquidityShares[i][_user] > 0
+            ) {
                 myCount++;
             }
         }
@@ -359,7 +669,7 @@ contract PolymarketGoldV2 is Ownable, ReentrancyGuard {
             uint256 sharesY = userShares[i][_user][0];
             uint256 sharesN = userShares[i][_user][1];
 
-            if (sharesY > 0 || sharesN > 0) {
+            if (sharesY > 0 || sharesN > 0 || liquidityShares[i][_user] > 0) {
                 Game storage g = games[i];
 
                 result[index] = ParticipatedGameDTO({

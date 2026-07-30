@@ -393,12 +393,25 @@ public class BackendApiClient {
         config.enabled = json.optBoolean("enabled", false);
         JSONObject strategy = json.optJSONObject("strategy");
         if (strategy != null) {
+            config.strategyType = strategy.optString("strategy_type", config.strategyType);
+            config.direction = strategy.optString("direction", config.direction);
             config.buyAmountBKC = strategy.optString("buy_amount_bkc", config.buyAmountBKC);
             config.confidenceMin = strategy.optDouble("confidence_min", config.confidenceMin);
             config.minEdgePercent = strategy.optDouble("min_edge_percent", config.minEdgePercent);
             config.kellyFraction = strategy.optDouble("kelly_fraction", config.kellyFraction);
             config.adaptiveCooldown = strategy.optBoolean(
                     "adaptive_cooldown", config.adaptiveCooldown);
+            config.gridLowerPercent = strategy.optDouble(
+                    "grid_lower_percent", config.gridLowerPercent);
+            config.gridUpperPercent = strategy.optDouble(
+                    "grid_upper_percent", config.gridUpperPercent);
+            config.gridLevels = strategy.optInt("grid_levels", config.gridLevels);
+            config.martingaleTriggerPercent = strategy.optDouble(
+                    "martingale_trigger_percent", config.martingaleTriggerPercent);
+            config.martingaleMultiplier = strategy.optDouble(
+                    "martingale_multiplier", config.martingaleMultiplier);
+            config.martingaleMaxRounds = strategy.optInt(
+                    "martingale_max_rounds", config.martingaleMaxRounds);
         }
         return config;
     }
@@ -425,11 +438,19 @@ public class BackendApiClient {
         json.put("private_key", privateKey);
         if (enabled && config != null) {
             JSONObject strategy = new JSONObject();
+            strategy.put("strategy_type", config.strategyType);
+            strategy.put("direction", config.direction);
             strategy.put("buy_amount_bkc", config.buyAmountBKC);
             strategy.put("confidence_min", config.confidenceMin);
             strategy.put("min_edge_percent", config.minEdgePercent);
             strategy.put("kelly_fraction", config.kellyFraction);
             strategy.put("adaptive_cooldown", config.adaptiveCooldown);
+            strategy.put("grid_lower_percent", config.gridLowerPercent);
+            strategy.put("grid_upper_percent", config.gridUpperPercent);
+            strategy.put("grid_levels", config.gridLevels);
+            strategy.put("martingale_trigger_percent", config.martingaleTriggerPercent);
+            strategy.put("martingale_multiplier", config.martingaleMultiplier);
+            strategy.put("martingale_max_rounds", config.martingaleMaxRounds);
             json.put("strategy", strategy);
         }
         String body = doPost("/ai-managed", json.toString());
@@ -439,33 +460,95 @@ public class BackendApiClient {
 
     public static class AiManagedConfig {
         public boolean enabled;
+        @SerializedName("strategy_type")
+        public String strategyType;
+        public String direction;
+        @SerializedName("buy_amount_bkc")
         public String buyAmountBKC;
+        @SerializedName("confidence_min")
         public double confidenceMin;
+        @SerializedName("min_edge_percent")
         public double minEdgePercent;
+        @SerializedName("kelly_fraction")
         public double kellyFraction;
+        @SerializedName("adaptive_cooldown")
         public boolean adaptiveCooldown;
+        @SerializedName("grid_lower_percent")
+        public double gridLowerPercent;
+        @SerializedName("grid_upper_percent")
+        public double gridUpperPercent;
+        @SerializedName("grid_levels")
+        public int gridLevels;
+        @SerializedName("martingale_trigger_percent")
+        public double martingaleTriggerPercent;
+        @SerializedName("martingale_multiplier")
+        public double martingaleMultiplier;
+        @SerializedName("martingale_max_rounds")
+        public int martingaleMaxRounds;
 
         public static AiManagedConfig defaults() {
             AiManagedConfig value = new AiManagedConfig();
             value.enabled = false;
+            value.strategyType = "ai";
+            value.direction = "yes";
             value.buyAmountBKC = "1";
             value.confidenceMin = 0.70d;
             value.minEdgePercent = 5d;
             value.kellyFraction = 0.25d;
             value.adaptiveCooldown = true;
+            value.gridLowerPercent = 35d;
+            value.gridUpperPercent = 65d;
+            value.gridLevels = 6;
+            value.martingaleTriggerPercent = 45d;
+            value.martingaleMultiplier = 2d;
+            value.martingaleMaxRounds = 4;
             return value;
         }
 
         public AiManagedConfig copy() {
             AiManagedConfig value = new AiManagedConfig();
             value.enabled = enabled;
+            value.strategyType = strategyType;
+            value.direction = direction;
             value.buyAmountBKC = buyAmountBKC;
             value.confidenceMin = confidenceMin;
             value.minEdgePercent = minEdgePercent;
             value.kellyFraction = kellyFraction;
             value.adaptiveCooldown = adaptiveCooldown;
+            value.gridLowerPercent = gridLowerPercent;
+            value.gridUpperPercent = gridUpperPercent;
+            value.gridLevels = gridLevels;
+            value.martingaleTriggerPercent = martingaleTriggerPercent;
+            value.martingaleMultiplier = martingaleMultiplier;
+            value.martingaleMaxRounds = martingaleMaxRounds;
             return value;
         }
+    }
+
+    public static List<StrategyDTO> fetchStrategies(String userAddress) throws Exception {
+        String body = doGet("/strategies?user_address=" + userAddress);
+        JSONObject json = new JSONObject(body);
+        JSONArray arr = json.optJSONArray("strategies");
+        if (arr == null) return new ArrayList<>();
+        Type listType = new TypeToken<List<StrategyDTO>>(){}.getType();
+        return gson.fromJson(arr.toString(), listType);
+    }
+
+    public static class StrategyDTO {
+        @SerializedName("game_id")
+        public int gameId;
+        @SerializedName("contract_address")
+        public String contractAddress;
+        @SerializedName("enabled_at")
+        public String enabledAt;
+        @SerializedName("last_trade_at")
+        public String lastTradeAt;
+        @SerializedName("last_trade_tx")
+        public String lastTradeTx;
+        @SerializedName("last_error")
+        public String lastError;
+        @SerializedName("strategy")
+        public AiManagedConfig strategy;
     }
 
     // ==================== DTO 定义 ====================
@@ -586,6 +669,18 @@ public class BackendApiClient {
         @SerializedName("my_shares_no")
         public String mySharesNO;
 
+        @SerializedName("total_liquidity_shares")
+        public String totalLiquidityShares;
+
+        @SerializedName("liquidity_fee_pool")
+        public String liquidityFeePool;
+
+        @SerializedName("my_liquidity_shares")
+        public String myLiquidityShares;
+
+        @SerializedName("my_liquidity_fees")
+        public String myLiquidityFees;
+
         @SerializedName("updated_at")
         public String updatedAt;
     }
@@ -594,6 +689,12 @@ public class BackendApiClient {
      * 链上状态同步请求
      */
     public static class ChainStateSyncReq {
+        @SerializedName("contract_address")
+        public String contractAddress;
+
+        @SerializedName("user_address")
+        public String userAddress;
+
         @SerializedName("total_pool")
         public String totalPool;
 
@@ -620,6 +721,18 @@ public class BackendApiClient {
 
         @SerializedName("my_shares_no")
         public String mySharesNO;
+
+        @SerializedName("total_liquidity_shares")
+        public String totalLiquidityShares;
+
+        @SerializedName("liquidity_fee_pool")
+        public String liquidityFeePool;
+
+        @SerializedName("my_liquidity_shares")
+        public String myLiquidityShares;
+
+        @SerializedName("my_liquidity_fees")
+        public String myLiquidityFees;
     }
 
     /**
@@ -680,11 +793,20 @@ public class BackendApiClient {
         @SerializedName("share_amount_wei")
         public String shareAmountWei;
 
+        @SerializedName("returned_yes_wei")
+        public String returnedYesWei;
+
+        @SerializedName("returned_no_wei")
+        public String returnedNoWei;
+
         @SerializedName("is_success")
         public boolean isSuccess;
 
         @SerializedName("is_ai_managed")
         public boolean isAiManaged;
+
+        @SerializedName("execution_source")
+        public String executionSource;
 
         @SerializedName("tx_hash")
         public String txHash;
@@ -700,6 +822,18 @@ public class BackendApiClient {
 
         @SerializedName("my_shares_no_after")
         public String mySharesNOAfter;
+
+        @SerializedName("total_liquidity_shares_after")
+        public String totalLiquiditySharesAfter;
+
+        @SerializedName("liquidity_fee_pool_after")
+        public String liquidityFeePoolAfter;
+
+        @SerializedName("my_liquidity_shares_after")
+        public String myLiquiditySharesAfter;
+
+        @SerializedName("my_liquidity_fees_after")
+        public String myLiquidityFeesAfter;
     }
 
     /**
@@ -736,8 +870,17 @@ public class BackendApiClient {
         @SerializedName("share_amount_wei")
         public String shareAmountWei;
 
+        @SerializedName("returned_yes_wei")
+        public String returnedYesWei;
+
+        @SerializedName("returned_no_wei")
+        public String returnedNoWei;
+
         @SerializedName("is_ai_managed")
         public boolean isAiManaged;
+
+        @SerializedName("execution_source")
+        public String executionSource;
 
         // 同步当前链上状态
         @SerializedName("total_pool_after")
@@ -754,6 +897,18 @@ public class BackendApiClient {
 
         @SerializedName("my_shares_no_after")
         public String mySharesNOAfter;
+
+        @SerializedName("total_liquidity_shares_after")
+        public String totalLiquiditySharesAfter;
+
+        @SerializedName("liquidity_fee_pool_after")
+        public String liquidityFeePoolAfter;
+
+        @SerializedName("my_liquidity_shares_after")
+        public String myLiquiditySharesAfter;
+
+        @SerializedName("my_liquidity_fees_after")
+        public String myLiquidityFeesAfter;
     }
 
     public static class AiDecisionCenterDTO {

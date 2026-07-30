@@ -22,6 +22,10 @@ public class GoldSellSimulationTest {
 
         assertTrue(result.valid);
         assertTrue(result.amountOutWei.signum() > 0);
+        BigInteger gross = GoldSellSimulation.calculateSellReturn(
+                amount(100), amount(100), amount(10));
+        assertEquals(gross.subtract(gross.multiply(BigInteger.valueOf(100))
+                .divide(BigInteger.valueOf(10_000))), result.amountOutWei);
         assertEquals(result.amountOutWei.multiply(BigInteger.valueOf(9_900))
                 .divide(BigInteger.valueOf(10_000)), result.minAmountOutWei);
         assertTrue(result.afterReserveNo.multiply(result.afterReserveYes)

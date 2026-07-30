@@ -3,22 +3,25 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:background="@color/white"
-    android:fitsSystemWindows="true">
+    android:background="#F5F7FA"
+    android:fitsSystemWindows="true"
+    android:orientation="vertical">
 
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="60dp"
-        android:padding="16dp">
+        android:background="#FFFFFF"
+        android:elevation="1dp"
+        android:paddingHorizontal="14dp">
 
         <ImageView
             android:id="@+id/btn_back"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:layout_centerVertical="true"
-            android:src="@drawable/up_circle"
-            android:contentDescription="返回" />
+            android:contentDescription="返回"
+            android:padding="8dp"
+            android:src="@drawable/up_circle" />
 
         <TextView
             android:id="@+id/tv_title"
@@ -26,7 +29,7 @@
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
             android:text="博弈池定制"
-            android:textColor="#000000"
+            android:textColor="#0F172A"
             android:textSize="18sp"
             android:textStyle="bold" />
     </RelativeLayout>
@@ -35,285 +38,353 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
+        android:clipToPadding="false"
         android:fillViewport="true">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="20dp">
-
-            <TextView
-                android:id="@+id/tv_template_name"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="博弈池模板"
-                android:textColor="#000000"
-                android:textSize="22sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/tv_template_detail"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="正在加载模板详情…"
-                android:textColor="#666666"
-                android:textSize="14sp"
-                android:lineSpacingExtra="4dp" />
-
-            <!-- Visual Config -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:text="定制博弈池封面"
-                android:textColor="#1A1A1A"
-                android:textSize="16sp"
-                android:textStyle="bold" />
+            android:padding="14dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
+                android:background="@drawable/bg_gold_detail_panel"
+                android:elevation="1dp"
                 android:gravity="center_vertical"
-                android:orientation="horizontal">
+                android:orientation="horizontal"
+                android:padding="14dp">
 
                 <androidx.cardview.widget.CardView
-                    android:layout_width="80dp"
-                    android:layout_height="80dp"
-                    app:cardCornerRadius="10dp"
-                    app:cardElevation="2dp"
-                    app:cardBackgroundColor="#F1F5F9">
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    app:cardBackgroundColor="#F8FAFC"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp">
+
                     <ImageView
                         android:id="@+id/iv_pool_icon"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
-                        android:scaleType="centerCrop"
+                        android:padding="8dp"
+                        android:scaleType="centerInside"
                         android:src="@drawable/apartment_icon" />
                 </androidx.cardview.widget.CardView>
 
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tv_template_name"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:maxLines="2"
+                        android:text="博弈池模板"
+                        android:textColor="#0F172A"
+                        android:textSize="17sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tv_template_detail"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:ellipsize="end"
+                        android:maxLines="3"
+                        android:text="正在加载模板详情…"
+                        android:textColor="#64748B"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
                 <androidx.appcompat.widget.AppCompatButton
                     android:id="@+id/btn_select_image"
-                    android:layout_width="wrap_content"
-                    android:layout_height="44dp"
-                    android:layout_marginStart="16dp"
-                    android:background="@drawable/custom_button_bg_white"
-                    android:paddingHorizontal="20dp"
-                    android:text="更换封面"
+                    android:layout_width="76dp"
+                    android:layout_height="38dp"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/bg_gold_create_cover_button"
+                    android:minHeight="0dp"
+                    android:minWidth="0dp"
+                    android:padding="0dp"
+                    android:text="换封面"
                     android:textAllCaps="false"
-                    android:textColor="#3B82F6"
-                    android:textSize="14sp"
+                    android:textColor="#2563EB"
+                    android:textSize="12sp"
                     android:textStyle="bold" />
             </LinearLayout>
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginTop="24dp"
-                android:background="#F1F5F9" />
-
-            <!-- Rules Config -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:text="判定规则设置"
-                android:textColor="#1A1A1A"
-                android:textSize="16sp"
-                android:textStyle="bold" />
-
-            <!-- Direction Selection (for TYPE_PRICE) -->
             <LinearLayout
-                android:id="@+id/container_direction"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:background="@drawable/bg_gold_detail_panel"
+                android:elevation="1dp"
                 android:orientation="vertical"
-                android:visibility="gone"
-                android:layout_marginTop="12dp">
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="价格方向"
-                    android:textSize="13sp"
-                    android:textColor="#888888" />
-                <Spinner
-                    android:id="@+id/spinner_direction"
+                android:padding="14dp">
+
+                <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="52dp"
-                    android:layout_marginTop="4dp"
-                    android:background="@drawable/custom_edittext_background" />
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="判定规则"
+                        android:textColor="#0F172A"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="28dp"
+                        android:background="@drawable/bg_ai_signal_neutral"
+                        android:gravity="center"
+                        android:paddingHorizontal="10dp"
+                        android:text="模板参数"
+                        android:textColor="#64748B"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/container_direction"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        style="@style/GoldCreateFieldLabel"
+                        android:text="价格方向" />
+
+                    <Spinner
+                        android:id="@+id/spinner_direction"
+                        style="@style/GoldCreateSpinner" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/container_benchmark"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        style="@style/GoldCreateFieldLabel"
+                        android:text="对比标的" />
+
+                    <Spinner
+                        android:id="@+id/spinner_benchmark"
+                        style="@style/GoldCreateSpinner" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/container_technical"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        style="@style/GoldCreateFieldLabel"
+                        android:text="比较方式" />
+
+                    <Spinner
+                        android:id="@+id/spinner_operator"
+                        style="@style/GoldCreateSpinner" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/container_param1"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:id="@+id/tv_param1_label"
+                        style="@style/GoldCreateFieldLabel"
+                        android:text="参数" />
+
+                    <EditText
+                        android:id="@+id/et_param1"
+                        style="@style/GoldCreateInput"
+                        android:hint="请输入数值"
+                        android:importantForAutofill="no"
+                        android:inputType="text" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/container_param2"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:id="@+id/tv_param2_label"
+                        style="@style/GoldCreateFieldLabel"
+                        android:text="第二个参数" />
+
+                    <EditText
+                        android:id="@+id/et_param2"
+                        style="@style/GoldCreateInput"
+                        android:hint="请输入数值"
+                        android:importantForAutofill="no"
+                        android:inputType="numberDecimal" />
+                </LinearLayout>
             </LinearLayout>
 
             <LinearLayout
-                android:id="@+id/container_benchmark"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
+                android:layout_marginTop="14dp"
+                android:background="@drawable/bg_gold_detail_panel"
+                android:elevation="1dp"
                 android:orientation="vertical"
-                android:visibility="gone">
+                android:padding="14dp">
 
                 <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="对比标的"
-                    android:textColor="#888888"
-                    android:textSize="13sp" />
-
-                <Spinner
-                    android:id="@+id/spinner_benchmark"
                     android:layout_width="match_parent"
-                    android:layout_height="56dp"
-                    android:layout_marginTop="4dp"
-                    android:background="@drawable/custom_edittext_background" />
+                    android:layout_height="wrap_content"
+                    android:text="观察周期"
+                    android:textColor="#0F172A"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <Button
+                    android:id="@+id/btn_select_start_time"
+                    style="@style/GoldCreateDateButton"
+                    android:layout_marginTop="12dp"
+                    android:text="开始日期：立即" />
+
+                <Button
+                    android:id="@+id/btn_select_time"
+                    style="@style/GoldCreateDateButton"
+                    android:layout_marginTop="8dp"
+                    android:text="截止日期：未选择" />
+
+                <TextView
+                    android:id="@+id/tv_observation_hint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/bg_gold_form_note"
+                    android:padding="10dp"
+                    android:text="观察期为 1 至 4 个整天，修改开始日期后会自动调整截止日期。"
+                    android:textColor="#64748B"
+                    android:textSize="11sp" />
             </LinearLayout>
 
-            <!-- Comparison selection for threshold and range templates. -->
             <LinearLayout
-                android:id="@+id/container_technical"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:background="@drawable/bg_gold_detail_panel"
+                android:elevation="1dp"
                 android:orientation="vertical"
-                android:visibility="gone"
-                android:layout_marginTop="12dp">
+                android:padding="14dp">
 
                 <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="比较方式"
-                    android:textSize="13sp"
-                    android:textColor="#888888" />
-                <Spinner
-                    android:id="@+id/spinner_operator"
                     android:layout_width="match_parent"
-                    android:layout_height="52dp"
-                    android:layout_marginTop="4dp"
-                    android:background="@drawable/custom_edittext_background" />
+                    android:layout_height="wrap_content"
+                    android:text="初始流动性"
+                    android:textColor="#0F172A"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:text="为 AMM 提供初始深度，创建者获得对应 LP 份额"
+                    android:textColor="#64748B"
+                    android:textSize="11sp" />
+
+                <EditText
+                    android:id="@+id/et_initial_liquidity"
+                    style="@style/GoldCreateInput"
+                    android:layout_marginTop="12dp"
+                    android:hint="输入 BKC 数量"
+                    android:importantForAutofill="no"
+                    android:inputType="numberDecimal" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="38dp"
+                    android:layout_marginTop="8dp"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/btn_liquidity_10"
+                        style="@style/GoldCreatePreset"
+                        android:text="10" />
+
+                    <TextView
+                        android:id="@+id/btn_liquidity_50"
+                        style="@style/GoldCreatePreset"
+                        android:layout_marginStart="6dp"
+                        android:text="50" />
+
+                    <TextView
+                        android:id="@+id/btn_liquidity_100"
+                        style="@style/GoldCreatePreset"
+                        android:layout_marginStart="6dp"
+                        android:text="100" />
+
+                    <TextView
+                        android:id="@+id/btn_liquidity_200"
+                        style="@style/GoldCreatePreset"
+                        android:layout_marginStart="6dp"
+                        android:text="200" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="池深越高，单笔交易对概率和成交价的影响越小。LP 可按份额分享交易费并取回流动性。"
+                    android:textColor="#64748B"
+                    android:textSize="11sp" />
             </LinearLayout>
 
-            <EditText
-                android:id="@+id/et_param1"
+            <Space
                 android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:layout_marginTop="12dp"
-                android:background="@drawable/custom_edittext_background"
-                android:hint="请输入数值或参数"
-                android:padding="16dp"
-                android:textSize="15sp"
-                android:inputType="text"
-                android:importantForAutofill="no" />
-
-            <EditText
-                android:id="@+id/et_param2"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:layout_marginTop="12dp"
-                android:background="@drawable/custom_edittext_background"
-                android:hint="请输入第二个数值"
-                android:padding="16dp"
-                android:textSize="15sp"
-                android:inputType="numberDecimal"
-                android:visibility="gone"
-                android:importantForAutofill="no" />
-
-            <!-- Time Config -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:text="结算周期"
-                android:textColor="#1A1A1A"
-                android:textSize="16sp"
-                android:textStyle="bold" />
-
-            <Button
-                android:id="@+id/btn_select_start_time"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:layout_marginTop="12dp"
-                android:background="@drawable/custom_button_bg_white"
-                android:gravity="start|center_vertical"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:text="开始日期：立即"
-                android:textAllCaps="false"
-                android:textColor="#000000"
-                android:textSize="15sp" />
-
-            <Button
-                android:id="@+id/btn_select_time"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:layout_marginTop="12dp"
-                android:background="@drawable/custom_button_bg_white"
-                android:gravity="start|center_vertical"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:text="截止日期：未选择"
-                android:textAllCaps="false"
-                android:textColor="#000000"
-                android:textSize="15sp" />
-
-            <TextView
-                android:id="@+id/tv_observation_hint"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="观察期必须为 1 至 4 个整天；修改开始日期后，系统会自动调整截止日期。"
-                android:textColor="#8B96A9"
-                android:textSize="13sp" />
-
-            <!-- Liquidity -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:text="初始流动性注入（BKC）"
-                android:textColor="#1A1A1A"
-                android:textSize="16sp"
-                android:textStyle="bold" />
-
-            <EditText
-                android:id="@+id/et_initial_liquidity"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:layout_marginTop="12dp"
-                android:background="@drawable/custom_edittext_background"
-                android:hint="建议 100 BKC 以上"
-                android:inputType="numberDecimal"
-                android:padding="16dp"
-                android:textSize="15sp"
-                android:importantForAutofill="no" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:text="初始流动性会按 50/50 注入等额的虚拟 YES 与 NO 储备，不会形成创建者个人持仓。池深越低，单笔交易造成的概率与成交价变化越大，建议至少注入 100 BKC。"
-                android:textColor="#64748B"
-                android:textSize="12sp" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="7dp"
-                android:text="* 博弈判定使用经核验的市场数据，并按北京时间整日边界计算观察期。"
-                android:textColor="#999999"
-                android:textSize="12sp" />
-
+                android:layout_height="8dp" />
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 
-    <Button
-        android:id="@+id/btn_deploy"
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:layout_margin="20dp"
-        android:background="@drawable/custom_button_background"
-        android:text="部署博弈池"
-        android:textAllCaps="false"
-        android:textColor="#FFFFFF"
-        android:textSize="16sp"
-        android:textStyle="bold" />
+        android:layout_height="wrap_content"
+        android:background="#FFFFFF"
+        android:elevation="8dp"
+        android:orientation="vertical"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="10dp">
 
+        <Button
+            android:id="@+id/btn_deploy"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:background="@drawable/bg_trade_primary"
+            android:text="检查并部署"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+    </LinearLayout>
 </LinearLayout>

@@ -101,17 +101,21 @@ public class GoldMarketChartPresenterTest {
                         trade(1_810L, 0, false),
                         trade(1_850L, 0, false),
                         trade(1_870L, 0, true),
+                        strategyTrade(1_875L, 0, "grid"),
+                        strategyTrade(1_880L, 0, "martingale"),
                         trade(1_890L, 1, false)));
 
         GoldMarketChartPresenter.TradeAggregation oneHour =
                 GoldMarketChartPresenter.aggregateTrades(model.trades, "1h", 3_600L);
         assertEquals(5L * 60L, oneHour.bucketSeconds);
-        assertEquals(3, oneHour.trades.size());
+        assertEquals(5, oneHour.trades.size());
         GoldMarketChartPresenter.TradePoint groupedManualYes =
                 findTrade(oneHour, 0, false);
         assertEquals(2, groupedManualYes.purchaseCount);
         assertEquals("2000000000000000000", groupedManualYes.amountWei);
         assertEquals(1, findTrade(oneHour, 0, true).purchaseCount);
+        assertEquals(1, findTradeBySource(oneHour, 0, "grid").purchaseCount);
+        assertEquals(1, findTradeBySource(oneHour, 0, "martingale").purchaseCount);
         assertEquals(1, findTrade(oneHour, 1, false).purchaseCount);
 
         assertEquals(2L * 60L * 60L,
@@ -192,6 +196,16 @@ public class GoldMarketChartPresenterTest {
         throw new AssertionError("missing aggregated purchase marker");
     }
 
+    private static GoldMarketChartPresenter.TradePoint findTradeBySource(
+            GoldMarketChartPresenter.TradeAggregation aggregation,
+            int optionId, String executionSource) {
+        for (GoldMarketChartPresenter.TradePoint trade : aggregation.trades) {
+            if (trade.optionId == optionId
+                    && executionSource.equals(trade.executionSource)) return trade;
+        }
+        throw new AssertionError("missing aggregated source marker " + executionSource);
+    }
+
     private static BackendApiClient.HistoryPointDTO history(long timestamp, float yes, float no) {
         BackendApiClient.HistoryPointDTO point = new BackendApiClient.HistoryPointDTO();
         point.timestampSec = timestamp;
@@ -208,6 +222,13 @@ public class GoldMarketChartPresenterTest {
         trade.isSuccess = true;
         trade.tradeType = "BUY";
         trade.amountWei = "1000000000000000000";
+        return trade;
+    }
+
+    private static BackendApiClient.TradeDTO strategyTrade(
+            long timestamp, int option, String executionSource) {
+        BackendApiClient.TradeDTO trade = trade(timestamp, option, true);
+        trade.executionSource = executionSource;
         return trade;
     }
 }

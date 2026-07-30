@@ -101,20 +101,18 @@
             android:id="@+id/section_manual_create"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
+            android:layout_marginTop="14dp"
             android:orientation="vertical"
             android:visibility="gone">
-
 
             <GridLayout
                 android:id="@+id/template_grid"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_gold_template_grid"
                 android:columnCount="2"
                 android:alignmentMode="alignMargins"
                 android:columnOrderPreserved="false"
-                android:clipToOutline="true">
+                android:clipToPadding="false">
                 <!-- Templates added dynamically -->
             </GridLayout>
         </LinearLayout>

@@ -14,7 +14,9 @@ import android.text.style.ForegroundColorSpan;
 import android.text.style.StyleSpan;
 import android.os.Handler;
 import android.os.Looper;
-import android.transition.AutoTransition;
+import android.transition.ChangeBounds;
+import android.transition.Fade;
+import android.transition.TransitionSet;
 import android.transition.TransitionManager;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -62,6 +64,9 @@ import java.util.List;
 import java.util.Locale;
 
 public class GoldMyPositionsFragment extends Fragment {
+    private static final int SECTION_HOLDINGS = 0;
+    private static final int SECTION_LIQUIDITY = 1;
+    private static final int SECTION_STRATEGIES = 2;
     private static final long DATA_REFRESH_INTERVAL_MS = 15_000L;
     private static final int YES_COLOR = GoldMarketStatusStyle.YES_TEXT;
     private static final int YES_BACKGROUND = GoldMarketStatusStyle.YES_BACKGROUND;
@@ -72,13 +77,18 @@ public class GoldMyPositionsFragment extends Fragment {
     private GoldMyPositionsViewModel viewModel;
     private final List<GoldMarketRepository.GameModel> myPositions = new ArrayList<>();
     private final List<BackendApiClient.PortfolioHistoryPointDTO> savedPortfolioHistory = new ArrayList<>();
+    private final List<BackendApiClient.StrategyDTO> myStrategies = new ArrayList<>();
+    private final List<GoldMarketRepository.GameModel> marketCatalog = new ArrayList<>();
 
-    private TextView tvTotalBalance, tvTotalPnl, tvPortfolioToggle;
+    private TextView tvTotalBalance, tvTotalPnl, tvPortfolioToggle, labelBalance;
     private LineChart portfolioChart;
     private View portfolioChartSection, portfolioDetails;
-    private LinearLayout portfolioSummaryCard;
+    private LinearLayout portfolioSummaryCard, positionsPageContent;
     private LinearLayout positionsContainer;
     private TextView positionSearchEmpty;
+    private TextView tabHoldings, tabLiquidity, tabStrategies, personalSectionTitle;
+    private EditText searchInput;
+    private int selectedSection = SECTION_HOLDINGS;
     private String searchQuery = "";
     private SwipeRefreshLayout swipeRefresh;
     private double lastTotalBalance = 0.0;
@@ -96,14 +106,20 @@ public class GoldMyPositionsFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_gold_my_positions, container, false);
         tvTotalBalance = view.findViewById(R.id.tv_total_balance);
         tvTotalPnl = view.findViewById(R.id.tv_total_pnl);
+        labelBalance = view.findViewById(R.id.label_balance);
         portfolioChart = view.findViewById(R.id.chart_portfolio_value);
         portfolioChartSection = view.findViewById(R.id.portfolio_chart_section);
         portfolioDetails = view.findViewById(R.id.portfolio_details);
         portfolioSummaryCard = view.findViewById(R.id.portfolio_summary_card);
+        positionsPageContent = view.findViewById(R.id.positions_page_content);
         tvPortfolioToggle = view.findViewById(R.id.tv_portfolio_toggle);
         positionsContainer = view.findViewById(R.id.positions_container);
         positionSearchEmpty = view.findViewById(R.id.position_search_empty);
-        EditText searchInput = view.findViewById(R.id.position_search_input);
+        searchInput = view.findViewById(R.id.position_search_input);
+        tabHoldings = view.findViewById(R.id.tab_my_holdings);
+        tabLiquidity = view.findViewById(R.id.tab_my_liquidity);
+        tabStrategies = view.findViewById(R.id.tab_my_strategies);
+        personalSectionTitle = view.findViewById(R.id.tv_personal_section_title);
         swipeRefresh = view.findViewById(R.id.swipe_refresh);
         swipeRefresh.setOnRefreshListener(() -> viewModel.loadPositions());
         view.findViewById(R.id.portfolio_summary_header)
@@ -117,13 +133,21 @@ public class GoldMyPositionsFragment extends Fragment {
             }
             @Override public void afterTextChanged(Editable editable) {}
         });
+        tabHoldings.setOnClickListener(v -> selectSection(SECTION_HOLDINGS));
+        tabLiquidity.setOnClickListener(v -> selectSection(SECTION_LIQUIDITY));
+        tabStrategies.setOnClickListener(v -> selectSection(SECTION_STRATEGIES));
+        selectSection(SECTION_HOLDINGS);
         return view;
     }
 
     private void setPortfolioExpanded(boolean expanded) {
-        AutoTransition transition = new AutoTransition();
-        transition.setDuration(180L);
-        TransitionManager.beginDelayedTransition(portfolioSummaryCard, transition);
+        TransitionSet transition = new TransitionSet()
+                .setOrdering(TransitionSet.ORDERING_TOGETHER)
+                .addTransition(new ChangeBounds())
+                .addTransition(new Fade());
+        transition.setDuration(240L);
+        transition.setInterpolator(new DecelerateInterpolator());
+        TransitionManager.beginDelayedTransition(positionsPageContent, transition);
         portfolioDetails.setVisibility(expanded ? View.VISIBLE : View.GONE);
         tvPortfolioToggle.setText(expanded ? "收起 ︿" : "展开 ﹀");
         tvPortfolioToggle.setContentDescription(expanded ? "收起资产估值走势" : "展开资产估值走势");
@@ -159,7 +183,18 @@ public class GoldMyPositionsFragment extends Fragment {
         viewModel.getPortfolioHistory().observe(getViewLifecycleOwner(), points -> {
             savedPortfolioHistory.clear();
             if (points != null) savedPortfolioHistory.addAll(points);
-            setupPortfolioChart();
+            if (selectedSection == SECTION_HOLDINGS) setupPortfolioChart();
+        });
+        viewModel.getStrategies().observe(getViewLifecycleOwner(), values -> {
+            myStrategies.clear();
+            if (values != null) myStrategies.addAll(values);
+            renderPositions();
+            updateSummary();
+        });
+        viewModel.getMarketCatalog().observe(getViewLifecycleOwner(), values -> {
+            marketCatalog.clear();
+            if (values != null) marketCatalog.addAll(values);
+            if (selectedSection == SECTION_STRATEGIES) renderPositions();
         });
     }
 
@@ -184,11 +219,21 @@ public class GoldMyPositionsFragment extends Fragment {
 
     private void renderPositions() {
         positionsContainer.removeAllViews();
+        if (selectedSection == SECTION_STRATEGIES) {
+            renderStrategies();
+            return;
+        }
         LayoutInflater inflater = LayoutInflater.from(requireContext());
         int visibleCount = 0;
         for (GoldMarketRepository.GameModel game : myPositions) {
             if (!GoldMarketSearchMatcher.matches(game, searchQuery)) continue;
+            if (selectedSection == SECTION_HOLDINGS && !hasOutcomeShares(game)) continue;
+            if (selectedSection == SECTION_LIQUIDITY && !hasLiquidity(game)) continue;
             visibleCount++;
+            if (selectedSection == SECTION_LIQUIDITY) {
+                addLiquidityCard(inflater, game);
+                continue;
+            }
             View card = inflater.inflate(R.layout.item_gold_position_card, positionsContainer, false);
             TextView tvTitle = card.findViewById(R.id.tv_position_title);
             ImageView ivIcon = card.findViewById(R.id.iv_position_icon);
@@ -212,30 +257,43 @@ public class GoldMyPositionsFragment extends Fragment {
 
             List<Integer> heldOptionIndexes = new ArrayList<>();
             StringBuilder shareText = new StringBuilder();
-            if (game.myShares != null) {
+            if (selectedSection == SECTION_HOLDINGS && game.myShares != null) {
                 for (int i = 0; i < game.myShares.size(); i++) {
                     BigInteger shares = game.myShares.get(i);
                     if (shares == null || shares.compareTo(BigInteger.ZERO) <= 0) continue;
                     String sideName = GoldMarketOptionText.holdingLabel(i);
                     heldOptionIndexes.add(i);
                     if (shareText.length() > 0) shareText.append('\n');
-                    shareText.append(sideName).append("：")
+                    shareText.append(sideName).append(' ')
                             .append(GoldNoteMarketActivity.formatShareAmount(shares)).append(" 份额");
                 }
             }
-            tvSide.setText(sideBadgeText(heldOptionIndexes));
-            tvSide.setTextColor(resolveSideColor(heldOptionIndexes));
-            tvSide.setBackground(makeRoundedBackground(resolveSideBackground(heldOptionIndexes), 999));
+            boolean hasLiquidity = hasLiquidity(game);
+            if (selectedSection == SECTION_LIQUIDITY && hasLiquidity) {
+                if (shareText.length() > 0) shareText.append('\n');
+                shareText.append("流动性：")
+                        .append(GoldNoteMarketActivity.formatShareAmount(
+                                game.myLiquidityShares))
+                        .append(" LP");
+            }
+            tvSide.setText(heldOptionIndexes.isEmpty() && hasLiquidity
+                    ? "流动性 LP" : sideBadgeText(heldOptionIndexes));
+            tvSide.setTextColor(heldOptionIndexes.isEmpty() && hasLiquidity
+                    ? NEUTRAL_TEXT : resolveSideColor(heldOptionIndexes));
+            tvSide.setBackground(null);
             tvShares.setText(shareText.length() == 0 ? "暂无份额" : styleShareText(shareText.toString()));
 
-            GoldPositionValuation.MarketValue marketValue = GoldPositionValuation.calculateMarket(game);
+            GoldPositionValuation.MarketValue marketValue =
+                    selectedSection == SECTION_LIQUIDITY
+                            ? GoldPositionValuation.calculateLiquidityMarket(game)
+                            : GoldPositionValuation.calculateOutcomeMarket(game);
             tvCurrentValue.setText(marketValue.isComplete() ? GoldNoteMarketActivity.formatBkc(marketValue.getValueWei()) + " BKC" : "估值暂不可用");
             long remaining = GoldNoteMarketActivity.remainingSecondsUntilDeadline(game.deadlineSec, System.currentTimeMillis());
             GoldMarketStatusStyle status = GoldMarketStatusStyle.forMarket(game.isResolved, game.isRefunded, remaining);
             tvProfit.setText(status.label);
             tvProfit.setTextColor(status.textColor);
-            tvProfit.setBackground(makeRoundedBackground(status.backgroundColor, 999));
-            card.setBackgroundResource(R.drawable.bg_gold_market_card);
+            tvProfit.setBackground(null);
+            card.setBackgroundResource(R.drawable.bg_gold_market_panel);
 
             card.setOnClickListener(v -> {
                 Intent intent = new Intent(requireContext(), GoldPositionDetailActivity.class);
@@ -246,8 +304,236 @@ public class GoldMyPositionsFragment extends Fragment {
             positionsContainer.addView(card);
         }
         positionSearchEmpty.setText(searchQuery.trim().isEmpty()
-                ? "当前没有可展示的持仓" : "没有找到匹配的持仓");
+                ? selectedSection == SECTION_LIQUIDITY
+                    ? "当前没有质押中的流动性"
+                    : "当前没有可展示的持仓"
+                : "没有找到匹配的内容");
         positionSearchEmpty.setVisibility(visibleCount == 0 ? View.VISIBLE : View.GONE);
+    }
+
+    private void addLiquidityCard(LayoutInflater inflater,
+                                  GoldMarketRepository.GameModel game) {
+        View card = inflater.inflate(
+                R.layout.item_gold_liquidity_card, positionsContainer, false);
+        TextView title = card.findViewById(R.id.tv_liquidity_title);
+        ImageView icon = card.findViewById(R.id.iv_liquidity_icon);
+        TextView myValue = card.findViewById(R.id.tv_my_liquidity_value);
+        TextView poolValue = card.findViewById(R.id.tv_pool_liquidity_value);
+        TextView lpValue = card.findViewById(R.id.tv_liquidity_lp);
+
+        String rawTitle = game.desc != null && !game.desc.trim().isEmpty()
+                ? game.desc.trim() : "当前博弈池";
+        title.setText(stylePositionTitle(rawTitle, game.condition, game.deadlineSec));
+        int templateIcon = GoldMarketTemplateIcon.forMarket(
+                game.avatarUrl, rawTitle, game.condition);
+        if (templateIcon != 0) {
+            icon.setImageResource(templateIcon);
+        } else if (game.avatarUrl != null && !game.avatarUrl.isEmpty()) {
+            Glide.with(this).load(PinataClient.IPFS_GATEWAY + game.avatarUrl)
+                    .placeholder(R.drawable.apartment_icon).into(icon);
+        } else {
+            icon.setImageResource(R.drawable.apartment_icon);
+        }
+
+        GoldPositionValuation.MarketValue value =
+                GoldPositionValuation.calculateLiquidityMarket(game);
+        myValue.setText(value.isComplete()
+                ? GoldNoteMarketActivity.formatBkc(value.getValueWei()) + " BKC"
+                : "估值暂不可用");
+        poolValue.setText(game.totalPool == null
+                ? "-- BKC" : GoldNoteMarketActivity.formatBkc(game.totalPool) + " BKC");
+        lpValue.setText(formatCompactLp(game.myLiquidityShares)
+                + " LP · " + liquiditySharePercent(game));
+
+        card.setOnClickListener(v -> startActivity(
+                GoldLiquidityDetailActivity.createIntent(
+                        requireContext(), game.id, game.contractAddress, rawTitle)));
+        positionsContainer.addView(card);
+    }
+
+    private String liquiditySharePercent(GoldMarketRepository.GameModel game) {
+        if (game == null || game.myLiquidityShares == null
+                || game.totalLiquidityShares == null
+                || game.totalLiquidityShares.signum() <= 0) return "--";
+        BigDecimal percent = new BigDecimal(game.myLiquidityShares)
+                .multiply(new BigDecimal("100"))
+                .divide(new BigDecimal(game.totalLiquidityShares),
+                        2, RoundingMode.HALF_UP);
+        return percent.stripTrailingZeros().toPlainString() + "%";
+    }
+
+    private String formatCompactLp(BigInteger liquidityShares) {
+        if (liquidityShares == null) return "0";
+        BigDecimal value = new BigDecimal(liquidityShares)
+                .divide(new BigDecimal("1000000000000000000"),
+                        2, RoundingMode.HALF_UP);
+        return value.stripTrailingZeros().toPlainString();
+    }
+
+    private void renderStrategies() {
+        LayoutInflater inflater = LayoutInflater.from(requireContext());
+        List<BackendApiClient.StrategyDTO> aiStrategies = new ArrayList<>();
+        List<BackendApiClient.StrategyDTO> ruleStrategies = new ArrayList<>();
+        for (BackendApiClient.StrategyDTO item : myStrategies) {
+            if (item == null) continue;
+            GoldMarketRepository.GameModel market = findMarket(item.gameId, item.contractAddress);
+            String title = market == null || market.desc == null || market.desc.trim().isEmpty()
+                    ? "当前博弈池" : market.desc.trim();
+            if (!searchQuery.trim().isEmpty()
+                    && !title.toLowerCase(Locale.US)
+                    .contains(searchQuery.trim().toLowerCase(Locale.US))) {
+                continue;
+            }
+            BackendApiClient.AiManagedConfig config = item.strategy == null
+                    ? BackendApiClient.AiManagedConfig.defaults() : item.strategy;
+            String strategyType = normalizeStrategyType(config.strategyType);
+            if ("ai".equals(strategyType)) aiStrategies.add(item);
+            else ruleStrategies.add(item);
+        }
+        for (BackendApiClient.StrategyDTO item : aiStrategies) {
+            addStrategyCard(inflater, item);
+        }
+        for (BackendApiClient.StrategyDTO item : ruleStrategies) {
+            addStrategyCard(inflater, item);
+        }
+        int visibleCount = aiStrategies.size() + ruleStrategies.size();
+        positionSearchEmpty.setText(searchQuery.trim().isEmpty()
+                ? "当前没有已启用的自动策略" : "没有找到匹配的策略");
+        positionSearchEmpty.setVisibility(visibleCount == 0 ? View.VISIBLE : View.GONE);
+    }
+
+    private void addStrategyCard(LayoutInflater inflater, BackendApiClient.StrategyDTO item) {
+        GoldMarketRepository.GameModel market = findMarket(item.gameId, item.contractAddress);
+        String title = market == null || market.desc == null || market.desc.trim().isEmpty()
+                ? "当前博弈池" : market.desc.trim();
+        View card = inflater.inflate(
+                R.layout.item_gold_strategy_card, positionsContainer, false);
+        BackendApiClient.AiManagedConfig config = item.strategy == null
+                ? BackendApiClient.AiManagedConfig.defaults() : item.strategy;
+            TextView type = card.findViewById(R.id.tv_strategy_type);
+            TextView status = card.findViewById(R.id.tv_strategy_status);
+            TextView marketName = card.findViewById(R.id.tv_strategy_market);
+            TextView summary = card.findViewById(R.id.tv_strategy_summary);
+            TextView error = card.findViewById(R.id.tv_strategy_error);
+            ImageView icon = card.findViewById(R.id.iv_strategy_icon);
+            String strategyType = normalizeStrategyType(config.strategyType);
+            type.setText("grid".equals(strategyType) ? "网格策略"
+                    : "martingale".equals(strategyType) ? "马丁格尔" : "AI 托管");
+            status.setText("ai".equals(strategyType) ? "AI 判断" : "阈值触发");
+            if ("grid".equals(strategyType)) {
+                type.setTextColor(0xFF0F766E);
+            } else if ("martingale".equals(strategyType)) {
+                type.setTextColor(0xFFB45309);
+            } else {
+                type.setTextColor(0xFF2563EB);
+            }
+            type.setBackground(null);
+            status.setTextColor("ai".equals(strategyType) ? 0xFF2563EB : 0xFF0F766E);
+            int templateIcon = GoldMarketTemplateIcon.forMarket(
+                    market == null ? null : market.avatarUrl,
+                    title, market == null ? null : market.condition);
+            if (templateIcon != 0) {
+                icon.setImageResource(templateIcon);
+            } else if (market != null && market.avatarUrl != null
+                    && !market.avatarUrl.isEmpty()) {
+                Glide.with(this).load(PinataClient.IPFS_GATEWAY + market.avatarUrl)
+                        .placeholder(R.drawable.apartment_icon).into(icon);
+            } else {
+                icon.setImageResource(R.drawable.apartment_icon);
+            }
+            marketName.setText(GoldMarketTextStyler.style(title, true));
+            String direction = "no".equalsIgnoreCase(config.direction) ? "NO" : "YES";
+            if ("grid".equals(strategyType)) {
+                summary.setText(String.format(Locale.US,
+                        "%s · %d 格 · %s BKC/单",
+                        direction, config.gridLevels, config.buyAmountBKC));
+            } else if ("martingale".equals(strategyType)) {
+                summary.setText(String.format(Locale.US,
+                        "%s · %.2f 倍 · %d 档",
+                        direction,
+                        config.martingaleMultiplier, config.martingaleMaxRounds));
+            } else {
+                summary.setText(String.format(Locale.US,
+                        "%s BKC/单 · ≥%.0f%%",
+                        config.buyAmountBKC, config.confidenceMin * 100));
+            }
+            if (item.lastError != null && !item.lastError.trim().isEmpty()) {
+                error.setText("最近一次检查：" + item.lastError.trim());
+                error.setVisibility(View.VISIBLE);
+            }
+            card.setOnClickListener(v -> {
+                if ("grid".equals(strategyType) || "martingale".equals(strategyType)) {
+                    startActivity(GoldCustomStrategyActivity.createDetailIntent(
+                            requireContext(), item.gameId, item.contractAddress, title));
+                } else {
+                    config.enabled = true;
+                    startActivity(GoldAiManagedSettingsActivity.createIntent(
+                            requireContext(), item.gameId, item.contractAddress, title, config));
+                }
+            });
+            positionsContainer.addView(card);
+    }
+
+    private String normalizeStrategyType(String strategyType) {
+        if ("grid".equalsIgnoreCase(strategyType)) return "grid";
+        if ("martingale".equalsIgnoreCase(strategyType)) return "martingale";
+        return "ai";
+    }
+
+    private void styleStrategyBadge(TextView view, int textColor, int backgroundColor) {
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(backgroundColor);
+        background.setCornerRadius(dp(8));
+        view.setTextColor(textColor);
+        view.setBackground(background);
+    }
+
+    private GoldMarketRepository.GameModel findMarket(int gameId, String contract) {
+        for (GoldMarketRepository.GameModel market : marketCatalog) {
+            if (market.id != gameId) continue;
+            if (contract == null || market.contractAddress == null
+                    || contract.equalsIgnoreCase(market.contractAddress)) return market;
+        }
+        return null;
+    }
+
+    private boolean hasOutcomeShares(GoldMarketRepository.GameModel game) {
+        if (game == null || game.myShares == null) return false;
+        for (BigInteger value : game.myShares) {
+            if (value != null && value.signum() > 0) return true;
+        }
+        return false;
+    }
+
+    private boolean hasLiquidity(GoldMarketRepository.GameModel game) {
+        return game != null && game.myLiquidityShares != null
+                && game.myLiquidityShares.signum() > 0;
+    }
+
+    private void selectSection(int section) {
+        selectedSection = section;
+        styleSectionTab(tabHoldings, section == SECTION_HOLDINGS);
+        styleSectionTab(tabLiquidity, section == SECTION_LIQUIDITY);
+        styleSectionTab(tabStrategies, section == SECTION_STRATEGIES);
+        personalSectionTitle.setText(section == SECTION_HOLDINGS ? "我的持仓"
+                : section == SECTION_LIQUIDITY ? "我的质押" : "我的策略");
+        labelBalance.setText(section == SECTION_HOLDINGS ? "个人持有估值"
+                : section == SECTION_LIQUIDITY ? "个人质押估值" : "自动策略");
+        searchInput.setHint(section == SECTION_HOLDINGS ? "搜索持仓标题或规则"
+                : section == SECTION_LIQUIDITY ? "搜索质押博弈池"
+                : "搜索策略对应的博弈池");
+        renderPositions();
+        updateSummary();
+    }
+
+    private void styleSectionTab(TextView view, boolean selected) {
+        GradientDrawable background = new GradientDrawable();
+        background.setCornerRadius(dp(11));
+        background.setColor(selected ? 0xFFFFFFFF : Color.TRANSPARENT);
+        if (selected) background.setStroke((int) dp(1), 0xFFD7E0EC);
+        view.setBackground(background);
+        view.setTextColor(selected ? 0xFF0F172A : 0xFF64748B);
+        view.setElevation(selected ? dp(1) : 0f);
     }
 
     private GradientDrawable makeRoundedBackground(int color, int radiusDp) {
@@ -262,17 +548,40 @@ public class GoldMyPositionsFragment extends Fragment {
     }
 
     private void updateSummary() {
-        GoldPositionValuation.PortfolioValue portfolio = GoldPositionValuation.calculatePortfolio(myPositions);
+        if (selectedSection == SECTION_STRATEGIES) {
+            tvTotalBalance.setText(String.format(Locale.US, "%d 个运行中", myStrategies.size()));
+            tvTotalPnl.setText("后端持续轮询并按已保存参数执行");
+            portfolioChartSection.setVisibility(View.GONE);
+            lastTotalBalance = 0;
+            return;
+        }
+        List<GoldMarketRepository.GameModel> selected = new ArrayList<>();
+        for (GoldMarketRepository.GameModel game : myPositions) {
+            if (selectedSection == SECTION_HOLDINGS && hasOutcomeShares(game)) selected.add(game);
+            if (selectedSection == SECTION_LIQUIDITY && hasLiquidity(game)) selected.add(game);
+        }
+        GoldPositionValuation.PortfolioValue portfolio =
+                selectedSection == SECTION_LIQUIDITY
+                        ? GoldPositionValuation.calculateLiquidityPortfolio(selected)
+                        : GoldPositionValuation.calculateOutcomePortfolio(selected);
         BigDecimal totalBkc = new BigDecimal(portfolio.getValueWei()).divide(new BigDecimal("1000000000000000000"), 6, RoundingMode.HALF_UP);
         animateBalance(totalBkc.doubleValue());
-        int marketCount = myPositions.size();
-        String subtitle = String.format(Locale.US, "累计参与 %d 个博弈池", marketCount);
+        int marketCount = selected.size();
+        String subtitle = String.format(Locale.US,
+                selectedSection == SECTION_LIQUIDITY
+                        ? "正在为 %d 个博弈池提供流动性"
+                        : "累计参与 %d 个博弈池", marketCount);
         if (portfolio.getUnavailableMarketCount() > 0) {
             subtitle += String.format(Locale.US, " · %d 个暂未计入估值", portfolio.getUnavailableMarketCount());
         }
         tvTotalPnl.setText(subtitle);
-        viewModel.saveAndLoadPortfolioHistory(portfolio.getValueWei(), myPositions.size());
-        setupPortfolioChart();
+        if (selectedSection == SECTION_HOLDINGS) {
+            if (viewModel != null) {
+                viewModel.saveAndLoadPortfolioHistory(portfolio.getValueWei(), selected.size());
+            }
+        }
+        if (selectedSection == SECTION_HOLDINGS) setupPortfolioChart();
+        else portfolioChartSection.setVisibility(View.GONE);
     }
 
     private String sideBadgeText(List<Integer> heldOptionIndexes) {
@@ -303,15 +612,28 @@ public class GoldMyPositionsFragment extends Fragment {
     private CharSequence styleShareText(String text) {
         SpannableStringBuilder styled = new SpannableStringBuilder(text);
         int start = 0;
-        while (start <= text.length()) {
-            int end = text.indexOf('\n', start);
-            if (end < 0) end = text.length();
-            String line = text.substring(start, end);
-            int color = colorForSideText(line);
-            styled.setSpan(new ForegroundColorSpan(color), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-            styled.setSpan(new StyleSpan(Typeface.BOLD), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        while (start < text.length()) {
+            int lineBreak = text.indexOf('\n', start);
+            int inlineDivider = text.indexOf(" · ", start);
+            int end = text.length();
+            int delimiterLength = 0;
+            if (lineBreak >= 0 && lineBreak < end) {
+                end = lineBreak;
+                delimiterLength = 1;
+            }
+            if (inlineDivider >= 0 && inlineDivider < end) {
+                end = inlineDivider;
+                delimiterLength = 3;
+            }
+            if (end > start) {
+                String segment = text.substring(start, end);
+                styled.setSpan(new ForegroundColorSpan(colorForSideText(segment)),
+                        start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                styled.setSpan(new StyleSpan(Typeface.BOLD),
+                        start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
             if (end == text.length()) break;
-            start = end + 1;
+            start = end + delimiterLength;
         }
         return styled;
     }

@@ -10,6 +10,7 @@ import java.util.List;
 /** Deterministic preview of PredictionMarket.sellShares. No chain write occurs here. */
 public final class GoldSellSimulation {
     public static final int DEFAULT_SLIPPAGE_BPS = 100;
+    public static final int TRADING_FEE_BPS = 100;
     private static final BigInteger BPS = BigInteger.valueOf(10_000);
 
     private GoldSellSimulation() {
@@ -48,8 +49,11 @@ public final class GoldSellSimulation {
         BigInteger reserveYes = reserves.get(1);
         BigInteger heldReserve = optionId == 0 ? reserveYes : reserveNo;
         BigInteger oppositeReserve = optionId == 0 ? reserveNo : reserveYes;
-        BigInteger amountOut = calculateSellReturn(
+        BigInteger grossAmountOut = calculateSellReturn(
                 heldReserve, oppositeReserve, shareAmountWei);
+        BigInteger feeWei = grossAmountOut.multiply(BigInteger.valueOf(TRADING_FEE_BPS))
+                .divide(BPS);
+        BigInteger amountOut = grossAmountOut.subtract(feeWei);
         if (amountOut.signum() <= 0 || amountOut.compareTo(shareAmountWei) > 0) {
             return Result.invalid("份额过小或当前池深不足，无法获得有效卖出报价");
         }
@@ -59,11 +63,11 @@ public final class GoldSellSimulation {
         BigInteger afterNo;
         BigInteger afterYes;
         if (optionId == 0) {
-            afterYes = reserveYes.add(shareAmountWei).subtract(amountOut);
-            afterNo = reserveNo.subtract(amountOut);
+            afterYes = reserveYes.add(shareAmountWei).subtract(grossAmountOut);
+            afterNo = reserveNo.subtract(grossAmountOut);
         } else {
-            afterNo = reserveNo.add(shareAmountWei).subtract(amountOut);
-            afterYes = reserveYes.subtract(amountOut);
+            afterNo = reserveNo.add(shareAmountWei).subtract(grossAmountOut);
+            afterYes = reserveYes.subtract(grossAmountOut);
         }
         if (afterNo.signum() <= 0 || afterYes.signum() <= 0
                 || afterNo.multiply(afterYes).compareTo(reserveNo.multiply(reserveYes)) < 0) {

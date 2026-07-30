@@ -371,7 +371,7 @@
                                 android:layout_height="18dp"
                                 android:background="@drawable/bg_chart_deepseek_marker"
                                 android:gravity="center"
-                                android:text="DS"
+                                android:text="AI"
                                 android:textColor="#FFFFFF"
                                 android:textSize="7sp"
                                 android:textStyle="bold" />
@@ -381,6 +381,64 @@
                                 android:layout_height="wrap_content"
                                 android:layout_marginStart="5dp"
                                 android:text="AI 托管"
+                                android:textColor="#475569"
+                                android:textSize="10sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="28dp"
+                            android:layout_marginStart="6dp"
+                            android:background="@drawable/bg_chart_legend_chip"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingHorizontal="6dp">
+
+                            <TextView
+                                android:layout_width="18dp"
+                                android:layout_height="18dp"
+                                android:background="@drawable/bg_chart_grid_marker"
+                                android:gravity="center"
+                                android:text="G"
+                                android:textColor="#FFFFFF"
+                                android:textSize="7sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="4dp"
+                                android:text="网格"
+                                android:textColor="#475569"
+                                android:textSize="10sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="28dp"
+                            android:layout_marginStart="6dp"
+                            android:background="@drawable/bg_chart_legend_chip"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingHorizontal="6dp">
+
+                            <TextView
+                                android:layout_width="18dp"
+                                android:layout_height="18dp"
+                                android:background="@drawable/bg_chart_martingale_marker"
+                                android:gravity="center"
+                                android:text="MT"
+                                android:textColor="#FFFFFF"
+                                android:textSize="6sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="4dp"
+                                android:text="马丁"
                                 android:textColor="#475569"
                                 android:textSize="10sp"
                                 android:textStyle="bold" />
@@ -482,35 +540,35 @@
                         android:orientation="horizontal">
 
                         <TextView
-                            android:layout_width="42dp"
-                            android:layout_height="42dp"
-                            android:background="@drawable/bg_trade_primary"
+                            android:layout_width="34dp"
+                            android:layout_height="34dp"
+                            android:background="@drawable/bg_ai_compact_badge"
                             android:gravity="center"
                             android:text="AI"
-                            android:textColor="#FFFFFF"
-                            android:textSize="15sp"
+                            android:textColor="#2563EB"
+                            android:textSize="12sp"
                             android:textStyle="bold" />
 
                         <LinearLayout
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="12dp"
+                            android:layout_marginStart="10dp"
                             android:layout_weight="1"
                             android:orientation="vertical">
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="AI 投研分析"
+                                android:text="AI 投研"
                                 android:textColor="#0F172A"
-                            android:textSize="16sp"
+                                android:textSize="15sp"
                                 android:textStyle="bold" />
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="2dp"
-                                android:text="结合行情、份额、信源与时间风险"
+                                android:text="行情研判与风险分析"
                                 android:textColor="#64748B"
-                                android:textSize="12sp" />
+                                android:textSize="11sp" />
                         </LinearLayout>
 
                         <ProgressBar
@@ -525,12 +583,13 @@
                             android:id="@+id/tv_market_ai_status"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:background="@drawable/bg_trade_segment_idle"
-                            android:paddingHorizontal="10dp"
-                            android:paddingVertical="5dp"
-                            android:text="点击分析 ›"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:minHeight="36dp"
+                            android:gravity="center"
+                            android:paddingHorizontal="8dp"
+                            android:text="分析 ›"
                             android:textColor="#2563EB"
-                            android:textSize="11sp"
+                            android:textSize="12sp"
                             android:textStyle="bold" />
                     </LinearLayout>
 
@@ -538,12 +597,11 @@
                         android:id="@+id/tv_market_ai_summary"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="15dp"
-                        android:text="点击生成结构化 AI 投研报告"
-                        android:textColor="#1E293B"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        android:lineSpacingExtra="4dp" />
+                        android:layout_marginTop="10dp"
+                        android:text="综合行情、市场概率与结算风险"
+                        android:textColor="#64748B"
+                        android:textSize="12sp"
+                        android:lineSpacingExtra="3dp" />
 
                     <LinearLayout
                         android:id="@+id/layout_market_ai_chips"
@@ -659,45 +717,54 @@
                         </LinearLayout>
                     </LinearLayout>
 
-                    <View
+                    <RelativeLayout
+                        android:id="@+id/btn_ai_managed_settings"
                         android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:layout_marginTop="16dp"
-                        android:layout_marginBottom="12dp"
-                        android:background="#E2E8F0" />
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical">
-
-                        <RelativeLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content">
+                        android:layout_height="62dp"
+                        android:layout_marginTop="12dp"
+                        android:background="@drawable/bg_ai_strategy_preset"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:foreground="?attr/selectableItemBackground"
+                        android:paddingHorizontal="12dp">
 
                         <LinearLayout
-                            android:layout_width="0dp"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_alignParentStart="true"
-                            android:layout_toStartOf="@+id/switch_ai_managed"
-                            android:layout_marginEnd="12dp"
+                            android:layout_centerVertical="true"
+                            android:layout_toStartOf="@+id/tv_ai_managed_action"
+                            android:layout_marginEnd="8dp"
                             android:orientation="vertical">
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="AI 自动托管（Beta）"
-                                android:textColor="#334155"
-                                android:textSize="14sp"
+                                android:text="AI 智能托管"
+                                android:textColor="#0F172A"
+                                android:textSize="13sp"
                                 android:textStyle="bold" />
                             <TextView
                                 android:id="@+id/tv_ai_managed_summary"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="2dp"
-                                android:text="设置订单金额、置信度与风险限制"
-                                android:textColor="#94A3B8"
+                                android:ellipsize="end"
+                                android:maxLines="1"
+                                android:text="模型研判 · 风控执行"
+                                android:textColor="#64748B"
                                 android:textSize="11sp" />
                         </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/tv_ai_managed_action"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_centerVertical="true"
+                            android:layout_marginEnd="7dp"
+                            android:layout_toStartOf="@+id/switch_ai_managed"
+                            android:text="设置"
+                            android:textColor="#64748B"
+                            android:textSize="11sp" />
 
                         <androidx.appcompat.widget.SwitchCompat
                             android:id="@id/switch_ai_managed"
@@ -706,19 +773,55 @@
                             android:layout_alignParentEnd="true"
                             android:layout_centerVertical="true"
                             android:theme="@style/Widget.AppCompat.CompoundButton.Switch" />
-                        </RelativeLayout>
+                    </RelativeLayout>
+
+                    <LinearLayout
+                            android:id="@+id/btn_custom_strategy"
+                            android:layout_width="match_parent"
+                            android:layout_height="62dp"
+                            android:layout_marginTop="8dp"
+                            android:background="@drawable/bg_ai_strategy_preset"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:foreground="?attr/selectableItemBackground"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingHorizontal="12dp">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tv_rule_strategy_title"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="规则策略"
+                                android:textColor="#0F172A"
+                                android:textSize="13sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/tv_rule_strategy_summary"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:ellipsize="end"
+                                android:maxLines="1"
+                                android:text="网格 / 马丁格尔 · 阈值触发"
+                                android:textColor="#64748B"
+                                android:textSize="11sp" />
+                        </LinearLayout>
 
                         <TextView
-                            android:id="@+id/btn_ai_managed_settings"
-                            android:layout_width="match_parent"
-                            android:layout_height="44dp"
-                            android:layout_marginTop="12dp"
-                            android:background="@drawable/bg_ai_strategy_preset"
-                            android:gravity="center"
-                            android:text="配置 AI 托管策略 ›"
-                            android:textColor="#2563EB"
-                            android:textSize="13sp"
-                            android:textStyle="bold" />
+                            android:id="@+id/tv_rule_strategy_action"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="设置 ›"
+                            android:textColor="#64748B"
+                            android:textSize="11sp" />
                     </LinearLayout>
                 </LinearLayout>
 

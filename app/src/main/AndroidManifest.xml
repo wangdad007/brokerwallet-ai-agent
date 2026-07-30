@@ -161,10 +161,16 @@
             android:name=".xc.agent.gold.view.GoldAiManagedSettingsActivity"
             android:exported="false" />
         <activity
+            android:name=".xc.agent.gold.view.GoldCustomStrategyActivity"
+            android:exported="false" />
+        <activity
             android:name=".xc.agent.gold.view.GoldCreateCustomActivity"
             android:exported="false" />
         <activity
             android:name=".xc.agent.gold.view.GoldPositionDetailActivity"
+            android:exported="false" />
+        <activity
+            android:name=".xc.agent.gold.view.GoldLiquidityDetailActivity"
             android:exported="false" />
         <activity
             android:name=".xc.agent.gold.view.AiDecisionCenterActivity"

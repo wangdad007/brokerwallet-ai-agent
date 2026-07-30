@@ -112,7 +112,7 @@ public class AiDecisionCenterActivity extends AppCompatActivity {
                     "启用自动托管后，最新判断会显示在这里。"));
             return;
         }
-        LinearLayout group = AiDecisionUi.card(this);
+        LinearLayout group = compactGroup();
         Set<String> markets = new HashSet<>();
         int shown = 0;
         for (BackendApiClient.AiManagedDecisionDTO item : items) {
@@ -134,7 +134,7 @@ public class AiDecisionCenterActivity extends AppCompatActivity {
                     "新到期市场完成结算后，结果与依据会显示在这里。"));
             return;
         }
-        LinearLayout group = AiDecisionUi.card(this);
+        LinearLayout group = compactGroup();
         for (int i = 0; i < Math.min(3, items.size()); i++) {
             BackendApiClient.AiSettlementAuditDTO item = items.get(i);
             if (i > 0) group.addView(AiDecisionUi.divider(this));
@@ -236,8 +236,13 @@ public class AiDecisionCenterActivity extends AppCompatActivity {
                     "当前判断尚未达到策略门槛。"));
             return;
         }
-        for (BackendApiClient.AiOpportunityDTO item : filtered) {
-            LinearLayout card = AiDecisionUi.card(this);
+        LinearLayout group = compactGroup();
+        for (int index = 0; index < filtered.size(); index++) {
+            BackendApiClient.AiOpportunityDTO item = filtered.get(index);
+            if (index > 0) group.addView(AiDecisionUi.divider(this));
+            LinearLayout card = new LinearLayout(this);
+            card.setOrientation(LinearLayout.VERTICAL);
+            card.setPadding(0, AiDecisionUi.dp(this, 12), 0, AiDecisionUi.dp(this, 12));
             LinearLayout header = horizontal();
             int color = "YES".equalsIgnoreCase(item.side) ? AiDecisionUi.YES : AiDecisionUi.NO;
             int fill = "YES".equalsIgnoreCase(item.side) ? 0xFFECFDF5 : 0xFFFFF1F2;
@@ -262,8 +267,9 @@ public class AiDecisionCenterActivity extends AppCompatActivity {
                 intent.putExtra("CONTRACT_ADDRESS", item.contractAddress);
                 startActivity(intent);
             });
-            opportunityContainer.addView(card);
+            group.addView(card);
         }
+        opportunityContainer.addView(group);
     }
 
     private void selectOpportunitySide(String side) {
@@ -310,10 +316,23 @@ public class AiDecisionCenterActivity extends AppCompatActivity {
     }
 
     private View emptyCard(String title, String body) {
-        LinearLayout card = AiDecisionUi.card(this);
-        card.addView(AiDecisionUi.text(this, title, 14, AiDecisionUi.NAVY, true));
-        card.addView(AiDecisionUi.text(this, body, 12, AiDecisionUi.MUTED, false), marginTop(7));
-        return card;
+        LinearLayout row = compactGroup();
+        row.setContentDescription(title + (TextUtils.isEmpty(body) ? "" : "。" + body));
+        TextView text = AiDecisionUi.text(this, title, 13, AiDecisionUi.MUTED, false);
+        text.setGravity(Gravity.CENTER_VERTICAL);
+        row.addView(text, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, AiDecisionUi.dp(this, 44)));
+        return row;
+    }
+
+    private LinearLayout compactGroup() {
+        LinearLayout group = new LinearLayout(this);
+        group.setOrientation(LinearLayout.VERTICAL);
+        group.setPadding(AiDecisionUi.dp(this, 12), 0,
+                AiDecisionUi.dp(this, 12), 0);
+        group.setBackground(AiDecisionUi.rounded(
+                0xFFF8FAFC, 0xFFE2E8F0, 12, this));
+        return group;
     }
 
     private LinearLayout horizontal() {

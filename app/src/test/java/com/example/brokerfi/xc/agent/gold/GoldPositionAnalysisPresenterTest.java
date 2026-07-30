@@ -34,13 +34,16 @@ public class GoldPositionAnalysisPresenterTest {
         BackendApiClient.TradeDTO buy = trade("BUY", "10", true);
         buy.txHash = "0xsecret-transaction-hash";
         BackendApiClient.TradeDTO sell = trade("SELL", "2", false);
+        BackendApiClient.TradeDTO grid = trade("BUY", "1", true);
+        grid.executionSource = "grid";
         String prompt = GoldPositionAnalysisPresenter.buildPrompt(
-                game, Arrays.asList(buy, sell), 1_700_000_000_000L);
+                game, Arrays.asList(buy, sell, grid), 1_700_000_000_000L);
 
-        assertTrue(prompt.contains("累计买入：10 BKC"));
+        assertTrue(prompt.contains("累计买入：11 BKC"));
         assertTrue(prompt.contains("累计卖出：2 BKC"));
-        assertTrue(prompt.contains("净投入：8 BKC"));
+        assertTrue(prompt.contains("净投入：9 BKC"));
         assertTrue(prompt.contains("AI 托管交易：1"));
+        assertTrue(prompt.contains("网格策略交易：1"));
         assertTrue(prompt.contains("当前估值："));
         assertFalse(prompt.contains(buy.txHash));
         assertFalse(prompt.toLowerCase().contains("private_key"));

@@ -75,6 +75,10 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
     private LinearLayout containerOperator;
     private LinearLayout containerDirection;
     private LinearLayout containerBenchmark;
+    private LinearLayout containerParam1;
+    private LinearLayout containerParam2;
+    private TextView tvParam1Label;
+    private TextView tvParam2Label;
     private Spinner spinnerOperator;
     private Spinner spinnerDirection;
     private Spinner spinnerBenchmark;
@@ -122,7 +126,7 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
             btnDeploy.setEnabled(runtimePolicyReady && !deploying);
             btnSelectStartTime.setEnabled(runtimePolicyReady && !deploying);
             btnSelectTime.setEnabled(runtimePolicyReady && !deploying);
-            btnDeploy.setText(deploying ? "正在部署…" : "部署博弈池");
+            btnDeploy.setText(deploying ? "正在部署…" : "检查并部署");
         });
         viewModel.getTxStatus().observe(this, status -> {
             if (status != null) {
@@ -156,6 +160,10 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
         containerDirection = findViewById(R.id.container_direction);
         spinnerDirection = findViewById(R.id.spinner_direction);
         containerBenchmark = findViewById(R.id.container_benchmark);
+        containerParam1 = findViewById(R.id.container_param1);
+        containerParam2 = findViewById(R.id.container_param2);
+        tvParam1Label = findViewById(R.id.tv_param1_label);
+        tvParam2Label = findViewById(R.id.tv_param2_label);
         spinnerBenchmark = findViewById(R.id.spinner_benchmark);
         spinnerBenchmark.setAdapter(new BenchmarkAdapter());
 
@@ -163,6 +171,17 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
         btnSelectTime.setOnClickListener(v -> showDatePicker(false));
         btnSelectImage.setOnClickListener(v -> pickImage());
         btnDeploy.setOnClickListener(v -> attemptShowSummary());
+        bindLiquidityPreset(R.id.btn_liquidity_10, "10");
+        bindLiquidityPreset(R.id.btn_liquidity_50, "50");
+        bindLiquidityPreset(R.id.btn_liquidity_100, "100");
+        bindLiquidityPreset(R.id.btn_liquidity_200, "200");
+    }
+
+    private void bindLiquidityPreset(int viewId, String amount) {
+        findViewById(viewId).setOnClickListener(v -> {
+            etInitialLiquidity.setText(amount);
+            etInitialLiquidity.setSelection(amount.length());
+        });
     }
 
     private void loadRuntimePolicy() {
@@ -194,10 +213,10 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
                         startCalendar = demoWindow.start;
                         endCalendar = demoWindow.end;
                         updateDateButtons();
-                        tvObservationHint.setText("演示开奖模式已开启：允许选择过去 1 至 4 个整天作为观察期；新博弈池将立即到期并进入等待裁决状态。");
+                        tvObservationHint.setText("演示开奖已开启：使用过去的整日区间，创建后立即进入裁决。");
                         tvObservationHint.setTextColor(0xFFB45309);
                     } else {
-                        tvObservationHint.setText("观察期必须为 1 至 4 个整天；修改开始日期后，系统会自动调整截止日期。");
+                        tvObservationHint.setText("观察期为 1 至 4 个整天，修改开始日期后自动调整截止日期。");
                         tvObservationHint.setTextColor(0xFF8B96A9);
                     }
                 });
@@ -207,7 +226,7 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
                     runtimePolicyLoading = false;
                     runtimePolicyReady = false;
                     allowExpiredMarketCreation = false;
-                    tvObservationHint.setText("后端暂不可用；请先启动后端，再点击此处重新加载开奖模式。");
+                    tvObservationHint.setText("后端未连接，点击此处重试。");
                     tvObservationHint.setTextColor(0xFFDC2626);
                     tvObservationHint.setOnClickListener(view -> loadRuntimePolicy());
                 });
@@ -218,13 +237,12 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
     private void setupTemplateUI() {
         GoldMarketTemplateCatalog.Template template = GoldMarketTemplateCatalog.forType(templateType);
         tvTemplateName.setText(template.title);
-        tvTemplateDetail.setText(template.hint
-                + "。博弈判定使用经核验的市场数据，并按北京时间整日边界计算观察期。");
+        tvTemplateDetail.setText(template.hint);
         containerDirection.setVisibility(View.GONE);
         containerOperator.setVisibility(View.GONE);
         containerBenchmark.setVisibility(View.GONE);
-        etParam1.setVisibility(View.GONE);
-        etParam2.setVisibility(View.GONE);
+        containerParam1.setVisibility(View.GONE);
+        containerParam2.setVisibility(View.GONE);
 
         if (GoldMarketTemplateCatalog.TYPE_PRICE.equals(templateType)) {
             showDirectionOptions(true);
@@ -232,23 +250,19 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
             showDirectionOptions(false);
         } else if (GoldMarketTemplateCatalog.TYPE_RETURN_THRESHOLD.equals(templateType)) {
             showOrderedOperator();
-            etParam1.setVisibility(View.VISIBLE);
-            etParam1.setHint("绝对涨跌幅阈值（%）");
+            showParam1("涨跌幅阈值", "请输入百分比");
             etParam1.setInputType(android.text.InputType.TYPE_CLASS_NUMBER
                     | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
         } else if (GoldMarketTemplateCatalog.TYPE_PRICE_THRESHOLD.equals(templateType)) {
             showOrderedOperator();
-            etParam1.setVisibility(View.VISIBLE);
-            etParam1.setHint("目标价格（USD/盎司）");
+            showParam1("目标价格（USD/盎司）", "请输入目标价格");
             etParam1.setInputType(android.text.InputType.TYPE_CLASS_NUMBER
                     | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
         } else if (GoldMarketTemplateCatalog.TYPE_PRICE_RANGE.equals(templateType)) {
             containerOperator.setVisibility(View.VISIBLE);
             setSpinnerItems(spinnerOperator, Arrays.asList("位于闭区间内", "位于闭区间外"));
-            etParam1.setVisibility(View.VISIBLE);
-            etParam2.setVisibility(View.VISIBLE);
-            etParam1.setHint("价格区间下限（USD/盎司）");
-            etParam2.setHint("价格区间上限（USD/盎司）");
+            showParam1("区间下限（USD/盎司）", "请输入下限");
+            showParam2("区间上限（USD/盎司）", "请输入上限");
             int numeric = android.text.InputType.TYPE_CLASS_NUMBER
                     | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL;
             etParam1.setInputType(numeric);
@@ -256,6 +270,18 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
         } else if (GoldMarketTemplateCatalog.TYPE_RELATIVE.equals(templateType)) {
             containerBenchmark.setVisibility(View.VISIBLE);
         }
+    }
+
+    private void showParam1(String label, String hint) {
+        containerParam1.setVisibility(View.VISIBLE);
+        tvParam1Label.setText(label);
+        etParam1.setHint(hint);
+    }
+
+    private void showParam2(String label, String hint) {
+        containerParam2.setVisibility(View.VISIBLE);
+        tvParam2Label.setText(label);
+        etParam2.setHint(hint);
     }
 
     private void showDirectionOptions(boolean allowFlat) {
@@ -454,9 +480,10 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
 
     private void applyTemplateDefaultCover() {
         int iconRes = GoldMarketTemplateIcon.forType(templateType);
+        ivPoolIcon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
         ivPoolIcon.setImageResource(iconRes);
         templateImageData = renderDrawableAsPng(iconRes);
-        if (iconRes != R.drawable.apartment_icon) btnSelectImage.setText("更换封面");
+        if (iconRes != R.drawable.apartment_icon) btnSelectImage.setText("换封面");
     }
 
     private byte[] renderDrawableAsPng(int drawableRes) {
@@ -483,7 +510,9 @@ public class GoldCreateCustomActivity extends AppCompatActivity {
 
     private void handleImageResult(Uri uri) {
         try {
+            ivPoolIcon.setScaleType(ImageView.ScaleType.CENTER_CROP);
             Glide.with(this).load(uri).into(ivPoolIcon);
+            btnSelectImage.setText("已更换");
             try (InputStream input = getContentResolver().openInputStream(uri)) {
                 Bitmap bitmap = BitmapFactory.decodeStream(input);
                 if (bitmap != null) {

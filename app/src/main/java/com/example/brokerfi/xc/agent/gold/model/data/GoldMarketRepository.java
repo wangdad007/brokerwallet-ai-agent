@@ -534,6 +534,10 @@ public class GoldMarketRepository {
         String reserveNO;
         String mySharesYES;
         String mySharesNO;
+        String totalLiquidityShares;
+        String myLiquidityShares;
+        String myLiquidityFees;
+        String liquidityFeePool;
     }
 
     /**
@@ -643,6 +647,15 @@ public class GoldMarketRepository {
                 }
             }
 
+            try {
+                org.web3j.abi.datatypes.Function fLiquidity =
+                        buildLiquidityPositionFunction(gameId, addr);
+                String hexLiquidity = ethCall(fLiquidity);
+                applyLiquidityPosition(state, hexLiquidity, fLiquidity);
+            } catch (Exception e) {
+                Log.w(TAG, "queryPostTxState: unable to read LP position - " + e.getMessage());
+            }
+
             Log.d(TAG, "queryPostTxState succeeded: gameId=" + gameId
                     + " totalPool=" + state.totalPool
                     + " isResolved=" + state.isResolved
@@ -652,6 +665,90 @@ public class GoldMarketRepository {
         } catch (Exception e) {
             Log.w(TAG, "queryPostTxState failed: gameId=" + gameId + " - " + e.getMessage());
             return null;
+        }
+    }
+
+    private org.web3j.abi.datatypes.Function buildLiquidityPositionFunction(
+            int gameId, String providerAddress) {
+        String address = providerAddress;
+        if (address == null || address.trim().isEmpty()) {
+            address = "0x0000000000000000000000000000000000000000";
+        }
+        return new org.web3j.abi.datatypes.Function(
+                "getLiquidityPosition",
+                Arrays.asList(new Uint256(BigInteger.valueOf(gameId)), new Address(address)),
+                Arrays.asList(
+                        new TypeReference<Uint256>() {},
+                        new TypeReference<Uint256>() {},
+                        new TypeReference<Uint256>() {},
+                        new TypeReference<Uint256>() {}));
+    }
+
+    private BigInteger[] decodeLiquidityPosition(
+            String encoded, org.web3j.abi.datatypes.Function function) {
+        if (encoded == null || encoded.equals("0x") || encoded.startsWith("Error")) {
+            return null;
+        }
+        List<Type> decoded = FunctionReturnDecoder.decode(encoded, function.getOutputParameters());
+        if (decoded.size() < 4) return null;
+        return new BigInteger[] {
+                ((Uint256) decoded.get(0)).getValue(),
+                ((Uint256) decoded.get(1)).getValue(),
+                ((Uint256) decoded.get(2)).getValue(),
+                ((Uint256) decoded.get(3)).getValue()
+        };
+    }
+
+    private void applyLiquidityPosition(
+            PostTxState state, String encoded,
+            org.web3j.abi.datatypes.Function function) {
+        BigInteger[] values = decodeLiquidityPosition(encoded, function);
+        if (state == null || values == null) return;
+        state.totalLiquidityShares = values[0].toString();
+        state.myLiquidityShares = values[1].toString();
+        state.myLiquidityFees = values[2].toString();
+        state.liquidityFeePool = values[3].toString();
+    }
+
+    private void enrichLiquidityPositionFromChain(GameModel model, int gameId) {
+        if (model == null) return;
+        try {
+            org.web3j.abi.datatypes.Function function =
+                    buildLiquidityPositionFunction(gameId, getWalletAddress());
+            BigInteger[] values = decodeLiquidityPosition(ethCall(function), function);
+            if (values == null) return;
+            model.totalLiquidityShares = values[0];
+            model.myLiquidityShares = values[1];
+            model.myLiquidityFees = values[2];
+            model.liquidityFeePool = values[3];
+            org.web3j.abi.datatypes.Function lockedFunction =
+                    new org.web3j.abi.datatypes.Function(
+                            "creatorLockedLiquidityShares",
+                            Collections.singletonList(new Uint256(BigInteger.valueOf(gameId))),
+                            Collections.singletonList(new TypeReference<Uint256>() {}));
+            String encodedLocked = ethCall(lockedFunction);
+            List<Type> lockedValues = FunctionReturnDecoder.decode(
+                    encodedLocked, lockedFunction.getOutputParameters());
+            if (!lockedValues.isEmpty()) {
+                model.creatorLockedLiquidityShares =
+                        ((Uint256) lockedValues.get(0)).getValue();
+            }
+            org.web3j.abi.datatypes.Function creatorFunction =
+                    new org.web3j.abi.datatypes.Function(
+                            "gameCreators",
+                            Collections.singletonList(new Uint256(BigInteger.valueOf(gameId))),
+                            Collections.singletonList(new TypeReference<Address>() {}));
+            String encodedCreator = ethCall(creatorFunction);
+            List<Type> creatorValues = FunctionReturnDecoder.decode(
+                    encodedCreator, creatorFunction.getOutputParameters());
+            if (!creatorValues.isEmpty()) {
+                model.creatorAddress = ((Address) creatorValues.get(0)).getValue();
+                model.isCreator = model.creatorAddress != null
+                        && model.creatorAddress.equalsIgnoreCase(getWalletAddress());
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Unable to enrich LP position for game " + gameId + ": "
+                    + e.getMessage());
         }
     }
 
@@ -684,14 +781,23 @@ public class GoldMarketRepository {
             tradeReq.txHash = txHash;
             tradeReq.isSuccess = true;
             tradeReq.isAiManaged = tradeInfo.isAiManaged;
+            tradeReq.executionSource = tradeInfo.isAiManaged ? "ai" : "manual";
             tradeReq.timestampSec = System.currentTimeMillis() / 1000L;
             tradeReq.shareAmountWei = resolveTradeShareAmountWei(tradeInfo, preState, postState);
+            tradeReq.returnedYesWei =
+                    resolveLiquidityReturnedShareWei(tradeInfo, preState, postState, 0);
+            tradeReq.returnedNoWei =
+                    resolveLiquidityReturnedShareWei(tradeInfo, preState, postState, 1);
             if (postState != null) {
                 tradeReq.totalPoolAfter = postState.totalPool;
                 tradeReq.reserveYESAfter = postState.reserveYES;
                 tradeReq.reserveNOAfter = postState.reserveNO;
                 tradeReq.mySharesYESAfter = postState.mySharesYES;
                 tradeReq.mySharesNOAfter = postState.mySharesNO;
+                tradeReq.totalLiquiditySharesAfter = postState.totalLiquidityShares;
+                tradeReq.liquidityFeePoolAfter = postState.liquidityFeePool;
+                tradeReq.myLiquiditySharesAfter = postState.myLiquidityShares;
+                tradeReq.myLiquidityFeesAfter = postState.myLiquidityFees;
             } else {
                 tradeReq.totalPoolAfter = tradeInfo.totalPoolAfter;
                 tradeReq.reserveYESAfter = tradeInfo.reserveYESAfter;
@@ -751,6 +857,10 @@ public class GoldMarketRepository {
                 chainReq.reserveNO = postState.reserveNO;
                 chainReq.mySharesYES = postState.mySharesYES;
                 chainReq.mySharesNO = postState.mySharesNO;
+                chainReq.totalLiquidityShares = postState.totalLiquidityShares;
+                chainReq.liquidityFeePool = postState.liquidityFeePool;
+                chainReq.myLiquidityShares = postState.myLiquidityShares;
+                chainReq.myLiquidityFees = postState.myLiquidityFees;
             } else {
                 chainReq.totalPool = tradeInfo.totalPoolAfter;
                 chainReq.isResolved = tradeInfo.isResolved;
@@ -762,6 +872,8 @@ public class GoldMarketRepository {
                 chainReq.mySharesYES = tradeInfo.mySharesYESAfter;
                 chainReq.mySharesNO = tradeInfo.mySharesNOAfter;
             }
+            chainReq.contractAddress = contractAddress;
+            chainReq.userAddress = walletAddress;
             BackendApiClient.syncChainState(gameId, chainReq);
             Log.d(TAG, "Backend chain-state sync succeeded: gameId=" + gameId
                     + " totalPool=" + chainReq.totalPool
@@ -775,6 +887,10 @@ public class GoldMarketRepository {
     private String resolveTradeShareAmountWei(TradeSyncInfo tradeInfo, PostTxState preState, PostTxState postState) {
         if (tradeInfo == null) return "0";
         String tradeType = tradeInfo.tradeType == null ? "" : tradeInfo.tradeType.trim();
+        if ("LIQUIDITY_ADD".equalsIgnoreCase(tradeType)
+                || "LIQUIDITY_REMOVE".equalsIgnoreCase(tradeType)) {
+            return tradeInfo.shareAmountWei == null ? "0" : tradeInfo.shareAmountWei;
+        }
         if (!"BUY".equalsIgnoreCase(tradeType) && !"SELL".equalsIgnoreCase(tradeType)) {
             return "0";
         }
@@ -808,6 +924,21 @@ public class GoldMarketRepository {
             return received.toString();
         }
         return tradeInfo.amountWei == null ? "0" : tradeInfo.amountWei;
+    }
+
+    private String resolveLiquidityReturnedShareWei(TradeSyncInfo tradeInfo,
+                                                    PostTxState preState,
+                                                    PostTxState postState,
+                                                    int optionId) {
+        if (tradeInfo == null || preState == null || postState == null) return null;
+        String tradeType = tradeInfo.tradeType == null ? "" : tradeInfo.tradeType.trim();
+        if (!"LIQUIDITY_ADD".equalsIgnoreCase(tradeType)
+                && !"LIQUIDITY_REMOVE".equalsIgnoreCase(tradeType)) {
+            return null;
+        }
+        BigInteger returned = shareOfOption(postState, optionId)
+                .subtract(shareOfOption(preState, optionId));
+        return returned.max(BigInteger.ZERO).toString();
     }
 
     private BigInteger shareOfOption(PostTxState state, int optionId) {
@@ -892,6 +1023,9 @@ public class GoldMarketRepository {
         m.condition = meta.condition != null ? meta.condition : "";
         m.avatarUrl = meta.avatarUrl != null ? meta.avatarUrl : "";
         m.detailedInfo = meta.detailedInfo != null ? meta.detailedInfo : "";
+        m.creatorAddress = meta.creatorAddress != null ? meta.creatorAddress : "";
+        m.isCreator = !m.creatorAddress.isEmpty()
+                && m.creatorAddress.equalsIgnoreCase(getWalletAddress());
         m.optionNames = Arrays.asList(
                 meta.optionYES != null ? meta.optionYES : "YES",
                 meta.optionNO != null ? meta.optionNO : "NO");
@@ -911,11 +1045,21 @@ public class GoldMarketRepository {
             BigInteger myYES = parseBigInteger(state.mySharesYES);
             BigInteger myNo = parseBigInteger(state.mySharesNO);
             m.myShares = Arrays.asList(myYES, myNo);
+            m.totalLiquidityShares = parseBigInteger(state.totalLiquidityShares);
+            m.myLiquidityShares = parseBigInteger(state.myLiquidityShares);
+            m.creatorLockedLiquidityShares = BigInteger.ZERO;
+            m.myLiquidityFees = parseBigInteger(state.myLiquidityFees);
+            m.liquidityFeePool = parseBigInteger(state.liquidityFeePool);
         } else {
             m.deadlineSec = -1L;
             m.totalPool = BigInteger.ZERO;
             m.virtualReserves = Arrays.asList(BigInteger.ZERO, BigInteger.ZERO);
             m.myShares = Arrays.asList(BigInteger.ZERO, BigInteger.ZERO);
+            m.totalLiquidityShares = BigInteger.ZERO;
+            m.myLiquidityShares = BigInteger.ZERO;
+            m.creatorLockedLiquidityShares = BigInteger.ZERO;
+            m.myLiquidityFees = BigInteger.ZERO;
+            m.liquidityFeePool = BigInteger.ZERO;
         }
 
         // 尝试从后端获取历史数据
@@ -1158,6 +1302,8 @@ public class GoldMarketRepository {
                     callback.onTiming("Database + IPFS", backendMs, false));
 
                 GameModel model = buildModelFromBackend(meta, state);
+                // 赎回报价必须使用最新的个性化 LP 数据，因此详情页额外进行一次链上校准。
+                enrichLiquidityPositionFromChain(model, id);
 
                 // 如果后端元数据不完整（缺少 desc 等），从 IPFS 补充
                 if (isEmpty(model.desc) || model.desc.startsWith("Market #") || model.desc.startsWith("博弈池 #")) {
@@ -1237,6 +1383,10 @@ public class GoldMarketRepository {
 
                 model.virtualReserves = Arrays.asList(BigInteger.ZERO, BigInteger.ZERO);
                 model.myShares = Arrays.asList(BigInteger.ZERO, BigInteger.ZERO);
+                model.totalLiquidityShares = BigInteger.ZERO;
+                model.myLiquidityShares = BigInteger.ZERO;
+                model.myLiquidityFees = BigInteger.ZERO;
+                model.liquidityFeePool = BigInteger.ZERO;
                 model.optionNames = Arrays.asList("YES", "NO");
 
                 if (hexResults[1] != null && !hexResults[1].equals("0x") && !hexResults[1].startsWith("Error")) {
@@ -1258,6 +1408,7 @@ public class GoldMarketRepository {
                         Log.e(TAG, "Extra data decode error for game " + id + ": " + e.getMessage());
                     }
                 }
+                enrichLiquidityPositionFromChain(model, id);
 
                 // 从 IPFS 下载元数据
                 long ipfsStart = System.currentTimeMillis();
@@ -1508,7 +1659,9 @@ public class GoldMarketRepository {
                     for (BackendApiClient.ChainStateDTO s : allStates) {
                         BigInteger myYES = parseBigInteger(s.mySharesYES);
                         BigInteger myNO = parseBigInteger(s.mySharesNO);
-                        if (myYES.signum() > 0 || myNO.signum() > 0) {
+                        BigInteger myLP = parseBigInteger(s.myLiquidityShares);
+                        if (myYES.signum() > 0 || myNO.signum() > 0
+                                || myLP.signum() > 0) {
                             myStates.add(s);
                         }
                     }
@@ -1612,6 +1765,9 @@ public class GoldMarketRepository {
                     // 核心修复：Java 索引 0 对应 YES 概率源 (reserveNO) 和 YES 持有 (mySharesYES)
                     m.virtualReserves = Arrays.asList(dto.reserveNO, dto.reserveYES);
                     m.myShares = Arrays.asList(dto.mySharesYES, dto.mySharesNO);
+                    // Keep the compact DTO ABI stable and query personalized LP
+                    // ownership separately, including LP-only participants.
+                    enrichLiquidityPositionFromChain(m, m.id);
                     models.add(m);
                 }
 
@@ -1733,6 +1889,49 @@ public class GoldMarketRepository {
         sendTransaction(BigInteger.ZERO, f, "卖出交易已确认", callback, tradeInfo);
     }
 
+    public void addLiquidity(int gameId, BigInteger amountWei,
+                             BigInteger minimumLiquidityShares,
+                             BigInteger quotedLiquidityShares,
+                             TxCallback callback) {
+        org.web3j.abi.datatypes.Function function =
+                new org.web3j.abi.datatypes.Function(
+                        "addLiquidity",
+                        Arrays.asList(
+                                new Uint256(BigInteger.valueOf(gameId)),
+                                new Uint256(minimumLiquidityShares)),
+                        Collections.emptyList());
+
+        TradeSyncInfo tradeInfo = new TradeSyncInfo();
+        tradeInfo.gameId = gameId;
+        tradeInfo.tradeType = "LIQUIDITY_ADD";
+        tradeInfo.optionId = -1;
+        tradeInfo.amountWei = amountWei.toString();
+        tradeInfo.shareAmountWei = quotedLiquidityShares.toString();
+        sendTransaction(amountWei, function, "流动性注入已确认", callback, tradeInfo);
+    }
+
+    public void removeLiquidity(int gameId, BigInteger liquidityShareAmount,
+                                BigInteger minimumAmountOut,
+                                BigInteger quotedAmountOut,
+                                TxCallback callback) {
+        org.web3j.abi.datatypes.Function function =
+                new org.web3j.abi.datatypes.Function(
+                        "removeLiquidity",
+                        Arrays.asList(
+                                new Uint256(BigInteger.valueOf(gameId)),
+                                new Uint256(liquidityShareAmount),
+                                new Uint256(minimumAmountOut)),
+                        Collections.emptyList());
+
+        TradeSyncInfo tradeInfo = new TradeSyncInfo();
+        tradeInfo.gameId = gameId;
+        tradeInfo.tradeType = "LIQUIDITY_REMOVE";
+        tradeInfo.optionId = -1;
+        tradeInfo.amountWei = quotedAmountOut.toString();
+        tradeInfo.shareAmountWei = liquidityShareAmount.toString();
+        sendTransaction(BigInteger.ZERO, function, "流动性取回已确认", callback, tradeInfo);
+    }
+
     /**
      * 创建博弈池
      *
@@ -1842,10 +2041,12 @@ public class GoldMarketRepository {
 
                 // 元数据已经可供列表读取；状态和历史点作为缓存后台补齐。
                 final int finalGameId = newGameId;
+                final String finalCreateTxHash = txHash;
                 if (finalGameId > 0) {
                     AppExecutors.getInstance().networkIO().execute(
                             () -> syncCreatedGameSupplemental(
-                                    finalGameId, initialLiquidityWei));
+                                    finalGameId, initialLiquidityWei,
+                                    finalCreateTxHash));
                 }
                 AppExecutors.getInstance().mainThread().execute(() -> callback.onConfirmed("Market deployed (ID=" + finalGameId + ")"));
 
@@ -1901,9 +2102,12 @@ public class GoldMarketRepository {
         });
     }
 
-    private void syncCreatedGameSupplemental(int gameId, BigInteger initialLiquidityWei) {
+    private void syncCreatedGameSupplemental(int gameId,
+                                             BigInteger initialLiquidityWei,
+                                             String createTxHash) {
+        PostTxState postState = null;
         try {
-            PostTxState postState = queryPostTxState(gameId);
+            postState = queryPostTxState(gameId);
             if (postState != null) {
                 BackendApiClient.ChainStateSyncReq chainReq =
                         new BackendApiClient.ChainStateSyncReq();
@@ -1916,6 +2120,12 @@ public class GoldMarketRepository {
                 chainReq.reserveNO = postState.reserveNO;
                 chainReq.mySharesYES = "0";
                 chainReq.mySharesNO = "0";
+                chainReq.totalLiquidityShares = postState.totalLiquidityShares;
+                chainReq.liquidityFeePool = postState.liquidityFeePool;
+                chainReq.myLiquidityShares = postState.myLiquidityShares;
+                chainReq.myLiquidityFees = postState.myLiquidityFees;
+                chainReq.contractAddress = contractAddress;
+                chainReq.userAddress = walletAddress;
                 BackendApiClient.syncChainState(gameId, chainReq);
                 Log.d(TAG, "Create market - initial backend chain-state sync succeeded: gameId="
                         + gameId + " deadlineSec=" + postState.deadlineSec);
@@ -1923,6 +2133,43 @@ public class GoldMarketRepository {
         } catch (Exception e) {
             Log.w(TAG, "Create market - backend chain-state sync failed (non-critical): "
                     + e.getMessage());
+        }
+
+        // The creator's initial collateral is also an LP deposit. Persist it as
+        // a first-class liquidity record so the dedicated staking timeline is
+        // complete instead of starting only after the first later top-up.
+        if (postState != null) {
+            try {
+                BackendApiClient.TradeSyncReq trade =
+                        new BackendApiClient.TradeSyncReq();
+                trade.gameId = gameId;
+                trade.contractAddress = contractAddress;
+                trade.userAddress = walletAddress;
+                trade.tradeType = "LIQUIDITY_ADD";
+                trade.optionId = 0;
+                trade.amountWei = initialLiquidityWei.toString();
+                trade.shareAmountWei = postState.myLiquidityShares;
+                trade.txHash = createTxHash == null ? "" : createTxHash;
+                trade.isSuccess = true;
+                trade.timestampSec = System.currentTimeMillis() / 1000L;
+                trade.isAiManaged = false;
+                trade.executionSource = "manual";
+                trade.totalPoolAfter = postState.totalPool;
+                trade.reserveYESAfter = postState.reserveYES;
+                trade.reserveNOAfter = postState.reserveNO;
+                trade.mySharesYESAfter = "0";
+                trade.mySharesNOAfter = "0";
+                trade.totalLiquiditySharesAfter = postState.totalLiquidityShares;
+                trade.liquidityFeePoolAfter = postState.liquidityFeePool;
+                trade.myLiquiditySharesAfter = postState.myLiquidityShares;
+                trade.myLiquidityFeesAfter = postState.myLiquidityFees;
+                BackendApiClient.syncTrade(trade);
+                Log.d(TAG, "Create market - initial liquidity trade synced: gameId="
+                        + gameId);
+            } catch (Exception e) {
+                Log.w(TAG, "Create market - initial liquidity trade sync failed (non-critical): "
+                        + e.getMessage());
+            }
         }
 
         try {
@@ -2073,6 +2320,10 @@ public class GoldMarketRepository {
                             config.enabled = obj.optBoolean("enabled", false);
                             JSONObject strategy = obj.optJSONObject("strategy");
                             if (strategy != null) {
+                                config.strategyType = strategy.optString(
+                                        "strategy_type", config.strategyType);
+                                config.direction = strategy.optString(
+                                        "direction", config.direction);
                                 config.buyAmountBKC = strategy.optString(
                                         "buy_amount_bkc", config.buyAmountBKC);
                                 config.confidenceMin = strategy.optDouble(
@@ -2083,6 +2334,21 @@ public class GoldMarketRepository {
                                         "kelly_fraction", config.kellyFraction);
                                 config.adaptiveCooldown = strategy.optBoolean(
                                         "adaptive_cooldown", config.adaptiveCooldown);
+                                config.gridLowerPercent = strategy.optDouble(
+                                        "grid_lower_percent", config.gridLowerPercent);
+                                config.gridUpperPercent = strategy.optDouble(
+                                        "grid_upper_percent", config.gridUpperPercent);
+                                config.gridLevels = strategy.optInt(
+                                        "grid_levels", config.gridLevels);
+                                config.martingaleTriggerPercent = strategy.optDouble(
+                                        "martingale_trigger_percent",
+                                        config.martingaleTriggerPercent);
+                                config.martingaleMultiplier = strategy.optDouble(
+                                        "martingale_multiplier",
+                                        config.martingaleMultiplier);
+                                config.martingaleMaxRounds = strategy.optInt(
+                                        "martingale_max_rounds",
+                                        config.martingaleMaxRounds);
                             }
                             AppExecutors.getInstance().mainThread().execute(() -> callback.onSuccess(config));
                         }
@@ -2149,6 +2415,13 @@ public class GoldMarketRepository {
         public int winningOption;
         public long deadlineSec;
         public List<BigInteger> virtualReserves, myShares;
+        public BigInteger totalLiquidityShares;
+        public BigInteger myLiquidityShares;
+        public BigInteger creatorLockedLiquidityShares;
+        public BigInteger myLiquidityFees;
+        public BigInteger liquidityFeePool;
+        public String creatorAddress;
+        public boolean isCreator;
         public boolean isManaged;
         public List<HistoryPoint> history;
     }

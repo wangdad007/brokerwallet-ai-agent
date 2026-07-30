@@ -51,6 +51,7 @@ public final class GoldMarketChartPresenter {
         public final long timestampSec;
         public final int optionId;
         public final boolean aiManaged;
+        public final String executionSource;
         public final float marketShare;
         public final String amountWei;
         public final int purchaseCount;
@@ -59,16 +60,17 @@ public final class GoldMarketChartPresenter {
 
         TradePoint(long timestampSec, int optionId, boolean aiManaged,
                    float marketShare, String amountWei) {
-            this(timestampSec, optionId, aiManaged, marketShare, amountWei,
+            this(timestampSec, optionId, aiManaged ? "ai" : "manual", marketShare, amountWei,
                     1, timestampSec, timestampSec);
         }
 
-        TradePoint(long timestampSec, int optionId, boolean aiManaged,
+        TradePoint(long timestampSec, int optionId, String executionSource,
                    float marketShare, String amountWei, int purchaseCount,
                    long bucketStartSec, long bucketEndSec) {
             this.timestampSec = timestampSec;
             this.optionId = optionId;
-            this.aiManaged = aiManaged;
+            this.executionSource = normalizeExecutionSource(executionSource, false);
+            this.aiManaged = !"manual".equals(this.executionSource);
             this.marketShare = marketShare;
             this.amountWei = amountWei == null ? "0" : amountWei;
             this.purchaseCount = Math.max(1, purchaseCount);
@@ -133,8 +135,9 @@ public final class GoldMarketChartPresenter {
                         || timestamp > currentTimestamp + FUTURE_TRADE_TOLERANCE_SEC) continue;
                 int option = trade.optionId == 1 ? 1 : 0;
                 float marketShare = interpolateShare(shares, timestamp, option);
-                trades.add(new TradePoint(timestamp, option, trade.isAiManaged,
-                        marketShare, trade.amountWei));
+                trades.add(new TradePoint(timestamp, option,
+                        normalizeExecutionSource(trade.executionSource, trade.isAiManaged),
+                        marketShare, trade.amountWei, 1, timestamp, timestamp));
             }
         }
         trades.sort(Comparator.comparingLong(point -> point.timestampSec));
@@ -147,8 +150,8 @@ public final class GoldMarketChartPresenter {
 
     /**
      * Groups personal purchases into range-aware time buckets. Market share history
-     * remains untouched: these points are annotations only. Manual and DeepSeek
-     * managed executions stay in separate groups so their origin is never hidden.
+     * remains untouched: these points are annotations only. Manual, AI, grid and
+     * martingale executions stay in separate groups so their origin is never hidden.
      */
     public static TradeAggregation aggregateTrades(List<TradePoint> source,
                                                     String range,
@@ -162,11 +165,11 @@ public final class GoldMarketChartPresenter {
         for (TradePoint trade : source) {
             if (trade == null) continue;
             long bucketStart = Math.floorDiv(trade.timestampSec, bucketSeconds) * bucketSeconds;
-            String key = bucketStart + ":" + trade.optionId + ":" + trade.aiManaged;
+            String key = bucketStart + ":" + trade.optionId + ":" + trade.executionSource;
             MutableTradeBucket bucket = buckets.get(key);
             if (bucket == null) {
                 bucket = new MutableTradeBucket(bucketStart, bucketSeconds,
-                        trade.optionId, trade.aiManaged);
+                        trade.optionId, trade.executionSource);
                 buckets.put(key, bucket);
             }
             bucket.add(trade);
@@ -220,18 +223,18 @@ public final class GoldMarketChartPresenter {
         final long startSec;
         final long endSec;
         final int optionId;
-        final boolean aiManaged;
+        final String executionSource;
         long timestampTotal;
         double shareTotal;
         java.math.BigInteger amountTotal = java.math.BigInteger.ZERO;
         int count;
 
         MutableTradeBucket(long startSec, long bucketSeconds,
-                           int optionId, boolean aiManaged) {
+                           int optionId, String executionSource) {
             this.startSec = startSec;
             this.endSec = startSec + bucketSeconds;
             this.optionId = optionId;
-            this.aiManaged = aiManaged;
+            this.executionSource = executionSource;
         }
 
         void add(TradePoint trade) {
@@ -246,9 +249,53 @@ public final class GoldMarketChartPresenter {
         }
 
         TradePoint toTradePoint() {
-            return new TradePoint(timestampTotal / Math.max(1, count), optionId, aiManaged,
+            return new TradePoint(timestampTotal / Math.max(1, count), optionId, executionSource,
                     (float) (shareTotal / Math.max(1, count)), amountTotal.toString(), count,
                     startSec, endSec);
+        }
+    }
+
+    public static String normalizeExecutionSource(String source, boolean legacyAiManaged) {
+        if (source != null) {
+            switch (source.trim().toLowerCase(Locale.US)) {
+                case "manual":
+                    return "manual";
+                case "ai":
+                    return "ai";
+                case "grid":
+                    return "grid";
+                case "martingale":
+                    return "martingale";
+                default:
+                    break;
+            }
+        }
+        return legacyAiManaged ? "ai" : "manual";
+    }
+
+    public static String executionSourceLabel(String source) {
+        switch (normalizeExecutionSource(source, false)) {
+            case "ai":
+                return "AI 托管";
+            case "grid":
+                return "网格策略";
+            case "martingale":
+                return "马丁格尔";
+            default:
+                return "手动交易";
+        }
+    }
+
+    public static String executionSourceMarker(String source) {
+        switch (normalizeExecutionSource(source, false)) {
+            case "ai":
+                return "AI";
+            case "grid":
+                return "G";
+            case "martingale":
+                return "MT";
+            default:
+                return "M";
         }
     }
 

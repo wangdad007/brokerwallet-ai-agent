@@ -59,7 +59,7 @@ public class GoldPositionHeaderContractTest {
     public void positionCardDoesNotDuplicateTheHoldingPrefix() throws Exception {
         String source = read("app/src/main/java/com/example/brokerfi/xc/agent/gold/view/GoldMyPositionsFragment.java");
 
-        assertTrue(source.contains("shareText.append(sideName).append(\"：\")"));
+        assertTrue(source.contains("shareText.append(sideName).append(' ')"));
         assertFalse(source.contains("shareText.append(\"持有 \").append(sideName)"));
     }
 

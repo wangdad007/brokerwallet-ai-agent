@@ -18,6 +18,7 @@ import android.widget.TextView;
 import com.example.brokerfi.R;
 import com.example.brokerfi.xc.agent.gold.model.data.GoldMarketRepository;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldLimitOrderPolicy;
+import com.example.brokerfi.xc.agent.gold.model.logic.GoldLiquiditySimulation;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldMarketOptionText;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldSellSimulation;
 import com.example.brokerfi.xc.agent.gold.model.logic.GoldTradeSimulation;
@@ -29,13 +30,18 @@ import java.util.Locale;
 
 /** Reusable AMM trade ticket: inline on market details, modal on position details. */
 public final class GoldTradeDialog {
-    public enum Side { BUY, SELL }
+    public enum Side { BUY, SELL, STAKE, UNSTAKE }
     private enum OrderType { MARKET, LIMIT }
 
     public interface Listener {
         void onBuy(int optionId, BigInteger amountWei);
         void onSell(int optionId, BigInteger shareAmountWei,
                     BigInteger minimumAmountOutWei, BigInteger quotedAmountOutWei);
+        void onAddLiquidity(BigInteger amountWei, BigInteger minimumLiquiditySharesWei,
+                            BigInteger quotedLiquiditySharesWei);
+        void onRemoveLiquidity(BigInteger liquiditySharesWei,
+                               BigInteger minimumAmountOutWei,
+                               BigInteger quotedAmountOutWei);
     }
 
     private final Activity activity;
@@ -44,9 +50,13 @@ public final class GoldTradeDialog {
     private final Dialog dialog;
     private final TextView tabBuy;
     private final TextView tabSell;
+    private final TextView tabStake;
+    private final TextView tabUnstake;
     private final TextView tabOrderType;
     private final View indicatorBuy;
     private final View indicatorSell;
+    private final View indicatorStake;
+    private final View indicatorUnstake;
     private final TextView optionYes;
     private final TextView optionNo;
     private final View limitLayout;
@@ -76,6 +86,12 @@ public final class GoldTradeDialog {
     private BigInteger sellSharesWei = BigInteger.ZERO;
     private BigInteger quotedSellAmountWei = BigInteger.ZERO;
     private BigInteger minimumSellAmountWei = BigInteger.ZERO;
+    private BigInteger stakeAmountWei = BigInteger.ZERO;
+    private BigInteger quotedLiquiditySharesWei = BigInteger.ZERO;
+    private BigInteger minimumLiquiditySharesWei = BigInteger.ZERO;
+    private BigInteger unstakeLiquiditySharesWei = BigInteger.ZERO;
+    private BigInteger quotedLiquidityAmountOutWei = BigInteger.ZERO;
+    private BigInteger minimumLiquidityAmountOutWei = BigInteger.ZERO;
 
     private GoldTradeDialog(Activity activity, View root, Dialog dialog,
                             GoldMarketRepository.GameModel game, Side initialSide,
@@ -89,9 +105,13 @@ public final class GoldTradeDialog {
 
         tabBuy = root.findViewById(R.id.tab_trade_buy);
         tabSell = root.findViewById(R.id.tab_trade_sell);
+        tabStake = root.findViewById(R.id.tab_trade_stake);
+        tabUnstake = root.findViewById(R.id.tab_trade_unstake);
         tabOrderType = root.findViewById(R.id.tab_order_type);
         indicatorBuy = root.findViewById(R.id.indicator_trade_buy);
         indicatorSell = root.findViewById(R.id.indicator_trade_sell);
+        indicatorStake = root.findViewById(R.id.indicator_trade_stake);
+        indicatorUnstake = root.findViewById(R.id.indicator_trade_unstake);
         optionYes = root.findViewById(R.id.btn_trade_yes);
         optionNo = root.findViewById(R.id.btn_trade_no);
         limitLayout = root.findViewById(R.id.layout_trade_limit);
@@ -115,13 +135,19 @@ public final class GoldTradeDialog {
 
         tabBuy.setOnClickListener(v -> setSide(Side.BUY));
         tabSell.setOnClickListener(v -> setSide(Side.SELL));
+        tabStake.setOnClickListener(v -> setSide(Side.STAKE));
+        tabUnstake.setOnClickListener(v -> setSide(Side.UNSTAKE));
         tabOrderType.setOnClickListener(v -> showOrderTypeMenu());
         optionYes.setOnClickListener(v -> setOption(0));
         optionNo.setOnClickListener(v -> setOption(1));
         root.findViewById(R.id.btn_limit_minus).setOnClickListener(v -> adjustLimit(-0.01));
         root.findViewById(R.id.btn_limit_plus).setOnClickListener(v -> adjustLimit(0.01));
 
-        amountInput.addTextChangedListener(simpleWatcher(this::renderQuote));
+        amountInput.addTextChangedListener(simpleWatcher(() -> {
+            updateAmountTextSize();
+            clearQuickSelection();
+            renderQuote();
+        }));
         limitInput.addTextChangedListener(simpleWatcher(this::renderQuote));
         confirmButton.setOnClickListener(v -> submit());
 
@@ -218,6 +244,7 @@ public final class GoldTradeDialog {
     }
 
     private void showOrderTypeMenu() {
+        if (!isOutcomeTrade()) return;
         PopupMenu menu = new PopupMenu(activity, tabOrderType);
         menu.getMenu().add("市价单");
         menu.getMenu().add("限价单");
@@ -230,6 +257,7 @@ public final class GoldTradeDialog {
     }
 
     private void setOption(int value) {
+        if (!isOutcomeTrade()) return;
         if (optionId == value) return;
         optionId = value;
         amountInput.setText("");
@@ -239,23 +267,35 @@ public final class GoldTradeDialog {
 
     private void render() {
         boolean buying = side == Side.BUY;
+        boolean selling = side == Side.SELL;
+        boolean staking = side == Side.STAKE;
+        boolean unstaking = side == Side.UNSTAKE;
         tabBuy.setTextColor(buying ? 0xFF0F172A : 0xFF94A3B8);
-        tabSell.setTextColor(buying ? 0xFF94A3B8 : 0xFF0F172A);
+        tabSell.setTextColor(selling ? 0xFF0F172A : 0xFF94A3B8);
+        tabStake.setTextColor(staking ? 0xFF0F172A : 0xFF94A3B8);
+        tabUnstake.setTextColor(unstaking ? 0xFF0F172A : 0xFF94A3B8);
         indicatorBuy.setVisibility(buying ? View.VISIBLE : View.INVISIBLE);
-        indicatorSell.setVisibility(buying ? View.INVISIBLE : View.VISIBLE);
+        indicatorSell.setVisibility(selling ? View.VISIBLE : View.INVISIBLE);
+        indicatorStake.setVisibility(staking ? View.VISIBLE : View.INVISIBLE);
+        indicatorUnstake.setVisibility(unstaking ? View.VISIBLE : View.INVISIBLE);
+        // Keep the order-type column in the layout for LP operations. Making
+        // it invisible (instead of gone) prevents all four action tabs from
+        // changing width and jumping when users switch to stake/unstake.
+        tabOrderType.setVisibility(isOutcomeTrade() ? View.VISIBLE : View.INVISIBLE);
         tabOrderType.setText(orderType == OrderType.MARKET ? "市价 ▾" : "限价 ▾");
         styleOptions();
-        limitLayout.setVisibility(orderType == OrderType.LIMIT ? View.VISIBLE : View.GONE);
+        limitLayout.setVisibility(isOutcomeTrade() && orderType == OrderType.LIMIT
+                ? View.VISIBLE : View.GONE);
 
         String optionName = optionName(optionId);
-        if (side == Side.BUY) {
+        if (buying) {
             inputLabel.setText("买入金额");
             holdingHint.setText("输入希望投入的 BKC");
             amountInput.setHint("0 BKC");
             receiveLabel.setText("预计获得");
             limitHint.setText("每份最高买入价");
             confirmButton.setText("确认买入 " + optionName);
-        } else {
+        } else if (selling) {
             inputLabel.setText("卖出份额");
             holdingHint.setText("可卖 "
                     + GoldNoteMarketActivity.formatShareAmount(heldShares(optionId)) + " 份额");
@@ -263,6 +303,24 @@ public final class GoldTradeDialog {
             receiveLabel.setText("预计到账");
             limitHint.setText("每份最低卖出价");
             confirmButton.setText("确认卖出 " + optionName);
+        } else if (staking) {
+            inputLabel.setText("质押金额");
+            holdingHint.setText("注入 BKC，按池深度铸造 LP 份额");
+            amountInput.setHint("0 BKC");
+            receiveLabel.setText("预计获得");
+            confirmButton.setText("确认质押");
+        } else {
+            inputLabel.setText("取回 LP");
+            BigInteger removable = maximumRemovableLP();
+            holdingHint.setText(removable.signum() == 0 && game.isCreator
+                    && !game.isResolved && !game.isRefunded
+                    ? "创建者初始 LP 已锁定，结算后可取回"
+                    : "可取回 "
+                        + GoldNoteMarketActivity.formatShareAmount(removable)
+                        + " LP");
+            amountInput.setHint("0 LP");
+            receiveLabel.setText("预计到账");
+            confirmButton.setText("确认取回质押");
         }
         confirmButton.setBackgroundResource(R.drawable.bg_trade_primary);
         renderOrderNote();
@@ -270,6 +328,22 @@ public final class GoldTradeDialog {
     }
 
     private void styleOptions() {
+        if (!isOutcomeTrade()) {
+            BigInteger totalLP = nonNegative(game.totalLiquidityShares);
+            BigInteger myLP = nonNegative(game.myLiquidityShares);
+            optionYes.setText("池内总 LP\n"
+                    + GoldNoteMarketActivity.formatShareAmount(totalLP));
+            optionNo.setText("我的 LP\n"
+                    + GoldNoteMarketActivity.formatShareAmount(myLP)
+                    + " · " + formatPercentage(myLP, totalLP));
+            optionYes.setBackgroundResource(R.drawable.bg_trade_segment_idle);
+            optionNo.setBackgroundResource(R.drawable.bg_trade_segment_idle);
+            optionYes.setTextColor(0xFF334155);
+            optionNo.setTextColor(0xFF334155);
+            optionYes.setAlpha(1f);
+            optionNo.setAlpha(1f);
+            return;
+        }
         BigDecimal yes = currentPrice(0);
         BigDecimal no = currentPrice(1);
         optionYes.setText(String.format(Locale.getDefault(),
@@ -294,6 +368,17 @@ public final class GoldTradeDialog {
     }
 
     private void renderOrderNote() {
+        if (side == Side.STAKE) {
+            orderNote.setText("流动性按当前储备比例进入池中，不会把市场概率强行拉回 50%；"
+                    + "LP 按份额获得 1% 交易费。");
+            return;
+        }
+        if (side == Side.UNSTAKE) {
+            orderNote.setText(game.isResolved
+                    ? "结算后按 LP 占比领取胜方储备与累计交易费。"
+                    : "运行中取回会返还可合并的 BKC；多出的单边 YES/NO 份额会一并返还。");
+            return;
+        }
         if (orderType == OrderType.MARKET) {
             orderNote.setText(side == Side.SELL
                     ? "市价卖出按当前 AMM 报价立即执行，并使用 1% 链上最低到账保护。"
@@ -311,6 +396,12 @@ public final class GoldTradeDialog {
         sellSharesWei = BigInteger.ZERO;
         quotedSellAmountWei = BigInteger.ZERO;
         minimumSellAmountWei = BigInteger.ZERO;
+        stakeAmountWei = BigInteger.ZERO;
+        quotedLiquiditySharesWei = BigInteger.ZERO;
+        minimumLiquiditySharesWei = BigInteger.ZERO;
+        unstakeLiquiditySharesWei = BigInteger.ZERO;
+        quotedLiquidityAmountOutWei = BigInteger.ZERO;
+        minimumLiquidityAmountOutWei = BigInteger.ZERO;
         errorValue.setVisibility(View.GONE);
         quoteLayout.setVisibility(View.GONE);
         confirmButton.setEnabled(false);
@@ -318,7 +409,7 @@ public final class GoldTradeDialog {
 
         long remaining = GoldNoteMarketActivity.remainingSecondsUntilDeadline(
                 game.deadlineSec, System.currentTimeMillis());
-        if (remaining <= 0 || game.isResolved || game.isRefunded) {
+        if (isOutcomeTrade() && (remaining <= 0 || game.isResolved || game.isRefunded)) {
             showError("博弈池已经截止或结算，当前不可交易");
             clearQuote();
             return;
@@ -332,7 +423,7 @@ public final class GoldTradeDialog {
         }
 
         BigDecimal limitPrice = parseLimitPrice();
-        if (orderType == OrderType.LIMIT && limitPrice == null) {
+        if (isOutcomeTrade() && orderType == OrderType.LIMIT && limitPrice == null) {
             showError("请输入 0～1 BKC 之间的有效限价");
             clearQuote();
             return;
@@ -359,7 +450,7 @@ public final class GoldTradeDialog {
                 quoteLayout.setVisibility(View.VISIBLE);
                 return;
             }
-        } else {
+        } else if (side == Side.SELL) {
             GoldSellSimulation.Result result = GoldSellSimulation.simulate(
                     game, optionId, inputWei, GoldSellSimulation.DEFAULT_SLIPPAGE_BPS);
             if (!result.valid) {
@@ -385,6 +476,45 @@ public final class GoldTradeDialog {
                 minimumSellAmountWei = GoldLimitOrderPolicy.sellMinimumAmountOut(
                         result.shareAmountWei, limitPrice, result.minAmountOutWei);
             }
+        } else if (side == Side.STAKE) {
+            GoldLiquiditySimulation.AddResult result =
+                    GoldLiquiditySimulation.simulateAdd(
+                            game, inputWei, System.currentTimeMillis() / 1000L);
+            if (!result.valid) {
+                showError(result.error);
+                clearQuote();
+                return;
+            }
+            stakeAmountWei = result.amountInWei;
+            quotedLiquiditySharesWei = result.liquiditySharesOutWei;
+            minimumLiquiditySharesWei = result.minimumLiquiditySharesOutWei;
+            receiveValue.setText(
+                    GoldNoteMarketActivity.formatShareAmount(result.liquiditySharesOutWei)
+                            + " LP");
+            priceValue.setText("质押后池占比 "
+                    + formatPercent(result.poolShareAfter) + "%");
+            impactValue.setText(liquidityReturnSummary(
+                    result.returnedYesWei, result.returnedNoWei));
+        } else {
+            GoldLiquiditySimulation.RemoveResult result =
+                    GoldLiquiditySimulation.simulateRemove(
+                            game, inputWei, System.currentTimeMillis() / 1000L);
+            if (!result.valid) {
+                showError(result.error);
+                clearQuote();
+                return;
+            }
+            unstakeLiquiditySharesWei = result.liquiditySharesInWei;
+            quotedLiquidityAmountOutWei = result.totalAmountOutWei;
+            minimumLiquidityAmountOutWei = result.minimumAmountOutWei;
+            receiveValue.setText(
+                    GoldNoteMarketActivity.formatBkc(result.totalAmountOutWei) + " BKC");
+            priceValue.setText("储备 "
+                    + GoldNoteMarketActivity.formatBkc(result.collateralOutWei)
+                    + " BKC · 交易费 "
+                    + GoldNoteMarketActivity.formatBkc(result.feeOutWei) + " BKC");
+            impactValue.setText(liquidityReturnSummary(
+                    result.returnedYesWei, result.returnedNoWei));
         }
 
         quoteValid = true;
@@ -394,9 +524,23 @@ public final class GoldTradeDialog {
     }
 
     private void clearQuote() {
-        receiveValue.setText(side == Side.BUY ? "-- 份额" : "-- BKC");
-        priceValue.setText("平均成交价 --");
-        impactValue.setText("成交后市场概率 --");
+        if (side == Side.BUY) {
+            receiveValue.setText("-- 份额");
+            priceValue.setText("平均成交价 --");
+            impactValue.setText("成交后市场概率 --");
+        } else if (side == Side.SELL) {
+            receiveValue.setText("-- BKC");
+            priceValue.setText("平均成交价 --");
+            impactValue.setText("成交后市场概率 --");
+        } else if (side == Side.STAKE) {
+            receiveValue.setText("-- LP");
+            priceValue.setText("质押后池占比 --");
+            impactValue.setText("返还单边份额 --");
+        } else {
+            receiveValue.setText("-- BKC");
+            priceValue.setText("储备与交易费 --");
+            impactValue.setText("返还单边份额 --");
+        }
     }
 
     private void showError(String message) {
@@ -410,34 +554,85 @@ public final class GoldTradeDialog {
         if (dialog != null) dialog.dismiss();
         if (side == Side.BUY) {
             listener.onBuy(optionId, buyAmountWei);
-        } else {
+        } else if (side == Side.SELL) {
             listener.onSell(optionId, sellSharesWei,
                     minimumSellAmountWei, quotedSellAmountWei);
+        } else if (side == Side.STAKE) {
+            listener.onAddLiquidity(stakeAmountWei, minimumLiquiditySharesWei,
+                    quotedLiquiditySharesWei);
+        } else {
+            listener.onRemoveLiquidity(unstakeLiquiditySharesWei,
+                    minimumLiquidityAmountOutWei, quotedLiquidityAmountOutWei);
         }
     }
 
     private void bindQuickButtons() {
-        if (side == Side.BUY) {
+        clearQuickSelection();
+        if (side == Side.BUY || side == Side.STAKE) {
             bindQuick(quick1, "1", () -> amountInput.setText("1"));
             bindQuick(quick2, "5", () -> amountInput.setText("5"));
             bindQuick(quick3, "10", () -> amountInput.setText("10"));
             bindQuick(quick4, "25", () -> amountInput.setText("25"));
             return;
         }
-        bindQuick(quick1, "25%", () -> setHoldingFraction(25));
-        bindQuick(quick2, "50%", () -> setHoldingFraction(50));
-        bindQuick(quick3, "75%", () -> setHoldingFraction(75));
-        bindQuick(quick4, "全部", () -> setHoldingFraction(100));
+        if (side == Side.SELL) {
+            bindQuick(quick1, "25%", () -> setHoldingFraction(25));
+            bindQuick(quick2, "50%", () -> setHoldingFraction(50));
+            bindQuick(quick3, "75%", () -> setHoldingFraction(75));
+            bindQuick(quick4, "全部", () -> setHoldingFraction(100));
+        } else {
+            bindQuick(quick1, "25%", () -> setLiquidityFraction(25));
+            bindQuick(quick2, "50%", () -> setLiquidityFraction(50));
+            bindQuick(quick3, "75%", () -> setLiquidityFraction(75));
+            bindQuick(quick4, "全部", () -> setLiquidityFraction(100));
+        }
     }
 
     private void bindQuick(TextView view, String label, Runnable action) {
         view.setText(label);
-        view.setOnClickListener(v -> action.run());
+        view.setOnClickListener(v -> {
+            action.run();
+            selectQuick(view);
+        });
+    }
+
+    private void selectQuick(TextView selected) {
+        for (TextView view : new TextView[] {quick1, quick2, quick3, quick4}) {
+            boolean active = view == selected;
+            view.setBackgroundResource(active
+                    ? R.drawable.bg_trade_quick_selected
+                    : R.drawable.bg_trade_segment_idle);
+            view.setTextColor(active ? 0xFF2563EB : 0xFF64748B);
+        }
+    }
+
+    private void clearQuickSelection() {
+        selectQuick(null);
+    }
+
+    private void updateAmountTextSize() {
+        int length = amountInput.getText() == null ? 0 : amountInput.getText().length();
+        if (length <= 8) {
+            amountInput.setTextSize(34);
+        } else if (length <= 12) {
+            amountInput.setTextSize(28);
+        } else if (length <= 16) {
+            amountInput.setTextSize(22);
+        } else {
+            amountInput.setTextSize(17);
+        }
     }
 
     private void setHoldingFraction(int percent) {
         BigInteger held = heldShares(optionId);
         BigInteger shares = held.multiply(BigInteger.valueOf(percent))
+                .divide(BigInteger.valueOf(100));
+        amountInput.setText(formatTokenInput(shares));
+    }
+
+    private void setLiquidityFraction(int percent) {
+        BigInteger removable = maximumRemovableLP();
+        BigInteger shares = removable.multiply(BigInteger.valueOf(percent))
                 .divide(BigInteger.valueOf(100));
         amountInput.setText(formatTokenInput(shares));
     }
@@ -486,6 +681,46 @@ public final class GoldTradeDialog {
             return BigInteger.ZERO;
         }
         return game.myShares.get(option);
+    }
+
+    private boolean isOutcomeTrade() {
+        return side == Side.BUY || side == Side.SELL;
+    }
+
+    private BigInteger maximumRemovableLP() {
+        return GoldLiquiditySimulation.maximumRemovableLP(game);
+    }
+
+    private BigInteger nonNegative(BigInteger value) {
+        return value == null || value.signum() < 0 ? BigInteger.ZERO : value;
+    }
+
+    private String formatPercentage(BigInteger numerator, BigInteger denominator) {
+        if (denominator == null || denominator.signum() <= 0) return "0%";
+        BigDecimal value = new BigDecimal(nonNegative(numerator))
+                .multiply(BigDecimal.valueOf(100))
+                .divide(new BigDecimal(denominator), 2, RoundingMode.HALF_UP);
+        return formatPercent(value) + "%";
+    }
+
+    private String formatPercent(BigDecimal value) {
+        if (value == null) return "0";
+        return value.setScale(2, RoundingMode.HALF_UP)
+                .stripTrailingZeros().toPlainString();
+    }
+
+    private String liquidityReturnSummary(BigInteger returnedYes, BigInteger returnedNo) {
+        BigInteger yes = nonNegative(returnedYes);
+        BigInteger no = nonNegative(returnedNo);
+        if (yes.signum() == 0 && no.signum() == 0) {
+            return "不产生单边份额返还";
+        }
+        if (yes.signum() > 0) {
+            return "另返 "
+                    + GoldNoteMarketActivity.formatShareAmount(yes) + " YES 份额";
+        }
+        return "另返 "
+                + GoldNoteMarketActivity.formatShareAmount(no) + " NO 份额";
     }
 
     private String optionName(int option) {

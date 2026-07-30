@@ -19,9 +19,11 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-/** Draws high-contrast personal-purchase annotations above the market curves. */
+/** Draws compact source-aware personal-execution annotations above the market curves. */
 public final class GoldMarketTradeRenderer extends LineChartRenderer {
-    private static final int DEEPSEEK_BLUE = 0xFF2563EB;
+    private static final int AI_BLUE = 0xFF2563EB;
+    private static final int GRID_TEAL = 0xFF0F766E;
+    private static final int MARTINGALE_AMBER = 0xFFB45309;
     private static final int YES_COLOR = 0xFF059669;
     private static final int NO_COLOR = 0xFFE11D48;
     private static final int INK = 0xFF0F172A;
@@ -112,25 +114,12 @@ public final class GoldMarketTradeRenderer extends LineChartRenderer {
     }
 
     private void drawMarker(Canvas canvas, RenderMarker marker) {
-        if (marker.trade.aiManaged) {
-            drawDeepSeekBadge(canvas, marker.x, marker.markerY, marker.trade);
-        } else {
-            drawManualMarker(canvas, marker.x, marker.markerY, marker.trade);
-        }
-    }
-
-    private void drawManualMarker(Canvas canvas, float x, float y,
-                                  GoldMarketChartPresenter.TradePoint trade) {
-        String label = trade.purchaseCount > 1
-                ? "M ×" + trade.purchaseCount : "M";
-        drawTradePill(canvas, x, y, trade, INK, label);
-    }
-
-    private void drawDeepSeekBadge(Canvas canvas, float x, float y,
-                                   GoldMarketChartPresenter.TradePoint trade) {
-        String label = trade.purchaseCount > 1
-                ? "DS ×" + trade.purchaseCount : "DS";
-        drawTradePill(canvas, x, y, trade, DEEPSEEK_BLUE, label);
+        String markerLabel = GoldMarketChartPresenter.executionSourceMarker(
+                marker.trade.executionSource);
+        String label = marker.trade.purchaseCount > 1
+                ? markerLabel + " ×" + marker.trade.purchaseCount : markerLabel;
+        drawTradePill(canvas, marker.x, marker.markerY, marker.trade,
+                sourceColor(marker.trade.executionSource), label);
     }
 
     private void drawTradePill(Canvas canvas, float x, float y,
@@ -154,9 +143,10 @@ public final class GoldMarketTradeRenderer extends LineChartRenderer {
     }
 
     private float markerHalfWidth(GoldMarketChartPresenter.TradePoint trade) {
-        String label = trade.aiManaged
-                ? (trade.purchaseCount > 1 ? "DS ×" + trade.purchaseCount : "DS")
-                : (trade.purchaseCount > 1 ? "M ×" + trade.purchaseCount : "M");
+        String markerLabel = GoldMarketChartPresenter.executionSourceMarker(
+                trade.executionSource);
+        String label = trade.purchaseCount > 1
+                ? markerLabel + " ×" + trade.purchaseCount : markerLabel;
         text.setTextSize(dp(6.2f));
         return Math.max(dp(8.5f), text.measureText(label) / 2f + dp(5f));
     }
@@ -167,6 +157,19 @@ public final class GoldMarketTradeRenderer extends LineChartRenderer {
 
     private static int optionColor(GoldMarketChartPresenter.TradePoint trade) {
         return trade.optionId == 1 ? NO_COLOR : YES_COLOR;
+    }
+
+    private static int sourceColor(String source) {
+        switch (GoldMarketChartPresenter.normalizeExecutionSource(source, false)) {
+            case "ai":
+                return AI_BLUE;
+            case "grid":
+                return GRID_TEAL;
+            case "martingale":
+                return MARTINGALE_AMBER;
+            default:
+                return INK;
+        }
     }
 
     private static void drawCenteredText(Canvas canvas, String value,

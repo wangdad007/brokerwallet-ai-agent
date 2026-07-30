@@ -294,7 +294,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="当前估值"
+                                android:text="当前可卖估值"
                                 android:textColor="#888888"
                                 android:textSize="12sp" />
                             <TextView
@@ -373,37 +373,37 @@
                         android:orientation="horizontal">
 
                         <TextView
-                            android:layout_width="42dp"
-                            android:layout_height="42dp"
-                            android:background="@drawable/bg_trade_primary"
+                            android:layout_width="34dp"
+                            android:layout_height="34dp"
+                            android:background="@drawable/bg_ai_compact_badge"
                             android:gravity="center"
                             android:text="AI"
-                            android:textColor="#FFFFFF"
-                            android:textSize="15sp"
+                            android:textColor="#2563EB"
+                            android:textSize="12sp"
                             android:textStyle="bold" />
 
                         <LinearLayout
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="12dp"
+                            android:layout_marginStart="10dp"
                             android:layout_weight="1"
                             android:orientation="vertical">
 
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="AI 持仓洞察"
+                                android:text="AI 持仓"
                                 android:textColor="#0F172A"
-                                android:textSize="16sp"
+                                android:textSize="15sp"
                                 android:textStyle="bold" />
 
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="2dp"
-                                android:text="结合持仓、成本、份额与时间风险"
+                                android:text="持仓结构与风险分析"
                                 android:textColor="#64748B"
-                                android:textSize="12sp" />
+                                android:textSize="11sp" />
                         </LinearLayout>
 
                         <ProgressBar
@@ -418,12 +418,13 @@
                             android:id="@+id/tv_position_ai_status"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:background="@drawable/bg_trade_segment_idle"
-                            android:paddingHorizontal="10dp"
-                            android:paddingVertical="5dp"
-                            android:text="点击分析 ›"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:gravity="center"
+                            android:minHeight="36dp"
+                            android:paddingHorizontal="8dp"
+                            android:text="分析 ›"
                             android:textColor="#2563EB"
-                            android:textSize="11sp"
+                            android:textSize="12sp"
                             android:textStyle="bold" />
                     </LinearLayout>
 
@@ -431,13 +432,11 @@
                         android:id="@+id/tv_position_ai_placeholder"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="16dp"
-                        android:background="@drawable/bg_trade_quote"
-                        android:gravity="center"
-                        android:padding="16dp"
-                        android:text="点击分析，生成个性化持仓与风险报告。"
+                        android:layout_marginTop="10dp"
+                        android:lineSpacingExtra="3dp"
+                        android:text="综合持仓、成本与退出风险"
                         android:textColor="#64748B"
-                        android:textSize="13sp" />
+                        android:textSize="12sp" />
 
                     <LinearLayout
                         android:id="@+id/layout_position_ai_result"

@@ -9,7 +9,9 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
-import android.transition.AutoTransition;
+import android.transition.ChangeBounds;
+import android.transition.Fade;
+import android.transition.TransitionSet;
 import android.transition.TransitionManager;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -72,6 +74,7 @@ public class AIChatFragment extends Fragment {
     private TextView tvAiCardToggle;
     private View aiAdviceContent;
     private LinearLayout cardAiAdvice;
+    private ViewGroup aiChatRoot;
     private Markwon markwon;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private volatile boolean destroyed = false;
@@ -125,6 +128,7 @@ public class AIChatFragment extends Fragment {
         tvAiCardToggle = view.findViewById(R.id.tv_ai_card_toggle);
         aiAdviceContent = view.findViewById(R.id.ai_advice_content);
         cardAiAdvice = view.findViewById(R.id.card_ai_advice);
+        aiChatRoot = view.findViewById(R.id.ai_chat_root);
         tvAiSignal.setPadding(dp(10), dp(6), dp(10), dp(6));
         sendBtn.setOnClickListener(v -> onSendMessage());
         btnConfig.setOnClickListener(v -> showApiKeyDialog());
@@ -153,18 +157,20 @@ public class AIChatFragment extends Fragment {
     private void addQuickAction(String label, Runnable action) {
         TextView chip = new TextView(requireContext());
         chip.setText(label);
-        chip.setTextSize(13);
+        chip.setTextSize(12);
         chip.setTextColor(0xFF334155);
         chip.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         chip.setGravity(Gravity.CENTER);
-        chip.setPadding(dp(6), 0, dp(6), 0);
+        chip.setPadding(dp(4), 0, dp(4), 0);
         chip.setBackground(quickActionBackground());
         chip.setElevation(0f);
+        int column = quickActionContainer.getChildCount() % 3;
         GridLayout.LayoutParams params = new GridLayout.LayoutParams();
         params.width = 0;
-        params.height = dp(44);
+        params.height = dp(40);
         params.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
-        params.setMargins(0, 0, dp(8), dp(8));
+        params.setMargins(column == 0 ? 0 : dp(3), 0,
+                column == 2 ? 0 : dp(3), dp(6));
         quickActionContainer.addView(chip, params);
         chip.setOnClickListener(v -> {
             setAiAdviceExpanded(false);
@@ -183,9 +189,12 @@ public class AIChatFragment extends Fragment {
     }
 
     private void setAiAdviceExpanded(boolean expanded) {
-        AutoTransition transition = new AutoTransition();
-        transition.setDuration(180L);
-        TransitionManager.beginDelayedTransition(cardAiAdvice, transition);
+        TransitionSet transition = new TransitionSet()
+                .setOrdering(TransitionSet.ORDERING_TOGETHER)
+                .addTransition(new ChangeBounds())
+                .addTransition(new Fade());
+        transition.setDuration(220L);
+        TransitionManager.beginDelayedTransition(aiChatRoot, transition);
         aiAdviceContent.setVisibility(expanded ? View.VISIBLE : View.GONE);
         tvAiCardToggle.setText(expanded ? "收起 ︿" : "展开 ﹀");
         tvAiCardToggle.setContentDescription(expanded ? "收起 AI 投研工作台" : "展开 AI 投研工作台");
@@ -193,9 +202,8 @@ public class AIChatFragment extends Fragment {
 
     private GradientDrawable quickActionBackground() {
         GradientDrawable background = new GradientDrawable();
-        background.setColor(0xFFFFFFFF);
-        background.setCornerRadius(dp(12));
-        background.setStroke(dp(1), 0xFFCBD5E1);
+        background.setColor(0xFFF8FAFC);
+        background.setCornerRadius(dp(10));
         return background;
     }
 

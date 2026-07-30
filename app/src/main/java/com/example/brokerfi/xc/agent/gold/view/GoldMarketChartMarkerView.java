@@ -60,7 +60,8 @@ public final class GoldMarketChartMarkerView extends MarkerView {
                     isYes ? "YES" : "NO", trade.marketShare);
             if (isYes) yesView.setText(label); else noView.setText(label);
             sourceView.setVisibility(View.VISIBLE);
-            String source = trade.aiManaged ? "DeepSeek 托管" : "手动购买";
+            String source = GoldMarketChartPresenter.executionSourceLabel(
+                    trade.executionSource);
             sourceView.setText(trade.purchaseCount == 1
                     ? source
                     : String.format(Locale.US, "%s · 该时间段共 %d 笔购买",

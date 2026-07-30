@@ -16,9 +16,9 @@ import static org.junit.Assert.assertTrue;
 public class GoldPositionValuationTest {
     private static final BigInteger E18 = new BigInteger("1000000000000000000");
     private static final BigInteger ACTIVE_YES_VALUE =
-            new BigInteger("11610373207469340364");
+            new BigInteger("11494269475394646961");
     private static final BigInteger ACTIVE_NO_VALUE =
-            new BigInteger("7622607971430032108");
+            new BigInteger("7546381891715731787");
 
     @Test
     public void activeYesPositionUsesContractReserveMappingAndSellFormula() {
@@ -51,7 +51,7 @@ public class GoldPositionValuationTest {
         GoldPositionValuation.MarketValue value =
                 GoldPositionValuation.calculateMarket(game);
 
-        assertEquals(new BigInteger("19232981178899372472"), value.getValueWei());
+        assertEquals(new BigInteger("19800000000000000000"), value.getValueWei());
         assertTrue(value.isComplete());
     }
 
@@ -93,6 +93,54 @@ public class GoldPositionValuationTest {
     }
 
     @Test
+    public void lpOnlyPositionIncludesProportionalRedeemableCollateralAndFees() {
+        GoldMarketRepository.GameModel game = activeGame(
+                BigInteger.ZERO, BigInteger.ZERO);
+        game.totalLiquidityShares = amount(100);
+        game.myLiquidityShares = amount(20);
+        game.myLiquidityFees = amount(2);
+
+        GoldPositionValuation.MarketValue value =
+                GoldPositionValuation.calculateMarket(game);
+
+        // Reserves are YES=100, NO=150. Twenty percent can immediately merge
+        // 20 BKC, with the surplus NO inventory deliberately valued at zero.
+        assertEquals(amount(22), value.getValueWei());
+        assertTrue(value.isComplete());
+    }
+
+    @Test
+    public void outcomeValueExcludesLiquidityOwnedByTheSameAccount() {
+        GoldMarketRepository.GameModel game = activeGame(amount(20), BigInteger.ZERO);
+        game.totalLiquidityShares = amount(100);
+        game.myLiquidityShares = amount(20);
+        game.myLiquidityFees = amount(2);
+
+        GoldPositionValuation.MarketValue value =
+                GoldPositionValuation.calculateOutcomeMarket(game);
+
+        assertEquals(ACTIVE_YES_VALUE, value.getValueWei());
+        assertTrue(value.isComplete());
+    }
+
+    @Test
+    public void resolvedCreatorLpIncludesWinningReserveAndFees() {
+        GoldMarketRepository.GameModel game = activeGame(
+                BigInteger.ZERO, BigInteger.ZERO);
+        game.totalLiquidityShares = amount(100);
+        game.myLiquidityShares = amount(25);
+        game.myLiquidityFees = amount(3);
+        game.isResolved = true;
+        game.winningOption = 0;
+
+        GoldPositionValuation.MarketValue value =
+                GoldPositionValuation.calculateMarket(game);
+
+        assertEquals(amount(28), value.getValueWei());
+        assertTrue(value.isComplete());
+    }
+
+    @Test
     public void activePositionWithMissingReservesIsUnavailable() {
         GoldMarketRepository.GameModel game = gameWithShares(amount(20), BigInteger.ZERO);
         game.virtualReserves = null;
@@ -119,7 +167,7 @@ public class GoldPositionValuationTest {
                 GoldPositionValuation.calculatePortfolio(
                         Arrays.asList(active, resolved, refunded));
 
-        assertEquals(new BigInteger("16610373207469340364"), value.getValueWei());
+        assertEquals(new BigInteger("16494269475394646961"), value.getValueWei());
         assertEquals(1, value.getUnavailableMarketCount());
     }
 

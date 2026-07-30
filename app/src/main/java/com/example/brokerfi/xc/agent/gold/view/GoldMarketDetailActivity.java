@@ -83,7 +83,9 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
     private String selectedChartRange = "1d";
     private int chartRequestedGameId = -1;
     private androidx.appcompat.widget.SwitchCompat switchAiManaged;
-    private TextView tvAiManagedSummary, btnAiManagedSettings;
+    private TextView tvAiManagedSummary, tvAiManagedAction;
+    private TextView tvRuleStrategyTitle, tvRuleStrategySummary, tvRuleStrategyAction;
+    private View btnAiManagedSettings, btnCustomStrategy;
     private BackendApiClient.AiManagedConfig aiManagedConfig =
             BackendApiClient.AiManagedConfig.defaults();
     private boolean suppressAiManagedListener;
@@ -219,9 +221,9 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         cardHoldingNo = findViewById(R.id.card_holding_no);
 
         tvMarketAiStatus = findViewById(R.id.tv_market_ai_status);
-        tvMarketAiStatus.setText("开始分析 ›");
+        tvMarketAiStatus.setText("分析 ›");
         tvMarketAiSummary = findViewById(R.id.tv_market_ai_summary);
-        tvMarketAiSummary.setText("点击生成结构化 AI 博弈池投研报告");
+        tvMarketAiSummary.setText("综合行情、市场概率与结算风险");
         tvMarketAiStance = findViewById(R.id.tv_market_ai_stance);
         tvMarketAiRisk = findViewById(R.id.tv_market_ai_risk);
         tvMarketAiDrivers = findViewById(R.id.tv_market_ai_drivers);
@@ -232,7 +234,12 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         ivMarketIcon = findViewById(R.id.iv_market_detail_icon);
         switchAiManaged = findViewById(R.id.switch_ai_managed);
         tvAiManagedSummary = findViewById(R.id.tv_ai_managed_summary);
+        tvAiManagedAction = findViewById(R.id.tv_ai_managed_action);
+        tvRuleStrategyTitle = findViewById(R.id.tv_rule_strategy_title);
+        tvRuleStrategySummary = findViewById(R.id.tv_rule_strategy_summary);
+        tvRuleStrategyAction = findViewById(R.id.tv_rule_strategy_action);
         btnAiManagedSettings = findViewById(R.id.btn_ai_managed_settings);
+        btnCustomStrategy = findViewById(R.id.btn_custom_strategy);
         barUp = findViewById(R.id.bar_up);
         barDown = findViewById(R.id.bar_down);
         cardMarketAi = findViewById(R.id.card_market_ai);
@@ -269,7 +276,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         btnMarketAiRefresh.setOnClickListener(v -> refreshMarketAiAnalysis());
         switchAiManaged.setOnCheckedChangeListener((btn, isChecked) -> {
             if (suppressAiManagedListener || currentGame == null
-                    || currentGame.isManaged == isChecked) return;
+                    || isAiStrategyEnabled() == isChecked) return;
             if (isChecked) {
                 // Enabling always goes through the guardrail editor so users
                 // explicitly review the limits before granting execution access.
@@ -282,6 +289,12 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
             }
         });
         btnAiManagedSettings.setOnClickListener(v -> openAiManagedSettings());
+        btnCustomStrategy.setOnClickListener(v -> {
+            if (currentGame == null) return;
+            startActivity(GoldCustomStrategyActivity.createManagementIntent(
+                    this, currentGame.id, resolveContractAddress(),
+                    currentGame.desc));
+        });
         btnClaimReward.setOnClickListener(v -> claimReward());
     }
 
@@ -332,7 +345,7 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         }
 
         suppressAiManagedListener = true;
-        switchAiManaged.setChecked(currentGame.isManaged);
+        switchAiManaged.setChecked(isAiStrategyEnabled());
         suppressAiManagedListener = false;
         updateAiManagedSummary();
 
@@ -478,12 +491,26 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         List<Entry> manualNo = new ArrayList<>();
         List<Entry> aiYes = new ArrayList<>();
         List<Entry> aiNo = new ArrayList<>();
+        List<Entry> gridYes = new ArrayList<>();
+        List<Entry> gridNo = new ArrayList<>();
+        List<Entry> martingaleYes = new ArrayList<>();
+        List<Entry> martingaleNo = new ArrayList<>();
         for (GoldMarketChartPresenter.TradePoint trade : aggregation.trades) {
             Entry entry = new Entry(model.xOf(trade.timestampSec), trade.marketShare, trade);
-            if (trade.optionId == 0) {
-                (trade.aiManaged ? aiYes : manualYes).add(entry);
-            } else {
-                (trade.aiManaged ? aiNo : manualNo).add(entry);
+            boolean yes = trade.optionId == 0;
+            switch (trade.executionSource) {
+                case "ai":
+                    (yes ? aiYes : aiNo).add(entry);
+                    break;
+                case "grid":
+                    (yes ? gridYes : gridNo).add(entry);
+                    break;
+                case "martingale":
+                    (yes ? martingaleYes : martingaleNo).add(entry);
+                    break;
+                default:
+                    (yes ? manualYes : manualNo).add(entry);
+                    break;
             }
         }
 
@@ -494,6 +521,10 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
         addTradeDataSet(dataSets, manualNo);
         addTradeDataSet(dataSets, aiYes);
         addTradeDataSet(dataSets, aiNo);
+        addTradeDataSet(dataSets, gridYes);
+        addTradeDataSet(dataSets, gridNo);
+        addTradeDataSet(dataSets, martingaleYes);
+        addTradeDataSet(dataSets, martingaleNo);
 
         LineData data = new LineData(dataSets);
         lineChart.setData(data);
@@ -631,16 +662,55 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
 
     private void updateAiManagedSummary() {
         if (tvAiManagedSummary == null || aiManagedConfig == null) return;
+        String strategyType = normalizeStrategyType(aiManagedConfig.strategyType);
+        boolean aiEnabled = aiManagedConfig.enabled && "ai".equals(strategyType);
+        suppressAiManagedListener = true;
+        switchAiManaged.setChecked(aiEnabled);
+        suppressAiManagedListener = false;
         String amount = aiManagedConfig.buyAmountBKC == null
                 ? "1" : aiManagedConfig.buyAmountBKC;
-        tvAiManagedSummary.setText(String.format(Locale.US,
-                "每单 %s BKC · 置信度 ≥%.0f%% · 模型优势 ≥%.1f%%",
-                amount, aiManagedConfig.confidenceMin * 100d,
-                aiManagedConfig.minEdgePercent));
-        if (btnAiManagedSettings != null) {
-            btnAiManagedSettings.setText(aiManagedConfig.enabled
-                    ? "编辑 AI 策略 ›" : "配置 AI 策略 ›");
+        tvAiManagedSummary.setText(aiEnabled
+                ? String.format(Locale.US,
+                "每单 %s BKC · 置信度 ≥%.0f%%",
+                amount, aiManagedConfig.confidenceMin * 100d)
+                : "模型研判 · 风控执行");
+        if (tvAiManagedAction != null) {
+            tvAiManagedAction.setText(aiEnabled ? "管理" : "设置");
         }
+        if (tvRuleStrategyTitle != null && tvRuleStrategySummary != null
+                && tvRuleStrategyAction != null) {
+            String direction = "no".equalsIgnoreCase(aiManagedConfig.direction)
+                    ? "NO" : "YES";
+            if (aiManagedConfig.enabled && "grid".equals(strategyType)) {
+                tvRuleStrategyTitle.setText("网格策略");
+                tvRuleStrategySummary.setText(String.format(Locale.US,
+                        "%s 方向 · %d 档 · 每单 %s BKC",
+                        direction, aiManagedConfig.gridLevels, amount));
+                tvRuleStrategyAction.setText("管理 ›");
+            } else if (aiManagedConfig.enabled && "martingale".equals(strategyType)) {
+                tvRuleStrategyTitle.setText("马丁格尔策略");
+                tvRuleStrategySummary.setText(String.format(Locale.US,
+                        "%s 方向 · %.1f%% 触发 · 最多 %d 轮",
+                        direction, aiManagedConfig.martingaleTriggerPercent,
+                        aiManagedConfig.martingaleMaxRounds));
+                tvRuleStrategyAction.setText("管理 ›");
+            } else {
+                tvRuleStrategyTitle.setText("规则策略");
+                tvRuleStrategySummary.setText("网格 / 马丁格尔 · 阈值触发");
+                tvRuleStrategyAction.setText("设置 ›");
+            }
+        }
+    }
+
+    private boolean isAiStrategyEnabled() {
+        return aiManagedConfig != null && aiManagedConfig.enabled
+                && "ai".equals(normalizeStrategyType(aiManagedConfig.strategyType));
+    }
+
+    private String normalizeStrategyType(String value) {
+        if ("grid".equalsIgnoreCase(value)) return "grid";
+        if ("martingale".equalsIgnoreCase(value)) return "martingale";
+        return "ai";
     }
 
     @Override
@@ -891,6 +961,26 @@ public class GoldMarketDetailActivity extends AppCompatActivity {
                         "正在按 AMM 报价提交卖出…", Toast.LENGTH_SHORT).show();
                 viewModel.sellShares(gameId, resolveContractAddress(), optionId,
                         shareAmountWei, minimumAmountOutWei, quotedAmountOutWei);
+            }
+
+            @Override
+            public void onAddLiquidity(BigInteger amountWei,
+                                       BigInteger minimumLiquiditySharesWei,
+                                       BigInteger quotedLiquiditySharesWei) {
+                Toast.makeText(GoldMarketDetailActivity.this,
+                        "正在提交流动性质押…", Toast.LENGTH_SHORT).show();
+                viewModel.addLiquidity(gameId, resolveContractAddress(), amountWei,
+                        minimumLiquiditySharesWei, quotedLiquiditySharesWei);
+            }
+
+            @Override
+            public void onRemoveLiquidity(BigInteger liquiditySharesWei,
+                                          BigInteger minimumAmountOutWei,
+                                          BigInteger quotedAmountOutWei) {
+                Toast.makeText(GoldMarketDetailActivity.this,
+                        "正在提交质押取回…", Toast.LENGTH_SHORT).show();
+                viewModel.removeLiquidity(gameId, resolveContractAddress(),
+                        liquiditySharesWei, minimumAmountOutWei, quotedAmountOutWei);
             }
         };
     }

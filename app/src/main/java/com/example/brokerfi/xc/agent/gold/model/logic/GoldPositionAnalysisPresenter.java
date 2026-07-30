@@ -46,11 +46,29 @@ public final class GoldPositionAnalysisPresenter {
         BigInteger totalSell = sumAmount(safeTrades, "SELL");
         BigInteger netCashInvested = totalBuy.subtract(totalSell);
         int successfulTrades = 0;
-        int managedTrades = 0;
+        int manualTrades = 0;
+        int aiTrades = 0;
+        int gridTrades = 0;
+        int martingaleTrades = 0;
         for (BackendApiClient.TradeDTO trade : safeTrades) {
             if (trade == null || !trade.isSuccess) continue;
             successfulTrades++;
-            if (trade.isAiManaged) managedTrades++;
+            String source = GoldMarketChartPresenter.normalizeExecutionSource(
+                    trade.executionSource, trade.isAiManaged);
+            switch (source) {
+                case "ai":
+                    aiTrades++;
+                    break;
+                case "grid":
+                    gridTrades++;
+                    break;
+                case "martingale":
+                    martingaleTrades++;
+                    break;
+                default:
+                    manualTrades++;
+                    break;
+            }
         }
 
         StringBuilder prompt = new StringBuilder();
@@ -60,9 +78,13 @@ public final class GoldPositionAnalysisPresenter {
         prompt.append("\n累计卖出：").append(formatBkc(totalSell)).append(" BKC");
         prompt.append("\n净投入：").append(formatBkc(netCashInvested)).append(" BKC");
         prompt.append("\n成功交易：").append(successfulTrades);
-        prompt.append("\nAI 托管交易：").append(managedTrades);
+        prompt.append("\n手动交易：").append(manualTrades);
+        prompt.append("\nAI 托管交易：").append(aiTrades);
+        prompt.append("\n网格策略交易：").append(gridTrades);
+        prompt.append("\n马丁格尔交易：").append(martingaleTrades);
 
-        GoldPositionValuation.MarketValue value = GoldPositionValuation.calculateMarket(game);
+        GoldPositionValuation.MarketValue value =
+                GoldPositionValuation.calculateOutcomeMarket(game);
         if (value.isComplete()) {
             BigInteger currentValue = value.getValueWei();
             prompt.append("\n当前估值：").append(formatBkc(currentValue)).append(" BKC");

@@ -10,6 +10,8 @@ import java.util.List;
 /** Deterministic preview of the current binary AMM buy formula. No chain write occurs here. */
 public final class GoldTradeSimulation {
     private static final BigDecimal WEI_PER_BKC = new BigDecimal("1000000000000000000");
+    private static final BigInteger BPS = BigInteger.valueOf(10_000);
+    private static final BigInteger NET_AFTER_FEE_BPS = BigInteger.valueOf(9_900);
 
     private GoldTradeSimulation() {
     }
@@ -30,18 +32,22 @@ public final class GoldTradeSimulation {
         // getGameExtraData returns [reserveNO, reserveYES]. This matches PredictionMarket.buyShares.
         BigInteger reserveNo = reserves.get(0);
         BigInteger reserveYes = reserves.get(1);
+        BigInteger netAmountWei = amountWei.multiply(NET_AFTER_FEE_BPS).divide(BPS);
+        if (netAmountWei.signum() <= 0) {
+            return Result.invalid("金额过小，扣除 1% LP 交易费后无法成交");
+        }
         BigInteger invariant = reserveNo.multiply(reserveYes);
         BigInteger sharesOut;
         BigInteger afterNo;
         BigInteger afterYes;
         if (optionId == 0) {
-            afterNo = reserveNo.add(amountWei);
+            afterNo = reserveNo.add(netAmountWei);
             afterYes = invariant.divide(afterNo);
-            sharesOut = amountWei.add(reserveYes.subtract(afterYes));
+            sharesOut = netAmountWei.add(reserveYes.subtract(afterYes));
         } else {
-            afterYes = reserveYes.add(amountWei);
+            afterYes = reserveYes.add(netAmountWei);
             afterNo = invariant.divide(afterYes);
-            sharesOut = amountWei.add(reserveNo.subtract(afterNo));
+            sharesOut = netAmountWei.add(reserveNo.subtract(afterNo));
         }
         if (sharesOut.signum() <= 0) return Result.invalid("金额过小，按合约整数精度不能换出有效份额");
 

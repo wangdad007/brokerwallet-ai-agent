@@ -8,7 +8,10 @@ public final class GoldMarketSecurityPolicy {
     private static final String RETIRED_LOCAL_CONTRACT_ADDRESS = "0xad4F9eD0F2b51A26314C9f83DF588cCcE26ae03c";
     private static final String RETIRED_CN_CONTRACT_ADDRESS = "0xda550FdB040A10ff1f5467042aE3E7E13DF43F7F";
     private static final String RETIRED_AMM_SMOKE_CONTRACT_ADDRESS = "0xc85e911A302D1409e26285E04A48665e83aEc61e";
-    public static final String DEFAULT_CONTRACT_ADDRESS = "0xA3EE3bb6AbE5B198960a0EAaf11f1179cF2b1f64";
+    private static final String RETIRED_SELL_ONLY_CONTRACT_ADDRESS = "0xA3EE3bb6AbE5B198960a0EAaf11f1179cF2b1f64";
+    private static final String RETIRED_LIQUIDITY_V1_CONTRACT_ADDRESS = "0x188a19B786ca9D2BcA293A836703d212e9ba32D9";
+    private static final String RETIRED_UNLOCKED_CREATOR_LP_CONTRACT_ADDRESS = "0xB55aFE6Eb39227d89a44011D2eEc6F2f35E59a01";
+    public static final String DEFAULT_CONTRACT_ADDRESS = "0x2C26fF6eA7Ec23C09f64A62de5C060c0D00208D1";
 
     private GoldMarketSecurityPolicy() {
     }
@@ -51,7 +54,10 @@ public final class GoldMarketSecurityPolicy {
         for (String address : parseContractAddresses(rawAddresses)) {
             if (!RETIRED_LOCAL_CONTRACT_ADDRESS.equalsIgnoreCase(address)
                     && !RETIRED_CN_CONTRACT_ADDRESS.equalsIgnoreCase(address)
-                    && !RETIRED_AMM_SMOKE_CONTRACT_ADDRESS.equalsIgnoreCase(address)) {
+                    && !RETIRED_AMM_SMOKE_CONTRACT_ADDRESS.equalsIgnoreCase(address)
+                    && !RETIRED_SELL_ONLY_CONTRACT_ADDRESS.equalsIgnoreCase(address)
+                    && !RETIRED_LIQUIDITY_V1_CONTRACT_ADDRESS.equalsIgnoreCase(address)
+                    && !RETIRED_UNLOCKED_CREATOR_LP_CONTRACT_ADDRESS.equalsIgnoreCase(address)) {
                 if (kept.length() > 0) kept.append('\n');
                 kept.append(address);
             }

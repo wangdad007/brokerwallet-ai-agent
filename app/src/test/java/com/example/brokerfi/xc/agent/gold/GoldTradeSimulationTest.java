@@ -21,8 +21,11 @@ public class GoldTradeSimulationTest {
         GoldTradeSimulation.Result result = GoldTradeSimulation.simulate(game, 0, amount(10));
 
         assertTrue(result.valid);
-        assertEquals(amount(10).add(
-                        amount(100).subtract(amount(100).multiply(amount(100)).divide(amount(110)))),
+        BigInteger netAmount = amount(10).multiply(BigInteger.valueOf(9_900))
+                .divide(BigInteger.valueOf(10_000));
+        assertEquals(netAmount.add(
+                        amount(100).subtract(amount(100).multiply(amount(100))
+                                .divide(amount(100).add(netAmount)))),
                 result.sharesOutWei);
         assertEquals("50.00", result.beforeYesProbability.toPlainString());
         assertTrue(result.afterYesProbability.doubleValue() > result.beforeYesProbability.doubleValue());
@@ -47,7 +50,7 @@ public class GoldTradeSimulationTest {
                 GoldTradeSimulation.simulate(deep, 0, amount(2));
 
         assertTrue(shallowResult.valid);
-        assertEquals("90.00", shallowResult.afterYesProbability.toPlainString());
+        assertTrue(shallowResult.afterYesProbability.doubleValue() > 89.8);
         assertTrue(shallowResult.afterYesProbability.subtract(shallowResult.beforeYesProbability)
                 .doubleValue()
                 > deepResult.afterYesProbability.subtract(deepResult.beforeYesProbability)

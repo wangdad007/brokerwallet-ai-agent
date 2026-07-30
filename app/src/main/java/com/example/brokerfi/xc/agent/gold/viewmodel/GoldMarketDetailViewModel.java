@@ -313,6 +313,47 @@ public class GoldMarketDetailViewModel extends AndroidViewModel {
                 });
     }
 
+    public void addLiquidity(int gameId, String contractAddress, BigInteger amountWei,
+                             BigInteger minimumLiquidityShares,
+                             BigInteger quotedLiquidityShares) {
+        repositoryFor(contractAddress).addLiquidity(
+                gameId, amountWei, minimumLiquidityShares, quotedLiquidityShares,
+                new GoldMarketRepository.TxCallback() {
+                    @Override public void onTxSent(String txHash) {
+                        txStatus.postValue("流动性注入交易已提交");
+                    }
+                    @Override public void onConfirmed(String msg) {
+                        txStatus.postValue("质押成功，LP 份额已更新");
+                        loadGameInfo(gameId, contractAddress);
+                        loadChartData(gameId, selectedChartRange);
+                    }
+                    @Override public void onError(String err) {
+                        tradeError.postValue("质押失败：\n\n" + err);
+                    }
+                });
+    }
+
+    public void removeLiquidity(int gameId, String contractAddress,
+                                BigInteger liquidityShareAmount,
+                                BigInteger minimumAmountOut,
+                                BigInteger quotedAmountOut) {
+        repositoryFor(contractAddress).removeLiquidity(
+                gameId, liquidityShareAmount, minimumAmountOut, quotedAmountOut,
+                new GoldMarketRepository.TxCallback() {
+                    @Override public void onTxSent(String txHash) {
+                        txStatus.postValue("取回质押交易已提交");
+                    }
+                    @Override public void onConfirmed(String msg) {
+                        txStatus.postValue("质押已取回，BKC 已返回钱包");
+                        loadGameInfo(gameId, contractAddress);
+                        loadChartData(gameId, selectedChartRange);
+                    }
+                    @Override public void onError(String err) {
+                        tradeError.postValue("取回质押失败：\n\n" + err);
+                    }
+                });
+    }
+
     public void claimReward(int gameId, int optionId) {
         claimReward(gameId, null, optionId);
     }

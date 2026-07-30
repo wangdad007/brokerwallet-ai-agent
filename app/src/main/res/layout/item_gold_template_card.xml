@@ -2,41 +2,45 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:minHeight="164dp"
-    android:orientation="vertical"
-    android:padding="20dp"
-    android:background="@drawable/bg_gold_template_cell"
+    android:minHeight="126dp"
+    android:background="@drawable/bg_gold_template_choice_card"
     android:clickable="true"
+    android:elevation="1dp"
     android:focusable="true"
+    android:foreground="?attr/selectableItemBackground"
     android:gravity="center"
-    android:foreground="?attr/selectableItemBackground">
+    android:orientation="vertical"
+    android:paddingHorizontal="12dp"
+    android:paddingVertical="14dp">
 
     <ImageView
         android:id="@+id/iv_template_icon"
-        android:layout_width="44dp"
-        android:layout_height="44dp"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:scaleType="centerInside"
         android:src="@drawable/logo4" />
 
     <TextView
         android:id="@+id/tv_template_title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="8dp"
+        android:gravity="center"
         android:text="价格涨跌"
-        android:textColor="#1A1A1A"
-        android:textSize="15sp"
-        android:textStyle="bold"
-        android:gravity="center" />
+        android:textColor="#0F172A"
+        android:textSize="14sp"
+        android:textStyle="bold" />
 
     <TextView
         android:id="@+id/tv_template_desc"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:text="预测所选日期黄金的涨跌方向"
-        android:textColor="#94A3B8"
-        android:textSize="12sp"
+        android:layout_marginTop="4dp"
+        android:ellipsize="end"
         android:gravity="center"
-        android:lineSpacingExtra="2dp" />
-
+        android:lineSpacingExtra="1dp"
+        android:maxLines="2"
+        android:text="预测所选日期黄金的涨跌方向"
+        android:textColor="#64748B"
+        android:textSize="11sp" />
 </LinearLayout>

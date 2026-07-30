@@ -25,6 +25,10 @@ public class GoldMyPositionsViewModel extends AndroidViewModel {
     private final MutableLiveData<String> debugToast = new MutableLiveData<>();
     private final MutableLiveData<List<BackendApiClient.PortfolioHistoryPointDTO>> portfolioHistory =
             new MutableLiveData<>(Collections.emptyList());
+    private final MutableLiveData<List<BackendApiClient.StrategyDTO>> strategies =
+            new MutableLiveData<>(Collections.emptyList());
+    private final MutableLiveData<List<GoldMarketRepository.GameModel>> marketCatalog =
+            new MutableLiveData<>(Collections.emptyList());
     private final AtomicBoolean requestInFlight = new AtomicBoolean(false);
     private final AtomicBoolean historyRequestInFlight = new AtomicBoolean(false);
     private final ExecutorService historyExecutor = Executors.newSingleThreadExecutor();
@@ -42,6 +46,8 @@ public class GoldMyPositionsViewModel extends AndroidViewModel {
     public LiveData<List<BackendApiClient.PortfolioHistoryPointDTO>> getPortfolioHistory() {
         return portfolioHistory;
     }
+    public LiveData<List<BackendApiClient.StrategyDTO>> getStrategies() { return strategies; }
+    public LiveData<List<GoldMarketRepository.GameModel>> getMarketCatalog() { return marketCatalog; }
 
     public void saveAndLoadPortfolioHistory(BigInteger totalValueWei, int activeMarketCount) {
         if (totalValueWei == null || !historyRequestInFlight.compareAndSet(false, true)) return;
@@ -94,6 +100,25 @@ public class GoldMyPositionsViewModel extends AndroidViewModel {
                 if (!showLoading) return;
                 String msg = source + " | " + String.format(java.util.Locale.US, "%.2fs", durationMs / 1000.0);
                 debugToast.postValue(msg);
+            }
+        });
+        repository.getAllGamesInfo(new GoldMarketRepository.DataCallback<List<GoldMarketRepository.GameModel>>() {
+            @Override public void onSuccess(List<GoldMarketRepository.GameModel> models) {
+                marketCatalog.postValue(models == null ? Collections.emptyList() : models);
+            }
+            @Override public void onError(String error) { }
+        });
+        loadStrategies();
+    }
+
+    private void loadStrategies() {
+        final String wallet = repository.getWalletAddress();
+        if (wallet == null || wallet.isEmpty()) return;
+        historyExecutor.execute(() -> {
+            try {
+                strategies.postValue(BackendApiClient.fetchStrategies(wallet));
+            } catch (Exception ignored) {
+                // Holdings and LP positions remain usable if strategy history is unavailable.
             }
         });
     }
